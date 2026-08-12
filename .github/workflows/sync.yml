@@ -1,23 +1,22 @@
-name: Sincronizar com Conta B
+name: Espelhamento Automatico Vercel
 
-# Isso diz ao GitHub: "Rode isso toda vez que houver um push na branch main"
 on:
   push:
     branches: [ main ] 
 
 jobs:
-  sincronizar:
+  mirror:
     runs-on: ubuntu-latest
     steps:
-      - name: Pegando o código mais recente
-        uses: actions/checkout@v3
+      - name: Checkout do código original
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Enviando para a Conta B
+      - name: Enviando para o repositório privado
         run: |
-          # Substitua 'UsuarioContaB' e 'NomeDoRepoB' pelos dados reais da segunda conta
-          git remote add destino https://UsuarioContaB:${{ secrets.DESTINATION_TOKEN }}@github.com/UsuarioContaB/NomeDoRepoB.git
+          # Configura a URL de destino com o Token e a conta da Simples Contábil
+          git remote add clone https://admsimplescontabilrv-dev:${{ secrets.DESTINATION_TOKEN }}@github.com/admsimplescontabilrv-dev/auto-termos-web.git
           
-          # Envia o código forçando a atualização
-          git push destino main --force
+          # Força o envio do código atualizado para o destino
+          git push clone main --force
