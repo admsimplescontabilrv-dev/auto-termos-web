@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import ExcelJS from 'exceljs';
 import helmet from 'helmet';
@@ -53,16 +52,7 @@ app.set('trust proxy', 1);
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // Global Error Handler para requisições com payload muito grande (evita que o Express retorne HTML 413 padrão)
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (err && err.type === 'entity.too.large') {
-      return res.status(413).json({ error: 'O arquivo PDF enviado é muito grande (acima do limite de 50MB suportado).' });
-    }
-    if (err && err instanceof SyntaxError && 'body' in err && (err as any).status === 400) {
-      return res.status(400).json({ error: 'Formato JSON inválido.' });
-    }
-    next(err);
-  });
+  // (Error handler moved after routes)
 
   // Aplica o Rate Limiting em todas as rotas de API
   app.use('/api/', apiLimiter);
@@ -690,6 +680,17 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
     }
   });
 
+  // Global Error Handler para requisições com payload muito grande (evita que o Express retorne HTML 413 padrão)
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err && err.type === 'entity.too.large') {
+      return res.status(413).json({ error: 'O arquivo PDF enviado é muito grande (acima do limite de 50MB suportado).' });
+    }
+    if (err && err instanceof SyntaxError && 'body' in err && (err as any).status === 400) {
+      return res.status(400).json({ error: 'Formato JSON inválido.' });
+    }
+    next(err);
+  });
+
   // Catch-all error handler para rotas de API para garantir que sempre retornem JSON
   app.use('/api', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error('API Error:', err);
@@ -697,30 +698,32 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
     res.status(status).json({ error: err.message || 'Falha no processamento (interceptado de 500).' });
   });
 
-  // Vite middleware for development
-  async function startViteAndListen() {
-    if (process.env.NODE_ENV !== "production") {
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: "spa",
-      });
-      app.use(vite.middlewares);
-    } else {
-      const distPath = path.join(process.cwd(), 'dist');
-      app.use(express.static(distPath));
-      app.get('*', (req, res) => {
-        res.sendFile(path.join(distPath, 'index.html'));
-      });
-    }
+  // Inicia o servidor apenas em ambiente de desenvolvimento local (NÃO na Vercel)
+  if (!process.env.VERCEL) {
+    (async () => {
+      try {
+        if (process.env.NODE_ENV !== 'production') {
+          const { createServer: createViteServer } = await import('vite');
+          const vite = await createViteServer({
+            server: { middlewareMode: true },
+            appType: 'spa',
+          });
+          app.use(vite.middlewares);
+        } else {
+          const distPath = path.join(process.cwd(), 'dist');
+          app.use(express.static(distPath));
+          app.get('*', (req, res) => {
+            res.sendFile(path.join(distPath, 'index.html'));
+          });
+        }
 
-    // Inicia o servidor se não estiver no ambiente Serverless do Vercel
-    if (process.env.NODE_ENV !== 'production' || process.env.RUN_LOCAL === 'true' || !process.env.VERCEL) {
-      app.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
-      });
-    }
+        app.listen(PORT, () => {
+          console.log(`Server running on http://localhost:${PORT}`);
+        });
+      } catch (err) {
+        console.error('Erro ao inicializar o servidor dev:', err);
+      }
+    })();
   }
-
-  startViteAndListen();
 
   export default app;
