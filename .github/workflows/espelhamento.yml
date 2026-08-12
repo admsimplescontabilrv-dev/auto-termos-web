@@ -16,5 +16,5 @@ jobs:
 
       - name: Enviar para o repositório da Simples
         run: |
-          git remote add clone https://${{ secrets.DESTINATION_TOKEN }}@github.com/admsimplescontabilrv-dev/auto-termos-web.git
-          git push clone main:main --force 
+          git remote add clone https://admsimplescontabilrv-dev:${{ secrets.DESTINATION_TOKEN }}@github.com/admsimplescontabilrv-dev/auto-termos-web.git
+          git push clone main:main --force
