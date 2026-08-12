@@ -2,7 +2,7 @@ name: Espelhamento Automatico Vercel
 
 on:
   push:
-    branches: [ main ] 
+    branches: [ main ]
 
 jobs:
   mirror:
@@ -12,11 +12,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false   # <- essa linha é a correção
 
       - name: Enviando para o repositório privado
         run: |
-          # Configura a URL de destino com o Token e a conta da Simples Contábil
           git remote add clone https://admsimplescontabilrv-dev:${{ secrets.DESTINATION_TOKEN }}@github.com/admsimplescontabilrv-dev/auto-termos-web.git
-          
-          # Força o envio do código atualizado para o destino
-          git push clone main --force
+          git push clone main --force  
