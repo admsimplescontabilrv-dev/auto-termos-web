@@ -141,6 +141,7 @@ export default function App() {
   };
 
   const generateFinalDocument = () => {
+    // Triggering new commit for GitHub
     // Generate concatenated document
     const currentCustomContent = activeTemplateId === 'tpl-custom' ? templateCode : customTemplate.content;
     
