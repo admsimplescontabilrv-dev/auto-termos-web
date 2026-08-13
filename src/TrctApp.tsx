@@ -473,13 +473,13 @@ ${e?.stack || 'N/A'}`);
             table {
               width: 100%;
               border-collapse: collapse;
-              font-size: 9pt; /* Aumentado para melhor legibilidade */
-              line-height: 1.3;
-              margin-bottom: 5px;
+              font-size: 8.5pt;
+              line-height: 1.2;
+              margin-bottom: 3px;
             }
             td, th {
               border: 1px solid black;
-              padding: 3px 4px; /* Aumentado para dar respiro aos dados */
+              padding: 2px 3px;
               vertical-align: top;
             }
             .bg-gray-300 { background-color: #d1d5db; }
@@ -514,16 +514,22 @@ ${e?.stack || 'N/A'}`);
             }
             /* Bloco de assinaturas */
             .page-container table:last-of-type td {
-              height: 70px !important; /* Espaço amplo para assinar */
-              padding: 8px 4px !important;
+              height: 45px !important; /* Espaço reduzido para economizar altura */
+              padding: 4px !important;
               vertical-align: bottom;
             }
             /* ── REGRAS DE IMPRESSÃO ── */
             @media print {
               @page {
                 size: A4 portrait;
-                margin: 10mm; /* Margens perfeitas de 1cm */
+                margin: 5mm; /* Margens finas para aproveitar o máximo da folha */
               }
+              
+              /* Força a redução do tamanho de todo o TRCT para caber em 1 folha */
+              .page-container {
+                zoom: 0.85; 
+              }
+
               html, body {
                 width: 100%;
                 height: 100%;
@@ -534,8 +540,8 @@ ${e?.stack || 'N/A'}`);
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
               }
-              /* Força quebra de página NUNCA acontecer dentro das tabelas */
-              table { page-break-inside: avoid !important; }
+              /* Remove o avoid da tabela inteira, o zoom já deve resolver. */
+              table { page-break-inside: auto !important; }
               tr { page-break-inside: avoid !important; }
               thead { display: table-header-group; }
             }
