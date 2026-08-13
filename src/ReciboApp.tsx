@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Loader2, Plus, Trash2, ArrowRight, ArrowLeft, Download, ExternalLink, Printer, Activity, FileText } from 'lucide-react';
 import { Rubrica, DadosEmpresa, DadosFuncionario, ResultadoCalculo } from './types';
 import { LayoutRecibo } from './LayoutRecibo';
@@ -41,8 +41,21 @@ export default function ReciboApp() {
   });
 
   const [rubricas, setRubricas] = useState<Rubrica[]>([
-    { codigo: 2001, descricao: '', referencia: '', valor: 0, tipo: 'provento' }
+    { codigo: 1, descricao: 'SALÁRIO', referencia: '30', valor: 0, tipo: 'provento' }
   ]);
+
+  useEffect(() => {
+    if (!dadosFuncionario.salarioBaseContratual) return;
+    
+    setRubricas(prev => prev.map(r => {
+      if (r.descricao.toLowerCase().includes('salário') || r.descricao.toLowerCase().includes('salario')) {
+        const dias = parseInt(r.referencia) || 30;
+        const valorProporcional = (dadosFuncionario.salarioBaseContratual! / 30) * dias;
+        return { ...r, valor: valorProporcional };
+      }
+      return r;
+    }));
+  }, [dadosFuncionario.salarioBaseContratual, rubricas.map(r => r.referencia).join(',')]);
 
   const handleCnpjUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<any>) => {
     e.preventDefault();
@@ -281,7 +294,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
       baseIRRF: dadosEmpresa.calcularTributos ? baseIRRF : 0, 
       valorIRRF: resIRRF.valor, 
       faixaIRRF: resIRRF.faixa,
-      salarioBase: proventos.length > 0 ? proventos[0].valor : 0,
+      salarioBase: dadosFuncionario.salarioBaseContratual || 0,
       baseFGTS: (dadosEmpresa.calcularTributos && dadosEmpresa.tipoRecibo === 'salario') ? baseINSS : 0,
       valorFGTS: (dadosEmpresa.calcularTributos && dadosEmpresa.tipoRecibo === 'salario') ? Math.round(baseINSS * 0.08 * 100) / 100 : 0
     };
@@ -510,9 +523,13 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                         <label className="block text-sm text-[#D1A751] mb-1">Nome</label>
                         <input type="text" value={dadosFuncionario.nome} onChange={e => setDadosFuncionario({...dadosFuncionario, nome: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                       </div>
-                      <div className="md:col-span-2">
+                      <div className="md:col-span-1">
                         <label className="block text-sm text-[#D1A751] mb-1">Função</label>
                         <input type="text" value={dadosFuncionario.funcao} onChange={e => setDadosFuncionario({...dadosFuncionario, funcao: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
+                      </div>
+                      <div className="md:col-span-1">
+                        <label className="block text-sm text-[#D1A751] mb-1">Salário Base Contratual (Integral)</label>
+                        <CurrencyInput value={dadosFuncionario.salarioBaseContratual || 0} onChangeValue={val => setDadosFuncionario({...dadosFuncionario, salarioBaseContratual: val})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                       </div>
                     </div>
                 </div>

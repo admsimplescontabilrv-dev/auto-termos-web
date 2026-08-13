@@ -536,9 +536,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
         <div className="flex flex-col md:flex-row items-center w-full md:w-auto gap-4 md:gap-6">
           <div className="flex items-center space-x-3 text-[#C49B4A]">
             <Activity className="w-6 h-6" />
-            <h1 className="text-xl font-serif tracking-widest uppercase">
-              Simples <span className="text-[#845a27]">| V1</span>
-            </h1>
+            <img src="/logo.png" alt="Simples Logo" className="h-10 object-contain" />
           </div>
           
           <div className="flex bg-[#380E1C] p-1 rounded-lg border border-[#4A1828] w-full md:w-auto justify-center">

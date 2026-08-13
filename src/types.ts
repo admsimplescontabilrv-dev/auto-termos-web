@@ -31,6 +31,7 @@ export interface DadosFuncionario {
   funcao: string;
   cbo: string;
   numeroDependentes: number;
+  salarioBaseContratual?: number;
 }
 
 export interface ResultadoCalculo {

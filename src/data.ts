@@ -36,7 +36,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p><b>[CIDADE/UF]</b>, <b>[DATA]</b>.</p>
   <br><br>
   <p>__________________________________________</p>
-  <p><b>EMPREGADOR</b></p>
+  <p><b>[NOME DA EMPRESA]</b></p>
   <br><br>
   <p>__________________________________________</p>
   <p><b>[NOME DO COLABORADOR]</b></p>
@@ -96,7 +96,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p><b>[CIDADE/UF]</b>, <b>[DATA]</b>.</p>
   <br>
   <p>___________________________________</p>
-  <p><b>EMPREGADOR</b></p>
+  <p><b>[NOME DA EMPRESA]</b></p>
   <br>
   <p>___________________________________</p>
   <p><b>[NOME DO COLABORADOR]</b></p>
@@ -143,7 +143,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p><b>[CIDADE/UF]</b>, <b>[DATA]</b>.</p>
   <br><br>
   <p>________________________</p>
-  <p><b>EMPREGADOR</b></p>
+  <p><b>[NOME DA EMPRESA]</b></p>
   <br><br>
   <p>________________________</p>
   <p><b>[NOME DO COLABORADOR]</b></p>
@@ -193,7 +193,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p><b>[CIDADE/UF]</b>, <b>[DATA]</b>.</p>
   <br><br>
   <p>_____________________________</p>
-  <p><b>EMPREGADOR</b></p>
+  <p><b>[NOME DA EMPRESA]</b></p>
   <br><br>
   <p>_____________________________</p>
   <p><b>[NOME DO COLABORADOR]</b></p>
@@ -260,7 +260,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p><b>[CIDADE/UF]</b>, <b>[DATA]</b>.</p>
   <br><br>
   <p>________________________________________________</p>
-  <p><b>EMPREGADOR</b></p>
+  <p><b>[NOME DA EMPRESA]</b></p>
   <br><br>
   <p>________________________________________________</p>
   <p><b>[NOME DO COLABORADOR]</b></p>
