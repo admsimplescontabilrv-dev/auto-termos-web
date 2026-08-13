@@ -45,12 +45,24 @@ app.set('trust proxy', 1);
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: false,
-    frameguard: false
+    frameguard: { action: 'sameorigin' } // PROTEÇÃO ATIVADA
   }));
 
-  // 2. PROTEÇÃO CONTRA DoS: Limite do body para 50mb
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // 2. PROTEÇÃO CONTRA DoS: Limite do body para 5mb
+  app.use(express.json({ limit: "5mb" })); // PDFs comuns não passam de 2-3MB
+  app.use(express.urlencoded({ limit: "5mb", extended: true }));
+
+  // Middleware de Autenticação de API Key Interna
+  const requireApiKey = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const clientKey = req.headers['x-api-key'];
+    const serverKey = process.env.API_SECRET_KEY; // Você deve criar essa variável na Vercel
+    
+    if (!serverKey) return next(); // Bypass se não estiver configurado (dev local)
+    if (clientKey !== serverKey) {
+      return res.status(401).json({ error: 'Acesso negado. Chave de API ausente ou inválida.' });
+    }
+    next();
+  };
 
   // (Error handler moved after routes)
 
@@ -62,7 +74,7 @@ app.set('trust proxy', 1);
     res.json({ status: "ok" });
   });
 
-  app.post('/api/extract-pdf', async (req, res) => {
+  app.post('/api/extract-pdf', requireApiKey, async (req, res) => {
     try {
       // 5. VALIDAÇÃO DE DADOS: Valida o payload de entrada com Zod
       const parseResult = ExtractPdfSchema.safeParse(req.body);
@@ -136,8 +148,8 @@ REGRAS IMPORTANTES:
 - Se não encontrar um campo, use string vazia ou array vazio.
 Retorne SOMENTE o JSON.`;
       } else if (type === 'trct') {
-        systemInstruction = `Este é um Termo de Rescisão do Contrato de Trabalho (TRCT), relatório admissional ou documento rescisório similar.
-Extraia TODOS os dados possíveis e retorne APENAS um JSON válido, sem markdown, sem explicação, com esta estrutura exata (se o campo não existir, retorne string vazia):
+        systemInstruction = `Extraia os dados deste TRCT para o seguinte esquema JSON estrito.
+Retorne APENAS o objeto JSON. Se o campo não existir, use "".
 {
   "cnpj": "CNPJ da empresa (formatado)",
   "razaoSocial": "Razão social ou nome da empresa",
@@ -166,12 +178,7 @@ Extraia TODOS os dados possíveis e retorne APENAS um JSON válido, sem markdown
   "codigoAfastamento": "Código de afastamento",
   "sindicato": "Nome do sindicato da categoria profissional",
   "cnpjSindicato": "CNPJ do sindicato"
-}
-
-REGRAS IMPORTANTES:
-- "remuneracaoMesAnterior" deve ser numérico (sem R$, sem pontos de milhar, usar ponto como decimal). Ex: 1500.50
-- Se não encontrar um campo, retorne string vazia "".
-- Retorne SOMENTE o JSON.`;
+}`;
       } else if (type === 'custom') {
         const globals = (globalVars || []).join(', ');
         const collabs = (collabVars || []).join(', ');
@@ -216,7 +223,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       let totalAttempts = 0;
       let successfulModel = '';
 
-      const modelsToTry = ['gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+      const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
       for (let attempt = 0; attempt < modelsToTry.length; attempt++) {
         const currentModel = modelsToTry[attempt];
         totalAttempts = attempt + 1;
@@ -238,14 +245,14 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
             ],
             config: {
               systemInstruction: systemInstruction,
+              // ISSO ACELERA A RESPOSTA E GARANTE QUE NÃO VOLTE MARKDOWN:
+              responseMimeType: "application/json",
             }
           });
-          const text = response.text?.trim() || '';
           
-          // Limpa possíveis backticks de markdown
-          const cleanJson = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          
-          extractedData = JSON.parse(cleanJson);
+          // Como usamos responseMimeType, o response.text já é 100% JSON validado.
+          const text = response.text || '{}';
+          extractedData = JSON.parse(text);
           successfulModel = currentModel;
           break; // Sucesso, sai do loop
         } catch (err: any) {

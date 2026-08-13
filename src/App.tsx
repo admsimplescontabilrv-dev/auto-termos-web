@@ -377,7 +377,8 @@ export default function App() {
       const response = await fetch('/api/extract-pdf', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
         },
         body: JSON.stringify({ 
           pdfBase64: base64,

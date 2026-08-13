@@ -82,6 +82,7 @@ export default function ReciboApp() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
         },
         body: JSON.stringify({
           pdfBase64: base64,
@@ -170,6 +171,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
         },
         body: JSON.stringify({
           pdfBase64: base64,

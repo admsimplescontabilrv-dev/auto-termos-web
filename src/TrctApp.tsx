@@ -86,6 +86,7 @@ export default function TrctApp() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
         },
         body: JSON.stringify({ 
           pdfBase64: base64,
