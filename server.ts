@@ -223,7 +223,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       let totalAttempts = 0;
       let successfulModel = '';
 
-      const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
+      const modelsToTry = ['gemini-3.5-flash', 'gemini-3.5-flash-lite'];
       for (let attempt = 0; attempt < modelsToTry.length; attempt++) {
         const currentModel = modelsToTry[attempt];
         totalAttempts = attempt + 1;
