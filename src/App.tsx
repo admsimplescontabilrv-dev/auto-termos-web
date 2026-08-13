@@ -10,7 +10,7 @@ import { ErrorLogViewer } from './ErrorLogViewer';
 
 export default function App() {
   const [modulo, setModulo] = useState<'autotermos' | 'recibos' | 'boletos' | 'trct'>('autotermos');
-  // Commit trigger timestamp: 2026-08-13 04:35
+  // Commit trigger timestamp: 2026-08-13 05:06
   
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
