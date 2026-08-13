@@ -41,21 +41,29 @@ export default function ReciboApp() {
   });
 
   const [rubricas, setRubricas] = useState<Rubrica[]>([
-    { codigo: 1, descricao: 'SALÁRIO', referencia: '30', valor: 0, tipo: 'provento' }
+    { codigo: 1, descricao: 'DIAS NORMAIS', referencia: '30', valor: 0, tipo: 'provento' }
   ]);
 
   useEffect(() => {
-    if (!dadosFuncionario.salarioBaseContratual) return;
-    
-    setRubricas(prev => prev.map(r => {
-      if (r.descricao.toLowerCase().includes('salário') || r.descricao.toLowerCase().includes('salario')) {
-        const dias = parseInt(r.referencia) || 30;
-        const valorProporcional = (dadosFuncionario.salarioBaseContratual! / 30) * dias;
-        return { ...r, valor: valorProporcional };
-      }
-      return r;
-    }));
-  }, [dadosFuncionario.salarioBaseContratual, rubricas.map(r => r.referencia).join(',')]);
+    if (dadosFuncionario.salarioBaseContratual !== undefined) {
+      const salario = dadosFuncionario.salarioBaseContratual;
+      const dias = dadosFuncionario.diasTrabalhados || 30; // 30 por padrão
+      const valorCalculado = (salario / 30) * dias;
+      setRubricas(prev => {
+        const index = prev.findIndex(r => r.descricao === 'DIAS NORMAIS');
+        if (index !== -1) {
+          const novasRubricas = [...prev];
+          novasRubricas[index] = { 
+            ...novasRubricas[index], 
+            referencia: dias.toString(), 
+            valor: valorCalculado 
+          };
+          return novasRubricas;
+        }
+        return prev; // Se o usuário apagou a rubrica, respeitamos e não recriamos.
+      });
+    }
+  }, [dadosFuncionario.salarioBaseContratual, dadosFuncionario.diasTrabalhados]);
 
   const handleCnpjUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<any>) => {
     e.preventDefault();
@@ -528,8 +536,12 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                         <input type="text" value={dadosFuncionario.funcao} onChange={e => setDadosFuncionario({...dadosFuncionario, funcao: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                       </div>
                       <div className="md:col-span-1">
-                        <label className="block text-sm text-[#D1A751] mb-1">Salário Base Contratual (Integral)</label>
+                        <label className="block text-sm text-[#D1A751] mb-1">Salário Integral</label>
                         <CurrencyInput value={dadosFuncionario.salarioBaseContratual || 0} onChangeValue={val => setDadosFuncionario({...dadosFuncionario, salarioBaseContratual: val})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
+                      </div>
+                      <div className="md:col-span-1">
+                        <label className="block text-sm text-[#D1A751] mb-1">Dias Trabalhados</label>
+                        <input type="number" placeholder="Ex: 30" value={dadosFuncionario.diasTrabalhados || ''} onChange={e => setDadosFuncionario({...dadosFuncionario, diasTrabalhados: parseInt(e.target.value) || undefined})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] focus:border-[#C49B4A] focus:outline-none" />
                       </div>
                     </div>
                 </div>
