@@ -5,6 +5,7 @@ import * as ExcelJS from 'exceljs';
 import { CurrencyInput } from './CurrencyInput';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import { ErrorLogViewer } from './ErrorLogViewer';
+import { calcularINSS_CLT, calcularIRRF } from './utils/tributos';
 
 const PRESET_PROVENTOS = [
   { codigo: '50', descricao: 'Saldo de Salário' },
@@ -186,21 +187,11 @@ ${e?.stack || 'N/A'}`);
 
       // Reatividade do INSS
       if (descontarINSS) {
-        const calcularINSS = (salario: number) => {
-          let inss = 0;
-          if (salario <= 1412.00) inss = salario * 0.075;
-          else if (salario <= 2666.68) inss = (1412.00 * 0.075) + ((salario - 1412.00) * 0.09);
-          else if (salario <= 4000.03) inss = (1412.00 * 0.075) + (1254.68 * 0.09) + ((salario - 2666.68) * 0.12);
-          else if (salario <= 7786.02) inss = (1412.00 * 0.075) + (1254.68 * 0.09) + (1333.35 * 0.12) + ((salario - 4000.03) * 0.14);
-          else inss = 908.85; 
-          return parseFloat(inss.toFixed(2));
-        };
-
         const valor50 = newProventos.find(p => p.codigo === '50')?.valor || 0;
         const valor13 = newProventos.find(p => p.codigo === '63')?.valor || 0;
         
-        const inssBase = calcularINSS(valor50);
-        const inss13 = calcularINSS(valor13);
+        const inssBase = calcularINSS_CLT(valor50);
+        const inss13 = calcularINSS_CLT(valor13);
 
         const idx112_1 = newDescontos.findIndex(d => d.codigo === '112.1');
         if (inssBase > 0) {
@@ -220,6 +211,35 @@ ${e?.stack || 'N/A'}`);
             newDescontos.push({ id: Date.now() + '-inss13', codigo: '112.2', descricao: 'Previdência Social 13º Salário', valor: inss13 });
             hasChanges = true;
           }
+        }
+
+        const irrfBase = calcularIRRF(valor50, inssBase, 0); // Sem dependentes no TRCT ou crie um campo se necessário, caso contrário assuma 0.
+        const irrf13 = calcularIRRF(valor13, inss13, 0);
+
+        const idx114_1 = newDescontos.findIndex(d => d.codigo === '114.1');
+        if (irrfBase.valor > 0) {
+          if (idx114_1 >= 0) {
+            if (newDescontos[idx114_1].valor !== irrfBase.valor) { newDescontos[idx114_1].valor = irrfBase.valor; hasChanges = true; }
+          } else {
+            newDescontos.push({ id: Date.now() + '-irrf', codigo: '114.1', descricao: 'IRRF', valor: irrfBase.valor });
+            hasChanges = true;
+          }
+        } else if (idx114_1 >= 0) {
+            newDescontos.splice(idx114_1, 1);
+            hasChanges = true;
+        }
+
+        const idx114_2 = newDescontos.findIndex(d => d.codigo === '114.2');
+        if (irrf13.valor > 0) {
+          if (idx114_2 >= 0) {
+            if (newDescontos[idx114_2].valor !== irrf13.valor) { newDescontos[idx114_2].valor = irrf13.valor; hasChanges = true; }
+          } else {
+            newDescontos.push({ id: Date.now() + '-irrf13', codigo: '114.2', descricao: 'IRRF sobre 13º Salário', valor: irrf13.valor });
+            hasChanges = true;
+          }
+        } else if (idx114_2 >= 0) {
+            newDescontos.splice(idx114_2, 1);
+            hasChanges = true;
         }
       }
 
@@ -258,7 +278,7 @@ ${e?.stack || 'N/A'}`);
     }
 
     if (!descontarINSS) {
-       descontos = descontos.map(d => (d.codigo === '112.1' || d.codigo === '112.2') ? { ...d, valor: 0 } : d);
+       descontos = descontos.filter(d => !['112.1', '112.2', '114.1', '114.2'].includes(d.codigo));
     }
 
     const totalBrutoSem99 = proventos.reduce((sum, item) => sum + item.valor, 0);
@@ -310,22 +330,6 @@ ${e?.stack || 'N/A'}`);
     const updated = list.map(item => item.id === id ? { ...item, [field]: value } : item);
     if (tipo === 'provento') setFormData(prev => ({ ...prev, proventos: updated }));
     else setFormData(prev => ({ ...prev, descontos: updated }));
-  };
-
-  const calcularINSS = (salario: number) => {
-    let inss = 0;
-    if (salario <= 1412.00) {
-      inss = salario * 0.075;
-    } else if (salario <= 2666.68) {
-      inss = (1412.00 * 0.075) + ((salario - 1412.00) * 0.09);
-    } else if (salario <= 4000.03) {
-      inss = (1412.00 * 0.075) + (1254.68 * 0.09) + ((salario - 2666.68) * 0.12);
-    } else if (salario <= 7786.02) {
-      inss = (1412.00 * 0.075) + (1254.68 * 0.09) + (1333.35 * 0.12) + ((salario - 4000.03) * 0.14);
-    } else {
-      inss = 908.85; // Teto para salários > 7786.02 em 2024
-    }
-    return inss;
   };
 
   const calculateAvos = () => {

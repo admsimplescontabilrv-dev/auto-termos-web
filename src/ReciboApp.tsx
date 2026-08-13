@@ -5,6 +5,7 @@ import { LayoutRecibo } from './LayoutRecibo';
 import { CurrencyInput } from './CurrencyInput';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import { ErrorLogViewer } from './ErrorLogViewer';
+import { calcularINSS_CLT, calcularINSS_ProLabore, calcularIRRF } from './utils/tributos';
 
 export default function ReciboApp() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -256,33 +257,6 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
     }
   };
 
-  const calcularINSS_CLT = (base: number): number => {
-    const teto = 8475.55;
-    const salario = Math.min(base, teto);
-    let inss = 0;
-    if (salario > 4354.27) inss += (Math.min(salario, 8475.55) - 4354.27) * 0.14;
-    if (salario > 2902.84) inss += (Math.min(salario, 4354.27) - 2902.84) * 0.12;
-    if (salario > 1621.00) inss += (Math.min(salario, 2902.84) - 1621.00) * 0.09;
-    if (salario > 0)       inss += Math.min(salario, 1621.00) * 0.075;
-    return Math.round(inss * 100) / 100;
-  };
-
-  const calcularINSS_ProLabore = (base: number): number => Math.round(Math.min(base, 8475.55) * 0.11 * 100) / 100;
-
-  const calcularIRRF = (baseIRRF: number): { valor: number; faixa: string } => {
-    if (baseIRRF <= 2428.80) return { valor: 0, faixa: 'Isento' };
-    let imposto = 0;
-    let faixa = '';
-    if (baseIRRF <= 2826.65) { imposto = baseIRRF * 0.075 - 182.16; faixa = '7,5%'; }
-    else if (baseIRRF <= 3751.05) { imposto = baseIRRF * 0.15 - 394.16; faixa = '15%'; }
-    else if (baseIRRF <= 4664.68) { imposto = baseIRRF * 0.225 - 675.49; faixa = '22,5%'; }
-    else { imposto = baseIRRF * 0.275 - 908.73; faixa = '27,5%'; }
-    
-    if (baseIRRF <= 5000.00) { imposto = 0; faixa = faixa ? `${faixa} (Isento pelo Redutor 2026)` : 'Isento'; }
-    else if (baseIRRF <= 7350.00) { imposto = Math.max(0, imposto - (978.62 - (0.133145 * baseIRRF))); }
-    return { valor: Math.max(0, Math.round(imposto * 100) / 100), faixa };
-  };
-
   const getResultados = (rubs: Rubrica[]): ResultadoCalculo => {
     const baseINSS = rubs.filter(r => r.tipo === 'provento').reduce((a, c) => a + c.valor, 0);
     
@@ -290,8 +264,10 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
     const valorINSS = (!dadosEmpresa.calcularTributos || !dadosEmpresa.calcularINSS) ? 0 : 
       (dadosEmpresa.tipoRecibo === 'salario' ? calcularINSS_CLT(baseINSS) : calcularINSS_ProLabore(baseINSS));
     
-    const baseIRRF = Math.max(0, baseINSS - valorINSS - (dadosFuncionario.numeroDependentes * 189.59));
-    const resIRRF = (!dadosEmpresa.calcularTributos || !dadosEmpresa.calcularIRRF) ? { valor: 0, faixa: '' } : calcularIRRF(baseIRRF);
+    const resIRRF = (!dadosEmpresa.calcularTributos || !dadosEmpresa.calcularIRRF) 
+      ? { valor: 0, faixa: '', baseCalculo: 0 } 
+      : calcularIRRF(baseINSS, valorINSS, dadosFuncionario.numeroDependentes);
+    const baseIRRF = resIRRF.baseCalculo;
     
     const descontosManuais = rubs.filter(r => r.tipo === 'desconto').reduce((a, c) => a + c.valor, 0);
     const totalDescontos = descontosManuais + valorINSS + resIRRF.valor;
@@ -580,6 +556,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                               <li>De R$ 2.826,66 a R$ 3.751,05: 15%</li>
                               <li>De R$ 3.751,06 a R$ 4.664,68: 22,5%</li>
                               <li>Acima de R$ 4.664,68: 27,5%</li>
+                              <li className="text-xs mt-2 text-[#C49B4A]">* Isenção total para base até R$ 5.000,00</li>
                             </ul>
                             <span className="font-bold text-[#D1A751] block mt-3">FGTS:</span> 8% do Salário Bruto
                           </div>
