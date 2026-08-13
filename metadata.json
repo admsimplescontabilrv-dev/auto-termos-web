@@ -1,5 +1,5 @@
 {
-  "name": "Document Automator",
+  "name": "Document Automator - Simples",
   "description": "A tool to manage document templates, fill in placeholders, and generate formatted PDF/Docx files with a professional letterhead.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
