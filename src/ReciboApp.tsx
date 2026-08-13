@@ -29,7 +29,10 @@ export default function ReciboApp() {
     mesAnoFinal: '',
     geracaoEmLote: false,
     tipoRecibo: 'salario',
-    calcularTributos: true
+    calcularTributos: false,
+    calcularINSS: true,
+    calcularIRRF: true,
+    calcularFGTS: true
   });
 
   const [dadosFuncionario, setDadosFuncionario] = useState<DadosFuncionario>({
@@ -41,7 +44,7 @@ export default function ReciboApp() {
   });
 
   const [rubricas, setRubricas] = useState<Rubrica[]>([
-    { codigo: 1, descricao: 'DIAS NORMAIS', referencia: '30', valor: 0, tipo: 'provento' }
+    { codigo: 2001, descricao: 'DIAS NORMAIS', referencia: '30', valor: 0, tipo: 'provento' }
   ]);
 
   useEffect(() => {
@@ -284,11 +287,11 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
     const baseINSS = rubs.filter(r => r.tipo === 'provento').reduce((a, c) => a + c.valor, 0);
     
     // SE calcularTributos FOR FALSE, ZERA TUDO
-    const valorINSS = (!dadosEmpresa.calcularTributos) ? 0 : 
+    const valorINSS = (!dadosEmpresa.calcularTributos || !dadosEmpresa.calcularINSS) ? 0 : 
       (dadosEmpresa.tipoRecibo === 'salario' ? calcularINSS_CLT(baseINSS) : calcularINSS_ProLabore(baseINSS));
     
     const baseIRRF = Math.max(0, baseINSS - valorINSS - (dadosFuncionario.numeroDependentes * 189.59));
-    const resIRRF = (!dadosEmpresa.calcularTributos) ? { valor: 0, faixa: '' } : calcularIRRF(baseIRRF);
+    const resIRRF = (!dadosEmpresa.calcularTributos || !dadosEmpresa.calcularIRRF) ? { valor: 0, faixa: '' } : calcularIRRF(baseIRRF);
     
     const descontosManuais = rubs.filter(r => r.tipo === 'desconto').reduce((a, c) => a + c.valor, 0);
     const totalDescontos = descontosManuais + valorINSS + resIRRF.valor;
@@ -299,14 +302,14 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
       totalVencimentos: baseINSS, 
       totalDescontos, 
       liquidoReceber,
-      baseINSS: dadosEmpresa.calcularTributos ? baseINSS : 0, 
+      baseINSS: (dadosEmpresa.calcularTributos && dadosEmpresa.calcularINSS) ? baseINSS : 0, 
       valorINSS, 
-      baseIRRF: dadosEmpresa.calcularTributos ? baseIRRF : 0, 
+      baseIRRF: (dadosEmpresa.calcularTributos && dadosEmpresa.calcularIRRF) ? baseIRRF : 0, 
       valorIRRF: resIRRF.valor, 
       faixaIRRF: resIRRF.faixa,
       salarioBase: dadosFuncionario.salarioBaseContratual || 0,
-      baseFGTS: (dadosEmpresa.calcularTributos && dadosEmpresa.tipoRecibo === 'salario') ? baseINSS : 0,
-      valorFGTS: (dadosEmpresa.calcularTributos && dadosEmpresa.tipoRecibo === 'salario') ? Math.round(baseINSS * 0.08 * 100) / 100 : 0
+      baseFGTS: (dadosEmpresa.calcularTributos && dadosEmpresa.calcularFGTS && dadosEmpresa.tipoRecibo === 'salario') ? baseINSS : 0,
+      valorFGTS: (dadosEmpresa.calcularTributos && dadosEmpresa.calcularFGTS && dadosEmpresa.tipoRecibo === 'salario') ? Math.round(baseINSS * 0.08 * 100) / 100 : 0
     };
   };
 
@@ -314,10 +317,10 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
 
   const todasRubricas = [
     ...rubricas,
-    ...(dadosEmpresa.calcularTributos && resultados.valorINSS > 0 
+    ...(dadosEmpresa.calcularTributos && dadosEmpresa.calcularINSS && resultados.valorINSS > 0 
         ? [{ codigo: 998, descricao: 'I.N.S.S.', referencia: dadosEmpresa.tipoRecibo === 'prolabore' ? '11%' : '8,01', valor: resultados.valorINSS, tipo: 'desconto' as const }] 
         : []),
-    ...(dadosEmpresa.calcularTributos && resultados.valorIRRF > 0 
+    ...(dadosEmpresa.calcularTributos && dadosEmpresa.calcularIRRF && resultados.valorIRRF > 0 
         ? [{ codigo: 999, descricao: 'I.R.R.F.', referencia: resultados.faixaIRRF, valor: resultados.valorIRRF, tipo: 'desconto' as const }] 
         : [])
   ];
@@ -498,17 +501,92 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                   </div>
                 </div>
 
-                <div className="col-span-1 md:col-span-2 flex items-center mt-4 p-4 border border-[#4A1828] rounded-lg bg-[#380E1C] bg-opacity-30">
-                  <input 
-                    type="checkbox" 
-                    id="calcularTributos" 
-                    checked={dadosEmpresa.calcularTributos} 
-                    onChange={e => setDadosEmpresa({...dadosEmpresa, calcularTributos: e.target.checked})} 
-                    className="mr-3 w-5 h-5 accent-[#C49B4A]" 
-                  />
-                  <label htmlFor="calcularTributos" className="text-sm font-bold text-[#D1A751] cursor-pointer">
-                    CALCULAR E EXIBIR TRIBUTOS FEDERAIS (INSS, IRRF E FGTS)
-                  </label>
+                <div className="col-span-1 md:col-span-2 mt-4 p-4 border border-[#4A1828] rounded-lg bg-[#380E1C] bg-opacity-30 transition-all">
+                  <div className="flex items-center">
+                    <input 
+                      type="checkbox" 
+                      id="calcularTributos" 
+                      checked={dadosEmpresa.calcularTributos} 
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setDadosEmpresa({
+                          ...dadosEmpresa, 
+                          calcularTributos: checked,
+                          calcularINSS: checked ? true : dadosEmpresa.calcularINSS,
+                          calcularIRRF: checked ? true : dadosEmpresa.calcularIRRF,
+                          calcularFGTS: checked ? true : dadosEmpresa.calcularFGTS
+                        });
+                      }} 
+                      className="mr-3 w-5 h-5 accent-[#C49B4A]" 
+                    />
+                    <label htmlFor="calcularTributos" className="text-sm font-bold text-[#D1A751] cursor-pointer">
+                      CALCULAR E EXIBIR TRIBUTOS AUTOMATICAMENTE
+                    </label>
+                  </div>
+                  
+                  {dadosEmpresa.calcularTributos && (
+                    <div className="pl-8 mt-4 pt-4 border-t border-[#4A1828] space-y-4">
+                      <div className="flex flex-wrap gap-6">
+                        <div className="flex items-center">
+                          <input 
+                            type="checkbox" 
+                            id="calcularINSS" 
+                            checked={dadosEmpresa.calcularINSS} 
+                            onChange={e => setDadosEmpresa({...dadosEmpresa, calcularINSS: e.target.checked})} 
+                            className="mr-2 w-4 h-4 accent-[#C49B4A]" 
+                          />
+                          <label htmlFor="calcularINSS" className="text-sm text-[#D1A751] cursor-pointer font-bold">INSS</label>
+                        </div>
+                        <div className="flex items-center">
+                          <input 
+                            type="checkbox" 
+                            id="calcularIRRF" 
+                            checked={dadosEmpresa.calcularIRRF} 
+                            onChange={e => setDadosEmpresa({...dadosEmpresa, calcularIRRF: e.target.checked})} 
+                            className="mr-2 w-4 h-4 accent-[#C49B4A]" 
+                          />
+                          <label htmlFor="calcularIRRF" className="text-sm text-[#D1A751] cursor-pointer font-bold">IRRF</label>
+                        </div>
+                        <div className="flex items-center">
+                          <input 
+                            type="checkbox" 
+                            id="calcularFGTS" 
+                            checked={dadosEmpresa.calcularFGTS} 
+                            onChange={e => setDadosEmpresa({...dadosEmpresa, calcularFGTS: e.target.checked})} 
+                            className="mr-2 w-4 h-4 accent-[#C49B4A]" 
+                          />
+                          <label htmlFor="calcularFGTS" className="text-sm text-[#D1A751] cursor-pointer font-bold">FGTS</label>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-[#A68759] bg-[#1E0810] p-4 rounded-lg border border-[#4A1828]">
+                        <p className="font-bold text-[#C49B4A] mb-3">Prévia das Tabelas de Desconto Utilizadas:</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <span className="font-bold text-[#D1A751]">INSS CLT:</span> 
+                            <ul className="list-disc pl-4 mt-1.5 space-y-1">
+                              <li>Até R$ 1.621,00: 7,5%</li>
+                              <li>De R$ 1.621,01 a R$ 2.902,84: 9%</li>
+                              <li>De R$ 2.902,85 a R$ 4.354,27: 12%</li>
+                              <li>De R$ 4.354,28 a R$ 8.475,55: 14%</li>
+                            </ul>
+                            <span className="font-bold text-[#D1A751] block mt-3">INSS Pró-labore:</span> 11% sobre o valor
+                          </div>
+                          <div>
+                            <span className="font-bold text-[#D1A751]">IRRF:</span>
+                            <ul className="list-disc pl-4 mt-1.5 space-y-1">
+                              <li>Até R$ 2.428,80: Isento</li>
+                              <li>De R$ 2.428,81 a R$ 2.826,65: 7,5%</li>
+                              <li>De R$ 2.826,66 a R$ 3.751,05: 15%</li>
+                              <li>De R$ 3.751,06 a R$ 4.664,68: 22,5%</li>
+                              <li>Acima de R$ 4.664,68: 27,5%</li>
+                            </ul>
+                            <span className="font-bold text-[#D1A751] block mt-3">FGTS:</span> 8% do Salário Bruto
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex justify-end pt-4">
@@ -551,7 +629,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                 <div className="bg-[#1E0810] border border-[#4A1828] p-6 rounded-xl space-y-4">
                   <div className="flex justify-between items-center">
                     <h2 className="text-xl font-bold text-[#C49B4A]">Rubricas Base</h2>
-                    <button onClick={() => setRubricas(prev => [...prev, { codigo: 2001 + prev.length, descricao: '', referencia: '', valor: 0, tipo: 'provento' }])} className="flex items-center text-sm px-3 py-1.5 bg-[#4A1828] text-[#C49B4A] rounded hover:bg-[#5A1C30]">
+                    <button onClick={() => setRubricas(prev => [...prev, { codigo: prev.length > 0 ? Math.max(2000, ...prev.map(r => Number(r.codigo) || 0)) + 1 : 2001, descricao: '', referencia: '', valor: 0, tipo: 'provento' }])} className="flex items-center text-sm px-3 py-1.5 bg-[#4A1828] text-[#C49B4A] rounded hover:bg-[#5A1C30]">
                       <Plus className="w-4 h-4 mr-1" /> ADICIONAR
                     </button>
                   </div>

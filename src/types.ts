@@ -23,6 +23,9 @@ export interface DadosEmpresa {
   variarValores?: boolean;
   tipoRecibo: 'salario' | 'prolabore';
   calcularTributos?: boolean;
+  calcularINSS?: boolean;
+  calcularIRRF?: boolean;
+  calcularFGTS?: boolean;
 }
 
 export interface DadosFuncionario {
