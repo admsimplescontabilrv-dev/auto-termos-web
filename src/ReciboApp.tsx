@@ -462,15 +462,15 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-[#D1A751] mb-1">Nome da Empresa</label>
-                  <input type="text" value={dadosEmpresa.nome} onChange={e => setDadosEmpresa({...dadosEmpresa, nome: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
+                  <input id="recibo_empresa_nome" name="recibo_empresa_nome" type="text" value={dadosEmpresa.nome} onChange={e => setDadosEmpresa({...dadosEmpresa, nome: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm text-[#D1A751] mb-1">CNPJ</label>
-                  <input type="text" value={dadosEmpresa.cnpj} onChange={e => setDadosEmpresa({...dadosEmpresa, cnpj: e.target.value.toUpperCase()})} placeholder="XX.XXX.XXX/XXXX-XX" className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
+                  <input id="recibo_empresa_cnpj" name="recibo_empresa_cnpj" type="text" value={dadosEmpresa.cnpj} onChange={e => setDadosEmpresa({...dadosEmpresa, cnpj: e.target.value.toUpperCase()})} placeholder="XX.XXX.XXX/XXXX-XX" className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                 </div>
                 <div className="col-span-1 md:col-span-2">
                   <label className="block text-sm text-[#D1A751] mb-1">Endereço</label>
-                  <input type="text" value={dadosEmpresa.endereco} onChange={e => setDadosEmpresa({...dadosEmpresa, endereco: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
+                  <input id="recibo_empresa_endereco" name="recibo_empresa_endereco" type="text" value={dadosEmpresa.endereco} onChange={e => setDadosEmpresa({...dadosEmpresa, endereco: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                 </div>
                 
                 <div className="col-span-1 md:col-span-2 flex items-center mt-2">
@@ -480,13 +480,13 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
 
                 <div>
                   <label className="block text-sm text-[#D1A751] mb-1">{dadosEmpresa.geracaoEmLote ? 'Mês/Ano Inicial' : 'Mês/Ano de Referência'}</label>
-                  <input type="month" value={dadosEmpresa.mesAno} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAno: e.target.value})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] focus:border-[#C49B4A] focus:outline-none" />
+                  <input id="recibo_empresa_mesAno" name="recibo_empresa_mesAno" type="month" value={dadosEmpresa.mesAno} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAno: e.target.value})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] focus:border-[#C49B4A] focus:outline-none" />
                 </div>
 
                 {dadosEmpresa.geracaoEmLote && (
                   <div>
                     <label className="block text-sm text-[#D1A751] mb-1">Mês/Ano Final</label>
-                    <input type="month" value={dadosEmpresa.mesAnoFinal || ''} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAnoFinal: e.target.value})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] focus:border-[#C49B4A] focus:outline-none" />
+                    <input id="recibo_empresa_mesAnoFinal" name="recibo_empresa_mesAnoFinal" type="month" value={dadosEmpresa.mesAnoFinal || ''} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAnoFinal: e.target.value})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-3 text-[#D1A751] focus:border-[#C49B4A] focus:outline-none" />
                   </div>
                 )}
 
@@ -527,15 +527,15 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm text-[#D1A751] mb-1">Código</label>
-                        <input type="text" value={dadosFuncionario.codigo} onChange={e => setDadosFuncionario({...dadosFuncionario, codigo: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
+                        <input id="recibo_func_codigo" name="recibo_func_codigo" type="text" value={dadosFuncionario.codigo} onChange={e => setDadosFuncionario({...dadosFuncionario, codigo: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                       </div>
                       <div>
                         <label className="block text-sm text-[#D1A751] mb-1">Nome</label>
-                        <input type="text" value={dadosFuncionario.nome} onChange={e => setDadosFuncionario({...dadosFuncionario, nome: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
+                        <input id="recibo_func_nome" name="recibo_func_nome" type="text" value={dadosFuncionario.nome} onChange={e => setDadosFuncionario({...dadosFuncionario, nome: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                       </div>
                       <div className="md:col-span-1">
                         <label className="block text-sm text-[#D1A751] mb-1">Função</label>
-                        <input type="text" value={dadosFuncionario.funcao} onChange={e => setDadosFuncionario({...dadosFuncionario, funcao: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
+                        <input id="recibo_func_funcao" name="recibo_func_funcao" type="text" value={dadosFuncionario.funcao} onChange={e => setDadosFuncionario({...dadosFuncionario, funcao: e.target.value.toUpperCase()})} className="w-full bg-[#380E1C] border border-[#4A1828] rounded-lg p-2.5 text-[#D1A751] uppercase focus:border-[#C49B4A] focus:outline-none" />
                       </div>
                       <div className="md:col-span-1">
                         <label className="block text-sm text-[#D1A751] mb-1">Salário Integral</label>

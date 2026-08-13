@@ -48,9 +48,9 @@ app.set('trust proxy', 1);
     frameguard: { action: 'sameorigin' } // PROTEÇÃO ATIVADA
   }));
 
-  // 2. PROTEÇÃO CONTRA DoS: Limite do body para 5mb
-  app.use(express.json({ limit: "5mb" })); // PDFs comuns não passam de 2-3MB
-  app.use(express.urlencoded({ limit: "5mb", extended: true }));
+  // 2. PROTEÇÃO CONTRA DoS: Limite do body para 50mb
+  app.use(express.json({ limit: "50mb" })); // PDFs comuns não passam de 2-3MB
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // Middleware de Autenticação de API Key Interna
   const requireApiKey = (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -88,7 +88,14 @@ app.set('trust proxy', 1);
       if (!apiKey) {
         return res.status(400).json({ error: 'Chave da API do Gemini não configurada no servidor (GEMINI_API_KEY).' });
       }
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ 
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
       
       // 4. MITIGAÇÃO DE PROMPT INJECTION: Instrução do sistema (System Prompt) blindada no backend
       let systemInstruction = "";
@@ -223,7 +230,12 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       let totalAttempts = 0;
       let successfulModel = '';
 
-      const modelsToTry = ['gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+      const modelsToTry = [
+        'gemini-3.5-flash-lite', 
+        'gemini-3.5-flash', 
+        'gemini-3.7-flash', 
+        'gemini-flash-latest'
+      ];
       for (let attempt = 0; attempt < modelsToTry.length; attempt++) {
         const currentModel = modelsToTry[attempt];
         totalAttempts = attempt + 1;
@@ -245,13 +257,12 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
             ],
             config: {
               systemInstruction: systemInstruction,
-              // ISSO ACELERA A RESPOSTA E GARANTE QUE NÃO VOLTE MARKDOWN:
-              responseMimeType: "application/json",
             }
           });
           
-          // Como usamos responseMimeType, o response.text já é 100% JSON validado.
-          const text = response.text || '{}';
+          let text = response.text || '{}';
+          // Clean markdown JSON wrapper if present
+          text = text.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
           extractedData = JSON.parse(text);
           successfulModel = currentModel;
           break; // Sucesso, sai do loop

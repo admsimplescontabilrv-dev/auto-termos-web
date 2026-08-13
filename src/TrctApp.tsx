@@ -667,13 +667,15 @@ ${e?.stack || 'N/A'}`);
         {activeTab === 1 && (
           <div className="space-y-8 animate-in fade-in duration-300">
              <label 
+                role="button"
+                tabIndex={0}
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onDrop={handlePdfUpload}
                 className={`relative w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-all duration-300 ${
                   isExtracting ? 'border-[#845a27] bg-[#110408] opacity-80 cursor-wait' : 'border-[#C49B4A] bg-[#0C0305] hover:bg-[#1E0810] hover:border-[#D1A751] cursor-pointer'
                 }`}
               >
-                <input type="file" accept=".pdf" onChange={handlePdfUpload} disabled={isExtracting} className="hidden" />
+                <input type="file" id="pdfUploadInput" name="pdfUploadInput" accept=".pdf" onChange={handlePdfUpload} disabled={isExtracting} className="hidden" />
                 {isExtracting ? (
                   <div className="flex flex-col items-center"><Loader2 className="w-8 h-8 text-[#C49B4A] animate-spin mb-2" /><span className="text-[#D1A751]">Lendo PDF via IA...</span></div>
                 ) : (
@@ -684,20 +686,20 @@ ${e?.stack || 'N/A'}`);
             <div>
               <h3 className="text-[#C49B4A] text-sm font-bold tracking-widest mb-4 border-b border-[#4A1828] pb-2">DADOS DO EMPREGADOR</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" name="cnpj" value={formData.cnpj} onChange={handleChange} placeholder="CNPJ" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" name="razaoSocial" value={formData.razaoSocial} onChange={handleChange} placeholder="Razão Social" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" name="enderecoEmpresa" value={formData.enderecoEmpresa} onChange={handleChange} placeholder="Endereço" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" name="municipioEmpresa" value={formData.municipioEmpresa} onChange={handleChange} placeholder="Município" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="cnpj" name="cnpj" value={formData.cnpj} onChange={handleChange} placeholder="CNPJ" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="razaoSocial" name="razaoSocial" value={formData.razaoSocial} onChange={handleChange} placeholder="Razão Social" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="enderecoEmpresa" name="enderecoEmpresa" value={formData.enderecoEmpresa} onChange={handleChange} placeholder="Endereço" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="municipioEmpresa" name="municipioEmpresa" value={formData.municipioEmpresa} onChange={handleChange} placeholder="Município" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
               </div>
             </div>
 
             <div>
               <h3 className="text-[#C49B4A] text-sm font-bold tracking-widest mb-4 border-b border-[#4A1828] pb-2">DADOS DO TRABALHADOR</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" name="cpf" value={formData.cpf} onChange={handleChange} placeholder="CPF" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" name="nome" value={formData.nome} onChange={handleChange} placeholder="Nome Completo" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" name="pis" value={formData.pis} onChange={handleChange} placeholder="PIS" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" name="ctps" value={formData.ctps} onChange={handleChange} placeholder="CTPS" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="cpf" name="cpf" value={formData.cpf} onChange={handleChange} placeholder="CPF" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="nome" name="nome" value={formData.nome} onChange={handleChange} placeholder="Nome Completo" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="pis" name="pis" value={formData.pis} onChange={handleChange} placeholder="PIS" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="ctps" name="ctps" value={formData.ctps} onChange={handleChange} placeholder="CTPS" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
               </div>
             </div>
           </div>
@@ -711,19 +713,19 @@ ${e?.stack || 'N/A'}`);
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className="text-[#845a27] text-xs font-bold mb-1">Admissão</label>
-                  <input type="date" name="dataAdmissao" value={formData.dataAdmissao} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                  <input type="date" id="dataAdmissao" name="dataAdmissao" value={formData.dataAdmissao} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-[#845a27] text-xs font-bold mb-1">Afastamento</label>
-                  <input type="date" name="dataAfastamento" value={formData.dataAfastamento} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                  <input type="date" id="dataAfastamento" name="dataAfastamento" value={formData.dataAfastamento} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-[#845a27] text-xs font-bold mb-1">Causa do Afastamento</label>
-                  <input type="text" name="causaAfastamento" value={formData.causaAfastamento} onChange={handleChange} placeholder="Ex: Dispensa sem justa causa" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                  <input type="text" id="causaAfastamento" name="causaAfastamento" value={formData.causaAfastamento} onChange={handleChange} placeholder="Ex: Dispensa sem justa causa" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-[#845a27] text-xs font-bold mb-1">Remuneração Base Mês Anterior (R$)</label>
-                  <CurrencyInput value={formData.remuneracaoMesAnterior} onChangeValue={(val) => setFormData(prev => ({...prev, remuneracaoMesAnterior: val}))} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                  <CurrencyInput id="remuneracaoMesAnterior" name="remuneracaoMesAnterior" value={formData.remuneracaoMesAnterior} onChangeValue={(val) => setFormData(prev => ({...prev, remuneracaoMesAnterior: val}))} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
                 </div>
               </div>
             </div>
@@ -750,11 +752,11 @@ ${e?.stack || 'N/A'}`);
                   
                   <div className="flex space-x-4">
                     <label className="flex items-center space-x-2 cursor-pointer">
-                      <input type="radio" checked={modoFimContrato === 'data'} onChange={() => setModoFimContrato('data')} className="text-[#C49B4A] bg-[#110408]" />
+                      <input type="radio" id="modoFimContrato_data" name="modoFimContrato" checked={modoFimContrato === 'data'} onChange={() => setModoFimContrato('data')} className="text-[#C49B4A] bg-[#110408]" />
                       <span className="text-[#A68759] text-sm">Informar Data</span>
                     </label>
                     <label className="flex items-center space-x-2 cursor-pointer">
-                      <input type="radio" checked={modoFimContrato === 'dias'} onChange={() => setModoFimContrato('dias')} className="text-[#C49B4A] bg-[#110408]" />
+                      <input type="radio" id="modoFimContrato_dias" name="modoFimContrato" checked={modoFimContrato === 'dias'} onChange={() => setModoFimContrato('dias')} className="text-[#C49B4A] bg-[#110408]" />
                       <span className="text-[#A68759] text-sm">Informar Dias de Prazo</span>
                     </label>
                   </div>
@@ -763,18 +765,20 @@ ${e?.stack || 'N/A'}`);
                     {modoFimContrato === 'data' ? (
                       <>
                         <label className="text-[#845a27] text-xs font-bold mb-1">Data Prevista de Término do Contrato</label>
-                        <input type="date" name="dataFimContrato" value={formData.dataFimContrato} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A] w-full md:w-1/2" />
+                        <input type="date" id="dataFimContrato" name="dataFimContrato" value={formData.dataFimContrato} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A] w-full md:w-1/2" />
                       </>
                     ) : (
                       <>
                         <label className="text-[#845a27] text-xs font-bold mb-1">Prazo do Contrato (Dias) a partir da Admissão</label>
-                        <input type="number" value={diasExperiencia} onChange={(e) => setDiasExperiencia(Number(e.target.value))} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A] w-full md:w-1/2" />
+                        <input type="number" id="diasExperiencia" name="diasExperiencia" value={diasExperiencia} onChange={(e) => setDiasExperiencia(Number(e.target.value))} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A] w-full md:w-1/2" />
                       </>
                     )}
                   </div>
                   <div>
                     <p className="text-sm text-[#A68759] mb-2">Selecione a parte responsável pela quebra do contrato para calcular multas (Art. 479 ou 480 da CLT).</p>
                     <select 
+                      id="parteQuebra" 
+                      name="parteQuebra" 
                       value={parteQuebra} 
                       onChange={(e) => setParteQuebra(e.target.value as any)}
                       className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A] w-full md:w-1/2"
@@ -808,11 +812,11 @@ ${e?.stack || 'N/A'}`);
             <div className="bg-[#2A0B16] border border-[#4A1828] p-4 rounded-xl flex flex-wrap gap-4 items-center">
               <div className="flex flex-col">
                 <label className="text-[#845a27] text-xs font-bold mb-1">Dias Saldo de Salário (Mês Rescisão)</label>
-                <input type="number" value={formData.diasSaldoSalario || ''} onChange={(e) => setFormData({...formData, diasSaldoSalario: parseInt(e.target.value) || 0})} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-2 focus:outline-none focus:border-[#C49B4A] w-32" />
+                <input type="number" id="diasSaldoSalario" name="diasSaldoSalario" value={formData.diasSaldoSalario || ''} onChange={(e) => setFormData({...formData, diasSaldoSalario: parseInt(e.target.value) || 0})} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-2 focus:outline-none focus:border-[#C49B4A] w-32" />
               </div>
               <div className="flex flex-col">
                 <label className="text-[#845a27] text-xs font-bold mb-1">Faltas e DSR a Descontar</label>
-                <input type="number" value={formData.faltasDsr || ''} onChange={(e) => setFormData({...formData, faltasDsr: parseInt(e.target.value) || 0})} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-2 focus:outline-none focus:border-[#C49B4A] w-32" />
+                <input type="number" id="faltasDsr" name="faltasDsr" value={formData.faltasDsr || ''} onChange={(e) => setFormData({...formData, faltasDsr: parseInt(e.target.value) || 0})} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-2 focus:outline-none focus:border-[#C49B4A] w-32" />
               </div>
             </div>
             
@@ -823,6 +827,8 @@ ${e?.stack || 'N/A'}`);
                 <div className="bg-[#380E1C] p-3 flex justify-between items-center border-b border-[#4A1828]">
                   <h4 className="text-[#C49B4A] font-bold tracking-widest text-sm">PROVENTOS</h4>
                   <select 
+                    id="presetProventos"
+                    name="presetProventos"
                     className="bg-[#110408] border border-[#4A1828] text-[#D1A751] text-xs p-1 rounded"
                     onChange={(e) => {
                       if(e.target.value) {
@@ -839,9 +845,9 @@ ${e?.stack || 'N/A'}`);
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                   {calculatedData.proventos.map(item => (
                     <div key={item.id} className={`flex items-center space-x-2 ${item.codigo === '99' ? 'opacity-80 bg-[#2A0B16] p-2 rounded border border-[#C49B4A]' : ''}`}>
-                      <input type="text" value={item.codigo} onChange={(e) => updateRubrica('provento', item.id, 'codigo', e.target.value)} className="w-16 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Cód" />
-                      <input type="text" value={item.descricao} onChange={(e) => updateRubrica('provento', item.id, 'descricao', e.target.value)} className="flex-1 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Descrição" />
-                      <CurrencyInput value={item.valor} onChangeValue={(val) => updateRubrica('provento', item.id, 'valor', val)} className="w-24 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs text-right" />
+                      <input type="text" id={`provento_codigo_${item.id}`} name={`provento_codigo_${item.id}`} value={item.codigo} onChange={(e) => updateRubrica('provento', item.id, 'codigo', e.target.value)} className="w-16 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Cód" />
+                      <input type="text" id={`provento_descricao_${item.id}`} name={`provento_descricao_${item.id}`} value={item.descricao} onChange={(e) => updateRubrica('provento', item.id, 'descricao', e.target.value)} className="flex-1 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Descrição" />
+                      <CurrencyInput id={`provento_valor_${item.id}`} name={`provento_valor_${item.id}`} value={item.valor} onChangeValue={(val) => updateRubrica('provento', item.id, 'valor', val)} className="w-24 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs text-right" />
                       {item.codigo !== '99' && (
                         <button onClick={() => removeRubrica('provento', item.id)} className="text-red-500 hover:bg-[#380E1C] p-1 rounded"><Trash2 className="w-4 h-4" /></button>
                       )}
@@ -860,6 +866,8 @@ ${e?.stack || 'N/A'}`);
                 <div className="bg-[#380E1C] p-3 flex justify-between items-center border-b border-[#4A1828]">
                   <h4 className="text-[#C49B4A] font-bold tracking-widest text-sm">DEDUÇÕES</h4>
                   <select 
+                    id="presetDescontos"
+                    name="presetDescontos"
                     className="bg-[#110408] border border-[#4A1828] text-[#D1A751] text-xs p-1 rounded"
                     onChange={(e) => {
                       if(e.target.value) {
@@ -876,9 +884,9 @@ ${e?.stack || 'N/A'}`);
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                   {calculatedData.descontos.map(item => (
                     <div key={item.id} className="flex items-center space-x-2">
-                      <input type="text" value={item.codigo} onChange={(e) => updateRubrica('desconto', item.id, 'codigo', e.target.value)} className="w-16 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Cód" />
-                      <input type="text" value={item.descricao} onChange={(e) => updateRubrica('desconto', item.id, 'descricao', e.target.value)} className="flex-1 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Descrição" />
-                      <CurrencyInput value={item.valor} onChangeValue={(val) => updateRubrica('desconto', item.id, 'valor', val)} className="w-24 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs text-right" />
+                      <input type="text" id={`desconto_codigo_${item.id}`} name={`desconto_codigo_${item.id}`} value={item.codigo} onChange={(e) => updateRubrica('desconto', item.id, 'codigo', e.target.value)} className="w-16 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Cód" />
+                      <input type="text" id={`desconto_descricao_${item.id}`} name={`desconto_descricao_${item.id}`} value={item.descricao} onChange={(e) => updateRubrica('desconto', item.id, 'descricao', e.target.value)} className="flex-1 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Descrição" />
+                      <CurrencyInput id={`desconto_valor_${item.id}`} name={`desconto_valor_${item.id}`} value={item.valor} onChangeValue={(val) => updateRubrica('desconto', item.id, 'valor', val)} className="w-24 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs text-right" />
                       <button onClick={() => removeRubrica('desconto', item.id)} className="text-red-500 hover:bg-[#380E1C] p-1 rounded"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   ))}

@@ -854,6 +854,8 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                               <div key={v} className="flex flex-col">
                                 <label className="text-[#845a27] text-xs font-bold tracking-widest uppercase mb-2 ml-1">{v}</label>
                                 <input
+                                  id={`global_${v}`}
+                                  name={`global_${v}`}
                                   type="text"
                                   value={globalFormData[v] || ''}
                                   onChange={(e) => setGlobalFormData({...globalFormData, [v]: e.target.value})}
@@ -905,6 +907,8 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                                     <div key={v} className="flex flex-col">
                                       <label className="text-[#845a27] text-xs font-bold tracking-widest uppercase mb-2 ml-1">{v}</label>
                                       <input
+                                        id={`collab_${index}_${v}`}
+                                        name={`collab_${index}_${v}`}
                                         type="text"
                                         value={collab[v] || ''}
                                         onChange={(e) => {
