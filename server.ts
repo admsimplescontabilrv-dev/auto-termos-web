@@ -216,10 +216,10 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       let totalAttempts = 0;
       let successfulModel = '';
 
-      const modelsToTry = ['gemini-3.6-flash'];
-      for (let attempt = 1; attempt <= 1; attempt++) {
-        totalAttempts = attempt;
-        const currentModel = modelsToTry[attempt - 1];
+      const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+      for (let attempt = 0; attempt < modelsToTry.length; attempt++) {
+        const currentModel = modelsToTry[attempt];
+        totalAttempts = attempt + 1;
         try {
           const response = await ai.models.generateContent({
             model: currentModel,
@@ -237,7 +237,6 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
               },
             ],
             config: {
-              // systemInstruction passado no config do modelo para evitar manipulação nas mensagens do usuário
               systemInstruction: systemInstruction,
             }
           });
@@ -250,11 +249,12 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
           successfulModel = currentModel;
           break; // Sucesso, sai do loop
         } catch (err: any) {
-          console.log(`Tentativa ${attempt} falhou:`, err.message);
+          console.log(`Tentativa ${attempt + 1} (modelo: ${currentModel}) falhou:`, err.message);
           lastError = err;
-          if (attempt === 2) throw lastError;
-          // Wait before retrying (exponential backoff: 3s, 6s)
-          await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+          // Se for a última tentativa, lança o erro para o catch externo
+          if (attempt === modelsToTry.length - 1) throw lastError;
+          // Espera antes de tentar o próximo modelo (backoff)
+          await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 2000));
         }
       }
 
