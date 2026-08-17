@@ -18,7 +18,7 @@ const apiLimiter = rateLimit({
 
 // --- Schemas de Validação (Zod) ---
 
-const AiHubSchema = z.object({
+const AiCommandSchema = z.object({
   prompt: z.string(),
   context: z.object({
     empresas: z.array(z.any()),
@@ -30,7 +30,12 @@ const ExtractPdfSchema = z.object({
   pdfBase64: z.string().min(1, "PDF não enviado."),
   type: z.enum(['cnpj', 'recibo', 'admissional', 'trct', 'custom']).default('admissional'),
   globalVars: z.array(z.string()).optional(),
-  collabVars: z.array(z.string()).optional()
+  collabVars: z.array(z.string()).optional(),
+  registeredCompanies: z.array(z.object({
+    id: z.string(),
+    nome: z.string(),
+    cnpj: z.string().optional().nullable()
+  })).optional()
 });
 
 const GerarReciboSchema = z.object({
@@ -82,9 +87,9 @@ app.set('trust proxy', 1);
     res.json({ status: "ok" });
   });
 
-  app.post('/api/ai-hub', requireApiKey, async (req, res) => {
+  app.post('/api/ai-command', requireApiKey, async (req, res) => {
     try {
-      const parseResult = AiHubSchema.safeParse(req.body);
+      const parseResult = AiCommandSchema.safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
@@ -97,17 +102,36 @@ app.set('trust proxy', 1);
       
       const ai = new GoogleGenAI({ apiKey });
 
-      const systemInstruction = `Você é um assistente de DP. O usuário quer criar uma regra de checklist.
-As empresas disponíveis são: ${JSON.stringify(context.empresas)}.
-Os sindicatos são: ${JSON.stringify(context.sindicatos)}.
-Entenda a intenção do usuário e retorne APENAS um JSON estrito contendo as chaves para criar uma ChecklistRule:
+      const systemInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
+Sua função é interpretar a intenção do usuário e estruturar os dados para que o frontend crie regras de checklist ou eventos no calendário.
+
+EMPRESAS DISPONÍVEIS: ${JSON.stringify(context.empresas)}
+SINDICATOS DISPONÍVEIS: ${JSON.stringify(context.sindicatos)}
+
+INSTRUÇÕES:
+Retorne APENAS um JSON válido.
+Formato de saída estrito:
 {
-  "targetType": "GLOBAL" | "SINDICATO" | "EMPRESA",
-  "targetId": "ID da empresa ou sindicato (opcional se GLOBAL)",
-  "description": "Descrição clara da regra",
-  "type": "FOLHA" | "FERIAS" | "RESCISAO"
+  "message": "Mensagem amigável confirmando a ação (ex: Entendido! Criei um lembrete...)",
+  "details": {
+    "intent": "CREATE_CALENDAR_EVENT" | "CREATE_CHECKLIST_RULE" | "UNKNOWN",
+    "parameters": { ... } // Dados extraídos
+  }
 }
-Retorne SOMENTE o JSON. Não inclua markdown (\`\`\`json).`;
+
+Se intent = "CREATE_CALENDAR_EVENT", parameters deve ter:
+- title: string (resumo)
+- type: "MEETING" | "DEADLINE" | "REMINDER" | "HOLIDAY"
+- date: timestamp em milissegundos (gere uma data baseada no que o usuário pedir. Use o dia especificado no mês atual, ou adicione dias, considere o Timestamp do JS)
+
+Se intent = "CREATE_CHECKLIST_RULE", parameters deve ter:
+- taskName: string
+- targetType: "ALL" | "SPECIFIC_EMPRESA" | "SPECIFIC_SINDICATO"
+- targetId: string (ID da empresa ou sindicato se aplicável)
+- dueDateRule: "FIXED_DAY" | "LAST_DAY_OF_MONTH" | "FIFTH_BUSINESS_DAY"
+- dayValue: number (apenas se FIXED_DAY)
+
+Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
@@ -122,11 +146,11 @@ Retorne SOMENTE o JSON. Não inclua markdown (\`\`\`json).`;
 
       let text = response.text || '{}';
       text = text.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
-      const rule = JSON.parse(text);
+      const output = JSON.parse(text);
 
-      res.json({ rule });
+      res.json(output);
     } catch (error: any) {
-      console.error('AI Hub Error:', error);
+      console.error('AI Command Error:', error);
       res.status(500).json({ error: 'Erro ao processar comando com IA: ' + error.message });
     }
   });
@@ -139,7 +163,7 @@ Retorne SOMENTE o JSON. Não inclua markdown (\`\`\`json).`;
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { pdfBase64, type, globalVars = [], collabVars = [] } = parseResult.data;
+      const { pdfBase64, type, globalVars = [], collabVars = [], registeredCompanies = [] } = parseResult.data;
       
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
@@ -246,9 +270,23 @@ Retorne APENAS o objeto JSON. Se o campo não existir, use "".
       } else if (type === 'custom') {
         const globals = (globalVars || []).join(', ');
         const collabs = (collabVars || []).join(', ');
+        
+        let companiesInstruction = '';
+        if (registeredCompanies && registeredCompanies.length > 0) {
+          companiesInstruction = `\nPara identificar a empresa do documento com mais precisão, aqui está a lista de empresas cadastradas no sistema do usuário:
+${registeredCompanies.map(c => `- ID: "${c.id}" | Nome: "${c.nome}" | CNPJ: "${c.cnpj || 'N/A'}"`).join('\n')}
+
+IMPORTANTE: Ao analisar o documento (especialmente relatórios admissionais), cruze o nome ou o CNPJ da empresa encontrada no PDF com esta lista. Se houver correspondência, TENTE SEMPRE retornar a chave extra "EMPRESA_ID" contendo o ID exato da empresa correspondente, e retorne também a chave "CNPJ DA EMPRESA" formatada.`;
+        }
+
         systemInstruction = `Analise este documento em PDF. Extraia os dados solicitados e retorne APENAS um JSON válido (sem markdown, sem explicação).
 Se houver mais de uma pessoa/colaborador no documento, retorne um ARRAY de objetos JSON, onde cada objeto contém os dados daquela pessoa (podendo repetir os dados globais/da empresa em cada objeto).
 Se houver apenas uma pessoa, pode retornar um único objeto JSON ou um array de um elemento.
+
+Além de extrair as variáveis especificadas, se for um documento ou relatório admissional, TENTE SEMPRE localizar e retornar também as seguintes chaves (mesmo que não estejam na lista de variáveis):
+- "DATA DE ADMISSÃO" (formato DD/MM/AAAA)
+- "DIAS DE EXPERIENCIA" (número de dias do 1º período de experiência)
+- "DIAS DE PRORROGACAO" (Número de dias da prorrogação da experiência. ATENÇÃO: Leia o documento até o final, inclusive a segunda página ou anexos, pois a prorrogação costuma ficar separada com a nova data de término. Se achar a data de término da prorrogação, calcule os dias baseando-se no término da experiência inicial, ou simplesmente busque pelo número de dias).${companiesInstruction}
 
 Preciso extrair valores para as seguintes variáveis/chaves:
 Variáveis Globais da Empresa/Contrato:
@@ -268,6 +306,8 @@ Use estas chaves padronizadas quando possível:
 - "CARGO"
 - "SALÁRIO"
 - "DATA DE ADMISSÃO"
+- "DIAS DE EXPERIENCIA" (quantidade de dias do primeiro período de experiência, ex: 30)
+- "DIAS DE PRORROGACAO" (quantidade de dias da prorrogação da experiência, ex: 60)
 - "CIDADE/UF" (ATENÇÃO: Extraia a cidade e o estado (UF) obrigatoriamente do endereço do EMPREGADOR/EMPRESA. Não use a cidade de residência do colaborador/empregado. Exemplo: se o empregador tem endereço em RIO VERDE e o empregado reside em SAO SIMAO, o correto é "RIO VERDE - GO".)
 - "DATA" (data do documento, formato DD/MM/AAAA)
 - "ENDEREÇO DO COLABORADOR"

@@ -328,10 +328,10 @@ export default function BoletoApp() {
       
       {/* Título do módulo */}
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-serif tracking-widest text-[#C49B4A] uppercase">
+        <h2 className="text-2xl font-serif tracking-widest text-indigo-400 uppercase">
           Limpador de Boletos
         </h2>
-        <p className="text-sm text-[#A68759] font-light tracking-wide">
+        <p className="text-sm text-slate-400 font-light tracking-wide">
           Remova informações de juros, endereço e CNPJ automaticamente
         </p>
       </div>
@@ -344,19 +344,19 @@ export default function BoletoApp() {
           onDrop={handleDrop}
           className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 group ${
             isDragging 
-              ? 'border-[#C49B4A] bg-[#1A040B]' 
-              : 'border-[#4A1828] bg-[#1A040B]/50 hover:border-[#C49B4A] hover:bg-[#1A040B]'
+              ? 'border-indigo-500 bg-slate-900' 
+              : 'border-slate-700/50 bg-slate-900/50 hover:border-indigo-500 hover:bg-slate-900'
           }`}
         >
           <div className="flex flex-col items-center justify-center space-y-4 py-6">
-            <div className="p-4 rounded-full bg-[#380E1C] group-hover:bg-[#4A1828] transition-colors">
-              <Upload className="w-10 h-10 text-[#C49B4A]" />
+            <div className="p-4 rounded-full bg-slate-950 group-hover:bg-indigo-600 transition-colors">
+              <Upload className="w-10 h-10 text-indigo-400" />
             </div>
             <div className="text-center">
-              <p className="text-sm text-[#D1A751] font-serif tracking-widest">
+              <p className="text-sm text-slate-200 font-serif tracking-widest">
                 CLIQUE OU ARRASTE O BOLETO
               </p>
-              <p className="text-xs text-[#845a27] mt-1">PDF do boleto bancário</p>
+              <p className="text-xs text-slate-500 mt-1">PDF do boleto bancário</p>
             </div>
           </div>
           <input
@@ -373,10 +373,10 @@ export default function BoletoApp() {
       {pdfFile && (
         <div className="space-y-4">
           {/* Barra de ações */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-[#1A040B] border border-[#4A1828] rounded-xl p-4 shadow-md">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-md">
             <div className="flex items-center space-x-3">
-              <FileText className="w-5 h-5 text-[#C49B4A]" />
-              <span className="text-sm text-[#D1A751] font-serif tracking-wide truncate max-w-[200px]">
+              <FileText className="w-5 h-5 text-indigo-400" />
+              <span className="text-sm text-slate-200 font-serif tracking-wide truncate max-w-[200px]">
                 {pdfFile.name}
               </span>
             </div>
@@ -392,8 +392,8 @@ export default function BoletoApp() {
                 }}
                 className={`flex items-center space-x-2 p-2 rounded-lg border transition-colors ${
                   showCalibration 
-                    ? 'border-[#C49B4A] text-[#C49B4A] bg-[#380E1C]' 
-                    : 'border-[#4A1828] text-[#845a27] hover:text-[#C49B4A] hover:border-[#C49B4A]'
+                    ? 'border-indigo-500 text-indigo-400 bg-slate-950' 
+                    : 'border-slate-700/50 text-slate-500 hover:text-indigo-400 hover:border-indigo-500'
                 }`}
                 title="Modo Calibração Visual"
               >
@@ -407,7 +407,7 @@ export default function BoletoApp() {
               {processedPdfUrl && !showCalibration && (
                 <button
                   onClick={() => setShowOriginal(!showOriginal)}
-                  className="flex items-center space-x-2 p-2 rounded-lg border border-[#4A1828] text-[#845a27] hover:text-[#C49B4A] hover:border-[#C49B4A] transition-colors"
+                  className="flex items-center space-x-2 p-2 rounded-lg border border-slate-700/50 text-slate-500 hover:text-indigo-400 hover:border-indigo-500 transition-colors"
                   title={showOriginal ? 'Ver processado' : 'Ver original'}
                 >
                   {showOriginal ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -418,7 +418,7 @@ export default function BoletoApp() {
               <button
                 onClick={handleCleanBoleto}
                 disabled={isProcessing}
-                className="flex items-center space-x-2 px-4 py-2 bg-[#C49B4A] text-[#1A040B] rounded-lg font-bold text-xs tracking-widest hover:bg-[#D1A751] transition-colors disabled:opacity-50"
+                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-xs tracking-widest hover:bg-indigo-500 transition-colors disabled:opacity-50"
               >
                 {isProcessing ? (
                   <span className="animate-spin">⏳</span>
@@ -430,16 +430,16 @@ export default function BoletoApp() {
 
               {/* Botão Download e Campo de Nome */}
               {processedPdfUrl && (
-                <div className="flex items-center space-x-2 bg-[#110408] rounded-lg p-1 border border-[#4A1828]">
+                <div className="flex items-center space-x-2 bg-slate-950 rounded-lg p-1 border border-slate-700/50">
                   <input 
                     type="text" 
                     value={fileName}
                     onChange={e => setFileName(e.target.value)}
                     placeholder="Nome do arquivo"
-                    className="bg-transparent text-[#D1A751] text-xs font-serif px-2 w-32 md:w-64 outline-none"
+                    className="bg-transparent text-slate-200 text-xs font-serif px-2 w-32 md:w-64 outline-none"
                     title="Nome do arquivo para download"
                   />
-                  <span className="text-[#845a27] text-xs pr-2 hidden md:inline">.pdf</span>
+                  <span className="text-slate-500 text-xs pr-2 hidden md:inline">.pdf</span>
                   <button
                     onClick={handleDownload}
                     className="flex items-center space-x-2 px-4 py-2 bg-green-700 text-white rounded-md font-bold text-xs tracking-widest hover:bg-green-600 transition-colors"
@@ -453,7 +453,7 @@ export default function BoletoApp() {
               {/* Botão Novo Boleto */}
               <button
                 onClick={handleReset}
-                className="p-2 rounded-lg border border-[#4A1828] text-red-400 hover:text-red-300 hover:border-red-400 transition-colors"
+                className="p-2 rounded-lg border border-slate-700/50 text-red-400 hover:text-red-300 hover:border-red-400 transition-colors"
                 title="Novo boleto"
               >
                 <X className="w-4 h-4" />
@@ -463,14 +463,14 @@ export default function BoletoApp() {
 
           {/* Painel de Calibração Numérica (apenas no modo calibração) */}
           {showCalibration && (
-            <div className="bg-[#1A040B] border border-[#C49B4A] rounded-xl p-4 space-y-4 shadow-xl">
+            <div className="bg-slate-900 border border-indigo-500 rounded-xl p-4 space-y-4 shadow-xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-xs font-bold tracking-widest text-[#C49B4A] uppercase flex items-center space-x-2">
+                  <h3 className="text-xs font-bold tracking-widest text-indigo-400 uppercase flex items-center space-x-2">
                     <Settings className="w-4 h-4" />
                     <span>Calibração Visual (Drag & Drop)</span>
                   </h3>
-                  <p className="text-xs text-[#845a27] mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Arraste ou redimensione os quadrados vermelhos sobre o PDF abaixo para censurar os campos corretos.
                   </p>
                 </div>
@@ -478,13 +478,13 @@ export default function BoletoApp() {
                 <div className="flex space-x-2">
                   <button 
                     onClick={addNewArea}
-                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-[#1A040B] border border-[#4A1828] text-[#845a27] hover:bg-[#2A0B16] hover:text-[#C49B4A] hover:border-[#C49B4A] rounded-lg font-bold text-xs tracking-widest transition-colors"
+                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-900 border border-slate-700/50 text-slate-500 hover:bg-slate-800 hover:text-indigo-400 hover:border-indigo-500 rounded-lg font-bold text-xs tracking-widest transition-colors"
                   >
                     <span>+ NOVA ÁREA</span>
                   </button>
                   <button 
                     onClick={saveToLocalStorage}
-                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-[#380E1C] border border-[#C49B4A] text-[#C49B4A] hover:bg-[#C49B4A] hover:text-[#1A040B] rounded-lg font-bold text-xs tracking-widest transition-colors"
+                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-950 border border-indigo-500 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-bold text-xs tracking-widest transition-colors"
                   >
                     <Save className="w-4 h-4" />
                     <span>SALVAR PADRÃO</span>
@@ -492,32 +492,32 @@ export default function BoletoApp() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-3 border-t border-[#4A1828]">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-3 border-t border-slate-700/50">
                 {redactionAreas.map(area => (
-                  <div key={area.id} className="flex flex-wrap items-center gap-2 text-xs bg-[#2A0B16] p-2 rounded-lg border border-[#4A1828]">
+                  <div key={area.id} className="flex flex-wrap items-center gap-2 text-xs bg-slate-800 p-2 rounded-lg border border-slate-700/50">
                     <label className="flex items-center space-x-2 min-w-[140px] flex-1">
                       <input
                         type="checkbox"
                         checked={area.enabled}
                         onChange={e => updateArea(area.id, 'enabled', e.target.checked)}
-                        className="accent-[#C49B4A]"
+                        className="accent-indigo-500"
                       />
                       <input
                         type="text"
                         value={area.label}
                         onChange={e => updateArea(area.id, 'label', e.target.value)}
-                        className="bg-transparent border-b border-transparent focus:border-[#C49B4A] text-[#D1A751] font-serif tracking-wide truncate outline-none w-full"
+                        className="bg-transparent border-b border-transparent focus:border-indigo-500 text-slate-200 font-serif tracking-wide truncate outline-none w-full"
                       />
                     </label>
                     <div className="flex space-x-2 items-center">
                       {(['x', 'y', 'width', 'height'] as const).map(field => (
                         <label key={field} className="flex items-center space-x-1">
-                          <span className="text-[#845a27] uppercase">{field.charAt(0)}:</span>
+                          <span className="text-slate-500 uppercase">{field.charAt(0)}:</span>
                           <input
                             type="number"
                             value={area[field] as number}
                             onChange={e => updateArea(area.id, field, Number(e.target.value))}
-                            className="w-12 md:w-14 bg-[#110408] border border-[#4A1828] rounded px-1 py-1 text-[#D1A751] text-center focus:border-[#C49B4A] outline-none"
+                            className="w-12 md:w-14 bg-slate-950 border border-slate-700/50 rounded px-1 py-1 text-slate-200 text-center focus:border-indigo-500 outline-none"
                           />
                         </label>
                       ))}
@@ -532,14 +532,14 @@ export default function BoletoApp() {
           )}
 
           {/* Preview do PDF e Editor Visual */}
-          <div className="bg-[#1A040B] border border-[#4A1828] rounded-xl overflow-hidden shadow-xl">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[#4A1828]">
-              <span className="text-xs font-bold tracking-widest text-[#845a27] uppercase">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700/50">
+              <span className="text-xs font-bold tracking-widest text-slate-500 uppercase">
                 {showCalibration ? '🛠 Editor Visual de Calibração' : (processedPdfUrl && !showOriginal ? '📄 Boleto Limpo (Processado)' : '📄 Boleto Original')}
               </span>
             </div>
             
-            <div className="w-full h-[75vh] overflow-auto bg-[#380E1C] flex justify-center p-4 md:p-8 custom-scrollbar relative">
+            <div className="w-full h-[75vh] overflow-auto bg-slate-950 flex justify-center p-4 md:p-8 custom-scrollbar relative">
               <div 
                 ref={pdfContainerRef}
                 style={{ width: pageRenderWidth, height: pageRenderHeight }} 
@@ -548,7 +548,7 @@ export default function BoletoApp() {
                 {/* O PDF como imagem de fundo */}
                 <Document
                   file={showCalibration || showOriginal || !processedPdfUrl ? pdfPreviewUrl : processedPdfUrl}
-                  loading={<div className="text-[#C49B4A] font-serif tracking-widest animate-pulse flex items-center justify-center h-full">Carregando PDF...</div>}
+                  loading={<div className="text-indigo-400 font-serif tracking-widest animate-pulse flex items-center justify-center h-full">Carregando PDF...</div>}
                   error={<div className="text-red-400 font-serif tracking-widest flex items-center justify-center h-full">Erro ao carregar o PDF.</div>}
                 >
                   <Page 

@@ -627,7 +627,7 @@ ${e?.stack || 'N/A'}`);
   };
 
   const renderTabHeader = () => (
-    <div className="flex bg-[#1E0810] border border-[#4A1828] rounded-xl overflow-hidden mb-6 shadow-md shadow-[#110408]/50">
+    <div className="flex bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden mb-6 shadow-md shadow-black/20">
       {[
         { id: 1, label: '1. EMPRESA & TRABALHADOR' },
         { id: 2, label: '2. CONTRATO' },
@@ -639,8 +639,8 @@ ${e?.stack || 'N/A'}`);
           onClick={() => setActiveTab(tab.id as any)}
           className={`flex-1 py-4 text-xs font-bold tracking-widest text-center transition-all ${
             activeTab === tab.id 
-              ? 'bg-[#4A1828] text-[#C49B4A]' 
-              : 'text-[#A68759] hover:bg-[#2A0B16] hover:text-[#D1A751]'
+              ? 'bg-indigo-600 text-indigo-400' 
+              : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
           }`}
         >
           {tab.label}
@@ -650,13 +650,13 @@ ${e?.stack || 'N/A'}`);
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 flex flex-col font-sans selection:bg-[#C49B4A] selection:text-[#380E1C] flex-1">
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 flex flex-col font-sans selection:bg-indigo-500 selection:text-white flex-1">
       
       {notification.visible && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-xl border flex items-center space-x-3 shadow-2xl transition-all duration-300 ${
           notification.type === 'success' 
-            ? 'bg-[#18060B] border-[#C49B4A] text-[#D1A751]' 
-            : 'bg-[#18060B] border-red-500 text-red-400'
+            ? 'bg-slate-900 border-indigo-500 text-slate-200' 
+            : 'bg-slate-900 border-red-500 text-red-400'
         }`}>
           {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
           <span className="text-sm font-medium tracking-wide">{notification.message}</span>
@@ -665,7 +665,7 @@ ${e?.stack || 'N/A'}`);
 
       {renderTabHeader()}
 
-      <div className="flex-1 bg-[#18060B] border border-[#4A1828] rounded-2xl p-6 shadow-2xl shadow-[#110408]/80 flex flex-col relative overflow-y-auto">
+      <div className="flex-1 bg-slate-900 border border-slate-700/50 rounded-2xl p-6 shadow-2xl shadow-black/40 flex flex-col relative overflow-y-auto">
         
         {/* ABA 1: EMPRESA E TRABALHADOR */}
         {activeTab === 1 && (
@@ -676,34 +676,34 @@ ${e?.stack || 'N/A'}`);
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onDrop={handlePdfUpload}
                 className={`relative w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-all duration-300 ${
-                  isExtracting ? 'border-[#845a27] bg-[#110408] opacity-80 cursor-wait' : 'border-[#C49B4A] bg-[#0C0305] hover:bg-[#1E0810] hover:border-[#D1A751] cursor-pointer'
+                  isExtracting ? 'border-[#845a27] bg-slate-950 opacity-80 cursor-wait' : 'border-indigo-500 bg-slate-900 hover:bg-slate-800/50 hover:border-indigo-500 cursor-pointer'
                 }`}
               >
                 <input type="file" id="pdfUploadInput" name="pdfUploadInput" accept=".pdf" onChange={handlePdfUpload} disabled={isExtracting} className="hidden" />
                 {isExtracting ? (
-                  <div className="flex flex-col items-center"><Loader2 className="w-8 h-8 text-[#C49B4A] animate-spin mb-2" /><span className="text-[#D1A751]">Lendo PDF via IA...</span></div>
+                  <div className="flex flex-col items-center"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin mb-2" /><span className="text-slate-200">Lendo PDF via IA...</span></div>
                 ) : (
-                  <div className="flex flex-col items-center"><Upload className="w-8 h-8 text-[#C49B4A] mb-2" /><span className="text-[#C49B4A] font-bold">Importar Dados por IA (PDF)</span></div>
+                  <div className="flex flex-col items-center"><Upload className="w-8 h-8 text-indigo-400 mb-2" /><span className="text-indigo-400 font-bold">Importar Dados por IA (PDF)</span></div>
                 )}
             </label>
 
             <div>
-              <h3 className="text-[#C49B4A] text-sm font-bold tracking-widest mb-4 border-b border-[#4A1828] pb-2">DADOS DO EMPREGADOR</h3>
+              <h3 className="text-indigo-400 text-sm font-bold tracking-widest mb-4 border-b border-slate-700/50 pb-2">DADOS DO EMPREGADOR</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" id="cnpj" name="cnpj" value={formData.cnpj} onChange={handleChange} placeholder="CNPJ" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" id="razaoSocial" name="razaoSocial" value={formData.razaoSocial} onChange={handleChange} placeholder="Razão Social" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" id="enderecoEmpresa" name="enderecoEmpresa" value={formData.enderecoEmpresa} onChange={handleChange} placeholder="Endereço" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" id="municipioEmpresa" name="municipioEmpresa" value={formData.municipioEmpresa} onChange={handleChange} placeholder="Município" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="cnpj" name="cnpj" value={formData.cnpj} onChange={handleChange} placeholder="CNPJ" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="razaoSocial" name="razaoSocial" value={formData.razaoSocial} onChange={handleChange} placeholder="Razão Social" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="enderecoEmpresa" name="enderecoEmpresa" value={formData.enderecoEmpresa} onChange={handleChange} placeholder="Endereço" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="municipioEmpresa" name="municipioEmpresa" value={formData.municipioEmpresa} onChange={handleChange} placeholder="Município" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
 
             <div>
-              <h3 className="text-[#C49B4A] text-sm font-bold tracking-widest mb-4 border-b border-[#4A1828] pb-2">DADOS DO TRABALHADOR</h3>
+              <h3 className="text-indigo-400 text-sm font-bold tracking-widest mb-4 border-b border-slate-700/50 pb-2">DADOS DO TRABALHADOR</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" id="cpf" name="cpf" value={formData.cpf} onChange={handleChange} placeholder="CPF" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" id="nome" name="nome" value={formData.nome} onChange={handleChange} placeholder="Nome Completo" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" id="pis" name="pis" value={formData.pis} onChange={handleChange} placeholder="PIS" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
-                <input type="text" id="ctps" name="ctps" value={formData.ctps} onChange={handleChange} placeholder="CTPS" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                <input type="text" id="cpf" name="cpf" value={formData.cpf} onChange={handleChange} placeholder="CPF" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="nome" name="nome" value={formData.nome} onChange={handleChange} placeholder="Nome Completo" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="pis" name="pis" value={formData.pis} onChange={handleChange} placeholder="PIS" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="ctps" name="ctps" value={formData.ctps} onChange={handleChange} placeholder="CTPS" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
           </div>
@@ -713,42 +713,42 @@ ${e?.stack || 'N/A'}`);
         {activeTab === 2 && (
           <div className="space-y-8 animate-in fade-in duration-300">
             <div>
-              <h3 className="text-[#C49B4A] text-sm font-bold tracking-widest mb-4 border-b border-[#4A1828] pb-2">DADOS DO CONTRATO</h3>
+              <h3 className="text-indigo-400 text-sm font-bold tracking-widest mb-4 border-b border-slate-700/50 pb-2">DADOS DO CONTRATO</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-[#845a27] text-xs font-bold mb-1">Admissão</label>
-                  <input type="date" id="dataAdmissao" name="dataAdmissao" value={formData.dataAdmissao} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                  <label className="text-slate-500 text-xs font-bold mb-1">Admissão</label>
+                  <input type="date" id="dataAdmissao" name="dataAdmissao" value={formData.dataAdmissao} onChange={handleChange} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-[#845a27] text-xs font-bold mb-1">Afastamento</label>
-                  <input type="date" id="dataAfastamento" name="dataAfastamento" value={formData.dataAfastamento} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                  <label className="text-slate-500 text-xs font-bold mb-1">Afastamento</label>
+                  <input type="date" id="dataAfastamento" name="dataAfastamento" value={formData.dataAfastamento} onChange={handleChange} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-[#845a27] text-xs font-bold mb-1">Causa do Afastamento</label>
-                  <input type="text" id="causaAfastamento" name="causaAfastamento" value={formData.causaAfastamento} onChange={handleChange} placeholder="Ex: Dispensa sem justa causa" className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                  <label className="text-slate-500 text-xs font-bold mb-1">Causa do Afastamento</label>
+                  <input type="text" id="causaAfastamento" name="causaAfastamento" value={formData.causaAfastamento} onChange={handleChange} placeholder="Ex: Dispensa sem justa causa" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-[#845a27] text-xs font-bold mb-1">Remuneração Base Mês Anterior (R$)</label>
-                  <CurrencyInput id="remuneracaoMesAnterior" name="remuneracaoMesAnterior" value={formData.remuneracaoMesAnterior} onChangeValue={(val) => setFormData(prev => ({...prev, remuneracaoMesAnterior: val}))} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A]" />
+                  <label className="text-slate-500 text-xs font-bold mb-1">Remuneração Base Mês Anterior (R$)</label>
+                  <CurrencyInput id="remuneracaoMesAnterior" name="remuneracaoMesAnterior" value={formData.remuneracaoMesAnterior} onChangeValue={(val) => setFormData(prev => ({...prev, remuneracaoMesAnterior: val}))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#2A0B16] border border-[#4A1828] rounded-xl p-4">
+            <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-4">
               <label className="flex items-center space-x-3 cursor-pointer">
-                <div onClick={() => setDescontarINSS(!descontarINSS)} className="w-5 h-5 rounded border border-[#C49B4A] flex items-center justify-center bg-[#110408]">
-                  {descontarINSS && <CheckSquare className="w-4 h-4 text-[#D1A751]" />}
+                <div onClick={() => setDescontarINSS(!descontarINSS)} className="w-5 h-5 rounded border border-indigo-500 flex items-center justify-center bg-slate-950">
+                  {descontarINSS && <CheckSquare className="w-4 h-4 text-slate-200" />}
                 </div>
-                <span className="text-[#D1A751] font-bold text-sm">Calcular e Descontar INSS Automaticamente?</span>
+                <span className="text-slate-200 font-bold text-sm">Calcular e Descontar INSS Automaticamente?</span>
               </label>
             </div>
 
-            <div className="bg-[#2A0B16] border border-[#4A1828] rounded-xl p-4">
+            <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-4">
               <label className="flex items-center space-x-3 cursor-pointer">
-                <div onClick={() => setRescisaoAntecipada(!rescisaoAntecipada)} className="w-5 h-5 rounded border border-[#C49B4A] flex items-center justify-center">
-                  {rescisaoAntecipada && <CheckSquare className="w-4 h-4 text-[#D1A751]" />}
+                <div onClick={() => setRescisaoAntecipada(!rescisaoAntecipada)} className="w-5 h-5 rounded border border-indigo-500 flex items-center justify-center">
+                  {rescisaoAntecipada && <CheckSquare className="w-4 h-4 text-slate-200" />}
                 </div>
-                <span className="text-[#D1A751] font-bold">Rescisão Antecipada de Contrato de Experiência / Determinado?</span>
+                <span className="text-slate-200 font-bold">Rescisão Antecipada de Contrato de Experiência / Determinado?</span>
               </label>
               
               {rescisaoAntecipada && (
@@ -756,36 +756,36 @@ ${e?.stack || 'N/A'}`);
                   
                   <div className="flex space-x-4">
                     <label className="flex items-center space-x-2 cursor-pointer">
-                      <input type="radio" id="modoFimContrato_data" name="modoFimContrato" checked={modoFimContrato === 'data'} onChange={() => setModoFimContrato('data')} className="text-[#C49B4A] bg-[#110408]" />
-                      <span className="text-[#A68759] text-sm">Informar Data</span>
+                      <input type="radio" id="modoFimContrato_data" name="modoFimContrato" checked={modoFimContrato === 'data'} onChange={() => setModoFimContrato('data')} className="text-indigo-400 bg-slate-950" />
+                      <span className="text-slate-400 text-sm">Informar Data</span>
                     </label>
                     <label className="flex items-center space-x-2 cursor-pointer">
-                      <input type="radio" id="modoFimContrato_dias" name="modoFimContrato" checked={modoFimContrato === 'dias'} onChange={() => setModoFimContrato('dias')} className="text-[#C49B4A] bg-[#110408]" />
-                      <span className="text-[#A68759] text-sm">Informar Dias de Prazo</span>
+                      <input type="radio" id="modoFimContrato_dias" name="modoFimContrato" checked={modoFimContrato === 'dias'} onChange={() => setModoFimContrato('dias')} className="text-indigo-400 bg-slate-950" />
+                      <span className="text-slate-400 text-sm">Informar Dias de Prazo</span>
                     </label>
                   </div>
 
                   <div className="flex flex-col">
                     {modoFimContrato === 'data' ? (
                       <>
-                        <label className="text-[#845a27] text-xs font-bold mb-1">Data Prevista de Término do Contrato</label>
-                        <input type="date" id="dataFimContrato" name="dataFimContrato" value={formData.dataFimContrato} onChange={handleChange} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A] w-full md:w-1/2" />
+                        <label className="text-slate-500 text-xs font-bold mb-1">Data Prevista de Término do Contrato</label>
+                        <input type="date" id="dataFimContrato" name="dataFimContrato" value={formData.dataFimContrato} onChange={handleChange} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500 w-full md:w-1/2" />
                       </>
                     ) : (
                       <>
-                        <label className="text-[#845a27] text-xs font-bold mb-1">Prazo do Contrato (Dias) a partir da Admissão</label>
-                        <input type="number" id="diasExperiencia" name="diasExperiencia" value={diasExperiencia} onChange={(e) => setDiasExperiencia(Number(e.target.value))} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A] w-full md:w-1/2" />
+                        <label className="text-slate-500 text-xs font-bold mb-1">Prazo do Contrato (Dias) a partir da Admissão</label>
+                        <input type="number" id="diasExperiencia" name="diasExperiencia" value={diasExperiencia} onChange={(e) => setDiasExperiencia(Number(e.target.value))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500 w-full md:w-1/2" />
                       </>
                     )}
                   </div>
                   <div>
-                    <p className="text-sm text-[#A68759] mb-2">Selecione a parte responsável pela quebra do contrato para calcular multas (Art. 479 ou 480 da CLT).</p>
+                    <p className="text-sm text-slate-400 mb-2">Selecione a parte responsável pela quebra do contrato para calcular multas (Art. 479 ou 480 da CLT).</p>
                     <select 
                       id="parteQuebra" 
                       name="parteQuebra" 
                       value={parteQuebra} 
                       onChange={(e) => setParteQuebra(e.target.value as any)}
-                      className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-3 focus:outline-none focus:border-[#C49B4A] w-full md:w-1/2"
+                      className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500 w-full md:w-1/2"
                     >
                       <option value="empregador">Empregador (Art. 479 - Paga 50% Indenização)</option>
                       <option value="empregado">Empregado (Art. 480 - Desconta 50% Indenização)</option>
@@ -801,7 +801,7 @@ ${e?.stack || 'N/A'}`);
                   calculateAvos();
                   setActiveTab(3);
                 }}
-                className="bg-[#C49B4A] hover:bg-[#D1A751] text-[#1E0810] px-6 py-3 rounded-lg font-bold tracking-widest text-sm flex items-center space-x-2 transition-colors"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg font-bold tracking-widest text-sm flex items-center space-x-2 transition-colors"
               >
                 <span>CALCULAR VERBAS INICIAIS</span>
                 <ArrowRight className="w-4 h-4" />
@@ -813,27 +813,27 @@ ${e?.stack || 'N/A'}`);
         {/* ABA 3: VERBAS & RESCISÃO */}
         {activeTab === 3 && (
           <div className="space-y-6 flex flex-col h-full animate-in fade-in duration-300">
-            <div className="bg-[#2A0B16] border border-[#4A1828] p-4 rounded-xl flex flex-wrap gap-4 items-center">
+            <div className="bg-slate-800 border border-slate-700/50 p-4 rounded-xl flex flex-wrap gap-4 items-center">
               <div className="flex flex-col">
-                <label className="text-[#845a27] text-xs font-bold mb-1">Dias Saldo de Salário (Mês Rescisão)</label>
-                <input type="number" id="diasSaldoSalario" name="diasSaldoSalario" value={formData.diasSaldoSalario || ''} onChange={(e) => setFormData({...formData, diasSaldoSalario: parseInt(e.target.value) || 0})} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-2 focus:outline-none focus:border-[#C49B4A] w-32" />
+                <label className="text-slate-500 text-xs font-bold mb-1">Dias Saldo de Salário (Mês Rescisão)</label>
+                <input type="number" id="diasSaldoSalario" name="diasSaldoSalario" value={formData.diasSaldoSalario || ''} onChange={(e) => setFormData({...formData, diasSaldoSalario: parseInt(e.target.value) || 0})} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-2 focus:outline-none focus:border-indigo-500 w-32" />
               </div>
               <div className="flex flex-col">
-                <label className="text-[#845a27] text-xs font-bold mb-1">Faltas e DSR a Descontar</label>
-                <input type="number" id="faltasDsr" name="faltasDsr" value={formData.faltasDsr || ''} onChange={(e) => setFormData({...formData, faltasDsr: parseInt(e.target.value) || 0})} className="bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded-lg p-2 focus:outline-none focus:border-[#C49B4A] w-32" />
+                <label className="text-slate-500 text-xs font-bold mb-1">Faltas e DSR a Descontar</label>
+                <input type="number" id="faltasDsr" name="faltasDsr" value={formData.faltasDsr || ''} onChange={(e) => setFormData({...formData, faltasDsr: parseInt(e.target.value) || 0})} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-2 focus:outline-none focus:border-indigo-500 w-32" />
               </div>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 overflow-hidden">
               
               {/* Proventos */}
-              <div className="flex flex-col bg-[#1A040B] border border-[#4A1828] rounded-xl overflow-hidden">
-                <div className="bg-[#380E1C] p-3 flex justify-between items-center border-b border-[#4A1828]">
-                  <h4 className="text-[#C49B4A] font-bold tracking-widest text-sm">PROVENTOS</h4>
+              <div className="flex flex-col bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden">
+                <div className="bg-slate-950 p-3 flex justify-between items-center border-b border-slate-700/50">
+                  <h4 className="text-indigo-400 font-bold tracking-widest text-sm">PROVENTOS</h4>
                   <select 
                     id="presetProventos"
                     name="presetProventos"
-                    className="bg-[#110408] border border-[#4A1828] text-[#D1A751] text-xs p-1 rounded"
+                    className="bg-slate-950 border border-slate-700/50 text-slate-200 text-xs p-1 rounded"
                     onChange={(e) => {
                       if(e.target.value) {
                         const pre = PRESET_PROVENTOS.find(p => p.codigo === e.target.value);
@@ -848,31 +848,31 @@ ${e?.stack || 'N/A'}`);
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                   {calculatedData.proventos.map(item => (
-                    <div key={item.id} className={`flex items-center space-x-2 ${item.codigo === '99' ? 'opacity-80 bg-[#2A0B16] p-2 rounded border border-[#C49B4A]' : ''}`}>
-                      <input type="text" id={`provento_codigo_${item.id}`} name={`provento_codigo_${item.id}`} value={item.codigo} onChange={(e) => updateRubrica('provento', item.id, 'codigo', e.target.value)} className="w-16 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Cód" />
-                      <input type="text" id={`provento_descricao_${item.id}`} name={`provento_descricao_${item.id}`} value={item.descricao} onChange={(e) => updateRubrica('provento', item.id, 'descricao', e.target.value)} className="flex-1 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Descrição" />
-                      <CurrencyInput id={`provento_valor_${item.id}`} name={`provento_valor_${item.id}`} value={item.valor} onChangeValue={(val) => updateRubrica('provento', item.id, 'valor', val)} className="w-24 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs text-right" />
+                    <div key={item.id} className={`flex items-center space-x-2 ${item.codigo === '99' ? 'opacity-80 bg-slate-800 p-2 rounded border border-indigo-500' : ''}`}>
+                      <input type="text" id={`provento_codigo_${item.id}`} name={`provento_codigo_${item.id}`} value={item.codigo} onChange={(e) => updateRubrica('provento', item.id, 'codigo', e.target.value)} className="w-16 bg-slate-900 border border-slate-700/50 text-slate-200 rounded p-2 text-xs" placeholder="Cód" />
+                      <input type="text" id={`provento_descricao_${item.id}`} name={`provento_descricao_${item.id}`} value={item.descricao} onChange={(e) => updateRubrica('provento', item.id, 'descricao', e.target.value)} className="flex-1 bg-slate-900 border border-slate-700/50 text-slate-200 rounded p-2 text-xs" placeholder="Descrição" />
+                      <CurrencyInput id={`provento_valor_${item.id}`} name={`provento_valor_${item.id}`} value={item.valor} onChangeValue={(val) => updateRubrica('provento', item.id, 'valor', val)} className="w-24 bg-slate-900 border border-slate-700/50 text-slate-200 rounded p-2 text-xs text-right" />
                       {item.codigo !== '99' && (
-                        <button onClick={() => removeRubrica('provento', item.id)} className="text-red-500 hover:bg-[#380E1C] p-1 rounded"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => removeRubrica('provento', item.id)} className="text-red-500 hover:bg-slate-950 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
                       )}
                     </div>
                   ))}
-                  <button onClick={() => addRubrica('provento')} className="w-full text-xs text-[#A68759] hover:text-[#D1A751] border border-dashed border-[#4A1828] py-2 rounded flex items-center justify-center space-x-2"><Plus className="w-3 h-3"/><span>Nova Verba Manual</span></button>
+                  <button onClick={() => addRubrica('provento')} className="w-full text-xs text-slate-400 hover:text-slate-200 border border-dashed border-slate-700/50 py-2 rounded flex items-center justify-center space-x-2"><Plus className="w-3 h-3"/><span>Nova Verba Manual</span></button>
                 </div>
-                <div className="bg-[#2A0B16] p-3 border-t border-[#4A1828] flex justify-between font-bold">
-                  <span className="text-[#A68759]">Total Bruto:</span>
-                  <span className="text-[#C49B4A]">{calculatedData.totalBruto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
+                <div className="bg-slate-800 p-3 border-t border-slate-700/50 flex justify-between font-bold">
+                  <span className="text-slate-400">Total Bruto:</span>
+                  <span className="text-indigo-400">{calculatedData.totalBruto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
                 </div>
               </div>
 
               {/* Deduções */}
-              <div className="flex flex-col bg-[#1A040B] border border-[#4A1828] rounded-xl overflow-hidden">
-                <div className="bg-[#380E1C] p-3 flex justify-between items-center border-b border-[#4A1828]">
-                  <h4 className="text-[#C49B4A] font-bold tracking-widest text-sm">DEDUÇÕES</h4>
+              <div className="flex flex-col bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden">
+                <div className="bg-slate-950 p-3 flex justify-between items-center border-b border-slate-700/50">
+                  <h4 className="text-indigo-400 font-bold tracking-widest text-sm">DEDUÇÕES</h4>
                   <select 
                     id="presetDescontos"
                     name="presetDescontos"
-                    className="bg-[#110408] border border-[#4A1828] text-[#D1A751] text-xs p-1 rounded"
+                    className="bg-slate-950 border border-slate-700/50 text-slate-200 text-xs p-1 rounded"
                     onChange={(e) => {
                       if(e.target.value) {
                         const pre = PRESET_DESCONTOS.find(p => p.codigo === e.target.value);
@@ -888,22 +888,22 @@ ${e?.stack || 'N/A'}`);
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                   {calculatedData.descontos.map(item => (
                     <div key={item.id} className="flex items-center space-x-2">
-                      <input type="text" id={`desconto_codigo_${item.id}`} name={`desconto_codigo_${item.id}`} value={item.codigo} onChange={(e) => updateRubrica('desconto', item.id, 'codigo', e.target.value)} className="w-16 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Cód" />
-                      <input type="text" id={`desconto_descricao_${item.id}`} name={`desconto_descricao_${item.id}`} value={item.descricao} onChange={(e) => updateRubrica('desconto', item.id, 'descricao', e.target.value)} className="flex-1 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs" placeholder="Descrição" />
-                      <CurrencyInput id={`desconto_valor_${item.id}`} name={`desconto_valor_${item.id}`} value={item.valor} onChangeValue={(val) => updateRubrica('desconto', item.id, 'valor', val)} className="w-24 bg-[#0C0305] border border-[#3A1221] text-[#D1A751] rounded p-2 text-xs text-right" />
-                      <button onClick={() => removeRubrica('desconto', item.id)} className="text-red-500 hover:bg-[#380E1C] p-1 rounded"><Trash2 className="w-4 h-4" /></button>
+                      <input type="text" id={`desconto_codigo_${item.id}`} name={`desconto_codigo_${item.id}`} value={item.codigo} onChange={(e) => updateRubrica('desconto', item.id, 'codigo', e.target.value)} className="w-16 bg-slate-900 border border-slate-700/50 text-slate-200 rounded p-2 text-xs" placeholder="Cód" />
+                      <input type="text" id={`desconto_descricao_${item.id}`} name={`desconto_descricao_${item.id}`} value={item.descricao} onChange={(e) => updateRubrica('desconto', item.id, 'descricao', e.target.value)} className="flex-1 bg-slate-900 border border-slate-700/50 text-slate-200 rounded p-2 text-xs" placeholder="Descrição" />
+                      <CurrencyInput id={`desconto_valor_${item.id}`} name={`desconto_valor_${item.id}`} value={item.valor} onChangeValue={(val) => updateRubrica('desconto', item.id, 'valor', val)} className="w-24 bg-slate-900 border border-slate-700/50 text-slate-200 rounded p-2 text-xs text-right" />
+                      <button onClick={() => removeRubrica('desconto', item.id)} className="text-red-500 hover:bg-slate-950 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   ))}
-                  <button onClick={() => addRubrica('desconto')} className="w-full text-xs text-[#A68759] hover:text-[#D1A751] border border-dashed border-[#4A1828] py-2 rounded flex items-center justify-center space-x-2"><Plus className="w-3 h-3"/><span>Novo Desconto Manual</span></button>
+                  <button onClick={() => addRubrica('desconto')} className="w-full text-xs text-slate-400 hover:text-slate-200 border border-dashed border-slate-700/50 py-2 rounded flex items-center justify-center space-x-2"><Plus className="w-3 h-3"/><span>Novo Desconto Manual</span></button>
                 </div>
-                <div className="bg-[#2A0B16] p-3 border-t border-[#4A1828] flex justify-between font-bold">
-                  <span className="text-[#A68759]">Total Deduções:</span>
-                  <span className="text-[#C49B4A]">{calculatedData.totalDeducoes.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
+                <div className="bg-slate-800 p-3 border-t border-slate-700/50 flex justify-between font-bold">
+                  <span className="text-slate-400">Total Deduções:</span>
+                  <span className="text-indigo-400">{calculatedData.totalDeducoes.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#C49B4A] rounded-xl p-4 flex justify-between items-center text-[#1A040B] font-bold text-lg shadow-lg">
+            <div className="bg-indigo-600 rounded-xl p-4 flex justify-between items-center text-white font-bold text-lg shadow-lg">
               <span>VALOR LÍQUIDO A RECEBER:</span>
               <span>{calculatedData.valorLiquido.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
             </div>
@@ -915,15 +915,15 @@ ${e?.stack || 'N/A'}`);
         {activeTab === 4 && (
           <div className="flex flex-col md:flex-row h-full gap-6 animate-in fade-in duration-300">
             <div className="w-full md:w-1/3 flex flex-col space-y-4">
-              <h3 className="text-[#C49B4A] text-lg font-bold tracking-widest border-b border-[#4A1828] pb-2">EXPORTAR</h3>
-              <p className="text-sm text-[#A68759]">Revise o documento gerado. Os cálculos batem corretamente e o layout está pronto para impressão oficial no padrão A4 do MTE.</p>
+              <h3 className="text-indigo-400 text-lg font-bold tracking-widest border-b border-slate-700/50 pb-2">EXPORTAR</h3>
+              <p className="text-sm text-slate-400">Revise o documento gerado. Os cálculos batem corretamente e o layout está pronto para impressão oficial no padrão A4 do MTE.</p>
               
-              <button onClick={handlePrint} className="w-full bg-[#C49B4A] hover:bg-[#D1A751] text-[#1E0810] font-bold tracking-widest text-sm rounded-lg py-4 transition-colors flex items-center justify-center space-x-3 shadow-lg mt-4">
+              <button onClick={handlePrint} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold tracking-widest text-sm rounded-lg py-4 transition-colors flex items-center justify-center space-x-3 shadow-lg mt-4">
                 <Printer className="w-5 h-5" />
                 <span>IMPRIMIR TRCT (A4)</span>
               </button>
               
-              <button onClick={handleDownloadExcel} className="w-full bg-[#1E0810] hover:bg-[#2A0B16] border border-[#C49B4A] text-[#C49B4A] hover:text-[#D1A751] font-bold tracking-widest text-sm rounded-lg py-4 transition-colors flex items-center justify-center space-x-3 shadow-lg">
+              <button onClick={handleDownloadExcel} className="w-full bg-slate-800/50 hover:bg-slate-800 border border-indigo-500 text-indigo-400 hover:text-slate-200 font-bold tracking-widest text-sm rounded-lg py-4 transition-colors flex items-center justify-center space-x-3 shadow-lg">
                 <Download className="w-5 h-5" />
                 <span>BAIXAR EXCEL (.XLSX)</span>
               </button>
@@ -942,7 +942,7 @@ ${e?.stack || 'N/A'}`);
          <button 
            onClick={() => setActiveTab(activeTab - 1 as any)} 
            disabled={activeTab === 1}
-           className="px-6 py-3 border border-[#4A1828] text-[#C49B4A] hover:bg-[#2A0B16] rounded-lg font-bold text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+           className="px-6 py-3 border border-slate-700/50 text-indigo-400 hover:bg-slate-800 rounded-lg font-bold text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
          >
            <ArrowLeft className="w-4 h-4"/> <span>VOLTAR</span>
          </button>
@@ -950,7 +950,7 @@ ${e?.stack || 'N/A'}`);
          <button 
            onClick={() => setActiveTab(activeTab + 1 as any)} 
            disabled={activeTab === 4}
-           className="px-6 py-3 bg-[#4A1828] hover:bg-[#68243D] text-[#D1A751] rounded-lg font-bold text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+           className="px-6 py-3 bg-indigo-600 hover:bg-[#68243D] text-slate-200 rounded-lg font-bold text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
          >
            <span>PRÓXIMO</span> <ArrowRight className="w-4 h-4"/>
          </button>

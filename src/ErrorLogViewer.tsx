@@ -4,7 +4,7 @@ export const ErrorLogViewer = ({ errorLog, onClose }: { errorLog: string | null,
   if (!errorLog) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="bg-[#1A040B] border border-red-500 rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+      <div className="bg-slate-900 border border-red-500 rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
         <div className="flex justify-between items-center p-4 border-b border-red-900/50">
           <h3 className="text-red-400 font-bold tracking-widest text-sm flex items-center space-x-2">
             <span>🚨 LOG COMPLETO DE ERRO</span>
@@ -18,7 +18,7 @@ export const ErrorLogViewer = ({ errorLog, onClose }: { errorLog: string | null,
             </button>
             <button 
               onClick={onClose}
-              className="px-3 py-1 bg-[#2A0B16] hover:bg-[#380E1C] text-[#D1A751] rounded border border-[#4A1828] text-xs transition-colors"
+              className="px-3 py-1 bg-slate-800 hover:bg-slate-950 text-slate-200 rounded border border-slate-700/50 text-xs transition-colors"
             >
               FECHAR
             </button>
