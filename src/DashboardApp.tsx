@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, Loader2, FileText, CheckCircle2, AlertCircle, CalendarDays, Clock } from 'lucide-react';
+import { Sparkles, ArrowRight, Loader2, CheckCircle2, AlertCircle, CalendarDays, Bell } from 'lucide-react';
 import { db } from './lib/firebase';
-import { collection, addDoc, getDocs, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { CalendarEvent } from './types';
-import { format } from 'date-fns';
+import { format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function DashboardApp() {
@@ -20,7 +20,7 @@ export default function DashboardApp() {
       const upcoming = allEvents
         .filter(e => !e.isRecurrent && Number(e.date) >= Date.now() - 24 * 60 * 60 * 1000)
         .sort((a, b) => Number(a.date) - Number(b.date))
-        .slice(0, 5);
+        .slice(0, 10);
       setLembretes(upcoming);
     });
     return () => unsub();
@@ -85,36 +85,14 @@ export default function DashboardApp() {
     }
   };
 
-  return (
-    <div className="flex-1 w-full max-w-5xl mx-auto p-6 md:p-8 flex flex-col h-full animate-in fade-in zoom-in-95 duration-200">
-      
-      <div className="mb-8">
-        <div className="bg-slate-900 border border-slate-700/50 p-6 rounded-2xl flex flex-col w-full shadow-lg">
-          <h3 className="text-emerald-400 text-sm font-bold tracking-widest uppercase mb-4 flex items-center space-x-2">
-            <CalendarDays className="w-5 h-5" />
-            <span>Próximos Lembretes (Hoje ou Recentes)</span>
-          </h3>
-          <div className="space-y-3 flex-1 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-            {lembretes.length === 0 ? (
-              <p className="text-slate-500 text-sm">Nenhum lembrete próximo.</p>
-            ) : (
-              lembretes.map(lembrete => (
-                <div key={lembrete.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-colors hover:bg-slate-800">
-                  <div className="flex flex-col">
-                    <span className="font-medium text-slate-200 text-base">{lembrete.title}</span>
-                    {lembrete.empresaNome && <span className="text-sm text-slate-400 mt-0.5">{lembrete.empresaNome}</span>}
-                  </div>
-                  <span className="px-3 py-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg text-sm font-bold whitespace-nowrap border border-indigo-500/20 w-fit">
-                    {format(new Date(lembrete.date), "dd 'de' MMMM", { locale: ptBR })}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+  const hojeLembretes = lembretes.filter(l => isToday(new Date(l.date)));
+  const proximosLembretes = lembretes.filter(l => !isToday(new Date(l.date)));
 
-      <div className="flex-1 bg-slate-900 border border-slate-700/50 rounded-2xl p-6 md:p-10 shadow-2xl flex flex-col relative overflow-hidden">
+  return (
+    <div className="flex-1 w-full max-w-7xl mx-auto p-6 md:p-8 flex flex-col lg:flex-row gap-8 h-full animate-in fade-in zoom-in-95 duration-200">
+      
+      {/* Esquerda: Assistente IA */}
+      <div className="flex-[2] bg-slate-900 border border-slate-700/50 rounded-2xl p-6 md:p-10 shadow-2xl flex flex-col relative overflow-hidden h-[calc(100vh-8rem)] lg:h-auto min-h-[500px]">
         {/* Background Decoration */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -173,6 +151,66 @@ export default function DashboardApp() {
           </div>
         </div>
       </div>
+
+      {/* Direita: Lembretes */}
+      <div className="flex-1 flex flex-col space-y-6">
+        
+        {/* Lembretes de Hoje */}
+        <div className="bg-emerald-950/30 border border-emerald-900/50 p-6 rounded-2xl flex flex-col shadow-lg relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <h3 className="text-emerald-400 text-sm font-bold tracking-widest uppercase mb-4 flex items-center space-x-2 relative z-10">
+            <Bell className="w-5 h-5" />
+            <span>Para Hoje</span>
+          </h3>
+          
+          <div className="space-y-3 relative z-10">
+            {hojeLembretes.length === 0 ? (
+              <div className="py-8 flex items-center justify-center border border-dashed border-emerald-800/30 rounded-xl bg-emerald-900/10">
+                <p className="text-emerald-500/70 text-sm font-medium">Nenhum compromisso para hoje.</p>
+              </div>
+            ) : (
+              hojeLembretes.map(lembrete => (
+                <div key={lembrete.id} className="bg-emerald-900/40 rounded-xl p-4 border border-emerald-500/30 flex flex-col gap-1 shadow-sm">
+                  <span className="font-semibold text-emerald-100 text-base">{lembrete.title}</span>
+                  {lembrete.empresaNome && <span className="text-sm text-emerald-300/80">{lembrete.empresaNome}</span>}
+                  <span className="text-xs text-emerald-400/60 mt-1 uppercase font-semibold tracking-wider">
+                    HOJE
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Próximos Lembretes */}
+        <div className="bg-slate-900 border border-slate-700/50 p-6 rounded-2xl flex flex-col flex-1 shadow-lg">
+          <h3 className="text-slate-400 text-sm font-bold tracking-widest uppercase mb-4 flex items-center space-x-2">
+            <CalendarDays className="w-5 h-5" />
+            <span>Próximos Lembretes</span>
+          </h3>
+          
+          <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-[200px] max-h-[400px] lg:max-h-full">
+            {proximosLembretes.length === 0 ? (
+              <p className="text-slate-500 text-sm">Nenhum lembrete futuro.</p>
+            ) : (
+              proximosLembretes.map(lembrete => (
+                <div key={lembrete.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex flex-col gap-1 transition-colors hover:bg-slate-800">
+                  <span className="font-medium text-slate-200 text-base">{lembrete.title}</span>
+                  {lembrete.empresaNome && <span className="text-sm text-slate-400">{lembrete.empresaNome}</span>}
+                  <div className="mt-2">
+                    <span className="px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded text-xs font-semibold border border-indigo-500/20">
+                      {format(new Date(lembrete.date), "dd 'de' MMMM", { locale: ptBR })}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        
+      </div>
+
     </div>
   );
 }
