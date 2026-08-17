@@ -18,6 +18,14 @@ const apiLimiter = rateLimit({
 
 // --- Schemas de Validação (Zod) ---
 
+const AiHubSchema = z.object({
+  prompt: z.string(),
+  context: z.object({
+    empresas: z.array(z.any()),
+    sindicatos: z.array(z.any())
+  })
+});
+
 const ExtractPdfSchema = z.object({
   pdfBase64: z.string().min(1, "PDF não enviado."),
   type: z.enum(['cnpj', 'recibo', 'admissional', 'trct', 'custom']).default('admissional'),
@@ -72,6 +80,55 @@ app.set('trust proxy', 1);
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  app.post('/api/ai-hub', requireApiKey, async (req, res) => {
+    try {
+      const parseResult = AiHubSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: parseResult.error.issues[0].message });
+      }
+
+      const { prompt, context } = parseResult.data;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
+      }
+      
+      const ai = new GoogleGenAI({ apiKey });
+
+      const systemInstruction = `Você é um assistente de DP. O usuário quer criar uma regra de checklist.
+As empresas disponíveis são: ${JSON.stringify(context.empresas)}.
+Os sindicatos são: ${JSON.stringify(context.sindicatos)}.
+Entenda a intenção do usuário e retorne APENAS um JSON estrito contendo as chaves para criar uma ChecklistRule:
+{
+  "targetType": "GLOBAL" | "SINDICATO" | "EMPRESA",
+  "targetId": "ID da empresa ou sindicato (opcional se GLOBAL)",
+  "description": "Descrição clara da regra",
+  "type": "FOLHA" | "FERIAS" | "RESCISAO"
+}
+Retorne SOMENTE o JSON. Não inclua markdown (\`\`\`json).`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: [
+          { role: 'user', parts: [{ text: prompt }] }
+        ],
+        config: {
+          systemInstruction: systemInstruction,
+          temperature: 0.2
+        }
+      });
+
+      let text = response.text || '{}';
+      text = text.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
+      const rule = JSON.parse(text);
+
+      res.json({ rule });
+    } catch (error: any) {
+      console.error('AI Hub Error:', error);
+      res.status(500).json({ error: 'Erro ao processar comando com IA: ' + error.message });
+    }
   });
 
   app.post('/api/extract-pdf', requireApiKey, async (req, res) => {

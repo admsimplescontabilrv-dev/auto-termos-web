@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Download, Copy, ArrowRight, ArrowLeft, CheckCircle2, AlignLeft, AlignCenter, Activity, Loader2, Plus, Trash2, Upload, AlertTriangle, X, LogIn, LogOut } from 'lucide-react';
+import { Search, FileText, Download, Copy, ArrowRight, ArrowLeft, CheckCircle2, AlignLeft, AlignCenter, Activity, Loader2, Plus, Trash2, Upload, AlertTriangle, X, LogIn, LogOut, Home, Building2, CheckSquare, FileSignature, Receipt, FileStack, Briefcase } from 'lucide-react';
 import { DEFAULT_TEMPLATES, INITIAL_TEMPLATE } from './data';
 import { SavedTemplate } from './types';
 import ReciboApp from './ReciboApp';
 import BoletoApp from './BoletoApp';
 import TrctApp from './TrctApp';
+import EmpresasApp from './EmpresasApp';
+import ChecklistsApp from './ChecklistsApp';
+import DashboardApp from './DashboardApp';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import { ErrorLogViewer } from './ErrorLogViewer';
 
 export default function App() {
-  const [modulo, setModulo] = useState<'autotermos' | 'recibos' | 'boletos' | 'trct'>('autotermos');
+  const [modulo, setModulo] = useState<'dashboard' | 'empresas' | 'checklists' | 'autotermos' | 'recibos' | 'boletos' | 'trct'>('dashboard');
   // Commit trigger timestamp: 2026-08-13 05:06
   
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -391,7 +394,7 @@ export default function App() {
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
-        setErrorLog(`Erro ao extrair AUTO TERMOS: A Vercel (ou o servidor) retornou um conteúdo que não é JSON.
+        setErrorLog(`Erro ao extrair DP - SIMPLES CONTÁBIL: A Vercel (ou o servidor) retornou um conteúdo que não é JSON.
 Status da Resposta: ${response.status} ${response.statusText}
 Content-Type recebido: ${contentType || 'Nenhum'}
 
@@ -512,7 +515,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
 
   // UI Components per step
   return (
-    <div className="min-h-screen bg-[#380E1C] text-neutral-200 font-sans flex flex-col font-light selection:bg-[#C49B4A] selection:text-[#380E1C]">
+    <div className="flex h-screen bg-[#380E1C] text-neutral-200 font-sans font-light selection:bg-[#C49B4A] selection:text-[#380E1C] overflow-hidden">
       
       {/* Toast Notification */}
       {notification.visible && (
@@ -532,98 +535,110 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
         </div>
       )}
 
-      {/* HEADER */}
-      <header className="bg-[#1A040B] border-b border-[#4A1828] px-4 md:px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-0 z-50 print:hidden shadow-md">
-        <div className="flex flex-col md:flex-row items-center w-full md:w-auto gap-4 md:gap-6">
-          <div className="flex items-center space-x-3 text-[#C49B4A]">
-            <Activity className="w-6 h-6" />
-            <img src="/logo.png" alt="Simples Logo" className="h-10 object-contain" />
-          </div>
-          
-          <div className="flex bg-[#380E1C] p-1 rounded-lg border border-[#4A1828] w-full md:w-auto justify-center">
-            <button
-              onClick={() => setModulo('autotermos')}
-              className={`px-4 py-1.5 text-xs font-bold tracking-widest rounded transition-colors ${
-                modulo === 'autotermos' ? 'bg-[#4A1828] text-[#C49B4A]' : 'text-[#A68759] hover:text-[#D1A751]'
-              }`}
-            >
-              AUTOTERMOS
-            </button>
-            <button
-              onClick={() => setModulo('recibos')}
-              className={`px-4 py-1.5 text-xs font-bold tracking-widest rounded transition-colors ${
-                modulo === 'recibos' ? 'bg-[#4A1828] text-[#C49B4A]' : 'text-[#A68759] hover:text-[#D1A751]'
-              }`}
-            >
-              RECIBOS
-            </button>
-            <button
-              onClick={() => setModulo('boletos')}
-              className={`px-4 py-1.5 text-xs font-bold tracking-widest rounded transition-colors ${
-                modulo === 'boletos' ? 'bg-[#4A1828] text-[#C49B4A]' : 'text-[#A68759] hover:text-[#D1A751]'
-              }`}
-            >
-              BOLETOS
-            </button>
-            <button
-              onClick={() => setModulo('trct')}
-              className={`px-4 py-1.5 text-xs font-bold tracking-widest rounded transition-colors ${
-                modulo === 'trct' ? 'bg-[#4A1828] text-[#C49B4A]' : 'text-[#A68759] hover:text-[#D1A751]'
-              }`}
-            >
-              TRCT
-            </button>
+      {/* SIDEBAR */}
+      <aside className="w-64 bg-[#1A040B] border-r border-[#4A1828] flex flex-col print:hidden flex-shrink-0 z-50">
+        <div className="p-6 flex items-center space-x-3 text-[#C49B4A] border-b border-[#4A1828]">
+          <Activity className="w-8 h-8 flex-shrink-0" />
+          <div className="flex flex-col">
+            <span className="font-serif font-bold text-sm tracking-widest leading-none">DP - SIMPLES</span>
+            <span className="text-[10px] text-[#A68759] tracking-widest mt-1">CONTÁBIL</span>
           </div>
         </div>
         
-        <div className="flex items-center space-x-4">
-          {/* Step Indicator */}
-          {modulo === 'autotermos' && (
-            <div className="flex items-center justify-center space-x-4 md:space-x-8 text-xs md:text-sm font-serif tracking-widest text-[#845a27] w-full md:w-auto flex-wrap gap-y-2">
-              <button 
-                onClick={() => setStep(1)} 
-                className={`flex items-center space-x-2 transition-colors hover:text-[#D1A751] ${step === 1 ? 'text-[#D1A751] font-bold' : ''}`}
-              >
-                <span>1. MODELO</span>
-              </button>
-              <button 
-                onClick={() => {
-                  if (batchTemplateIds.length > 0 && variables.length > 0) setStep(2);
-                }} 
-                className={`flex items-center space-x-2 transition-colors hover:text-[#D1A751] ${step === 2 ? 'text-[#D1A751] font-bold' : ''} ${(batchTemplateIds.length === 0 || variables.length === 0) ? 'opacity-50 cursor-not-allowed hover:text-[#845a27]' : ''}`}
-              >
-                <span>2. PREENCHER</span>
-              </button>
-              <button 
-                onClick={() => {
-                  if (generatedDoc) setStep(3);
-                }} 
-                className={`flex items-center space-x-2 transition-colors hover:text-[#D1A751] ${step === 3 ? 'text-[#D1A751] font-bold' : ''} ${!generatedDoc ? 'opacity-50 cursor-not-allowed hover:text-[#845a27]' : ''}`}
-              >
-                <span>3. CONCLUÍDO</span>
-              </button>
-            </div>
-          )}
+        <nav className="flex-1 overflow-y-auto py-6 flex flex-col space-y-2 px-3 custom-scrollbar">
+          <div className="text-[10px] text-[#845a27] font-bold tracking-widest uppercase mb-2 px-3">Geral</div>
+          
+          <button onClick={() => setModulo('dashboard')} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${modulo === 'dashboard' ? 'bg-[#380E1C] text-[#C49B4A] border border-[#4A1828]' : 'text-[#A68759] hover:bg-[#2A0B16] hover:text-[#D1A751] border border-transparent'}`}>
+            <Home className="w-5 h-5" />
+            <span className="text-sm font-bold tracking-widest">AI HUB</span>
+          </button>
+          
+          <button onClick={() => setModulo('empresas')} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${modulo === 'empresas' ? 'bg-[#380E1C] text-[#C49B4A] border border-[#4A1828]' : 'text-[#A68759] hover:bg-[#2A0B16] hover:text-[#D1A751] border border-transparent'}`}>
+            <Building2 className="w-5 h-5" />
+            <span className="text-sm font-bold tracking-widest">EMPRESAS</span>
+          </button>
+          
+          <button onClick={() => setModulo('checklists')} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${modulo === 'checklists' ? 'bg-[#380E1C] text-[#C49B4A] border border-[#4A1828]' : 'text-[#A68759] hover:bg-[#2A0B16] hover:text-[#D1A751] border border-transparent'}`}>
+            <CheckSquare className="w-5 h-5" />
+            <span className="text-sm font-bold tracking-widest">CHECKLISTS</span>
+          </button>
 
-        </div>
-      </header>
+          <div className="text-[10px] text-[#845a27] font-bold tracking-widest uppercase mb-2 mt-6 px-3">Geradores</div>
+          
+          <button onClick={() => setModulo('autotermos')} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${modulo === 'autotermos' ? 'bg-[#380E1C] text-[#C49B4A] border border-[#4A1828]' : 'text-[#A68759] hover:bg-[#2A0B16] hover:text-[#D1A751] border border-transparent'}`}>
+            <FileSignature className="w-5 h-5" />
+            <span className="text-sm font-bold tracking-widest">AUTOTERMOS</span>
+          </button>
+          
+          <button onClick={() => setModulo('recibos')} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${modulo === 'recibos' ? 'bg-[#380E1C] text-[#C49B4A] border border-[#4A1828]' : 'text-[#A68759] hover:bg-[#2A0B16] hover:text-[#D1A751] border border-transparent'}`}>
+            <Receipt className="w-5 h-5" />
+            <span className="text-sm font-bold tracking-widest">RECIBOS</span>
+          </button>
+          
+          <button onClick={() => setModulo('boletos')} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${modulo === 'boletos' ? 'bg-[#380E1C] text-[#C49B4A] border border-[#4A1828]' : 'text-[#A68759] hover:bg-[#2A0B16] hover:text-[#D1A751] border border-transparent'}`}>
+            <FileStack className="w-5 h-5" />
+            <span className="text-sm font-bold tracking-widest">BOLETOS</span>
+          </button>
+          
+          <button onClick={() => setModulo('trct')} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${modulo === 'trct' ? 'bg-[#380E1C] text-[#C49B4A] border border-[#4A1828]' : 'text-[#A68759] hover:bg-[#2A0B16] hover:text-[#D1A751] border border-transparent'}`}>
+            <Briefcase className="w-5 h-5" />
+            <span className="text-sm font-bold tracking-widest">TRCT</span>
+          </button>
+        </nav>
+      </aside>
 
       {/* MAIN CONTENT AREA */}
-      {modulo === 'recibos' ? (
-        <main className="flex-1 w-full flex flex-col print:p-0 print:m-0">
-          <ReciboApp />
-        </main>
-      ) : modulo === 'boletos' ? (
-        <main className="flex-1 w-full flex flex-col print:p-0 print:m-0">
-          <BoletoApp />
-        </main>
-      ) : modulo === 'trct' ? (
-        <main className="flex-1 w-full flex flex-col print:p-0 print:m-0">
-          <TrctApp />
-        </main>
-      ) : (
-        <main className="flex-1 w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col print:p-0 print:m-0 print:max-w-none">
-          
+      <div className="flex-1 overflow-auto bg-[#380E1C] relative">
+      
+        {modulo === 'dashboard' ? (
+          <DashboardApp />
+        ) : modulo === 'empresas' ? (
+          <EmpresasApp />
+        ) : modulo === 'checklists' ? (
+          <ChecklistsApp />
+        ) : modulo === 'recibos' ? (
+          <main className="w-full flex flex-col print:p-0 print:m-0">
+            <ReciboApp />
+          </main>
+        ) : modulo === 'boletos' ? (
+          <main className="w-full flex flex-col print:p-0 print:m-0">
+            <BoletoApp />
+          </main>
+        ) : modulo === 'trct' ? (
+          <main className="w-full flex flex-col print:p-0 print:m-0">
+            <TrctApp />
+          </main>
+        ) : (
+          <main className="w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col print:p-0 print:m-0 print:max-w-none">
+            
+            {modulo === 'autotermos' && (
+              <div className="flex items-center justify-between space-x-4 md:space-x-8 text-xs md:text-sm font-serif tracking-widest text-[#845a27] w-full flex-wrap gap-y-2 mb-6 print:hidden">
+                <div className="flex items-center space-x-6">
+                  <button 
+                    onClick={() => setStep(1)} 
+                    className={`flex items-center space-x-2 transition-colors hover:text-[#D1A751] ${step === 1 ? 'text-[#D1A751] font-bold' : ''}`}
+                  >
+                    <span>1. MODELO</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (batchTemplateIds.length > 0 && variables.length > 0) setStep(2);
+                    }} 
+                    className={`flex items-center space-x-2 transition-colors hover:text-[#D1A751] ${step === 2 ? 'text-[#D1A751] font-bold' : ''} ${(batchTemplateIds.length === 0 || variables.length === 0) ? 'opacity-50 cursor-not-allowed hover:text-[#845a27]' : ''}`}
+                  >
+                    <span>2. PREENCHER</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (generatedDoc) setStep(3);
+                    }} 
+                    className={`flex items-center space-x-2 transition-colors hover:text-[#D1A751] ${step === 3 ? 'text-[#D1A751] font-bold' : ''} ${!generatedDoc ? 'opacity-50 cursor-not-allowed hover:text-[#845a27]' : ''}`}
+                  >
+                    <span>3. CONCLUÍDO</span>
+                  </button>
+                </div>
+              </div>
+            )}
           {/* === STEP 1: MODELO === */}
         {step === 1 && (
           <div className="flex flex-col lg:flex-row flex-1 gap-8 h-full">
@@ -1146,6 +1161,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           }
         }
       `}} />
+      </div>
       <ErrorLogViewer errorLog={errorLog} onClose={() => setErrorLog(null)} />
     </div>
   );

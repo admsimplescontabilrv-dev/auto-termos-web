@@ -1,6 +1,8 @@
 {
-  "name": "Document Automator - Simples",
-  "description": "A tool to manage document templates, fill in placeholders, and generate formatted PDF/Docx files with a professional letterhead.",
+  "name": "DP - SIMPLES CONTÁBIL",
+  "description": "Sistema de Departamento Pessoal - Simples Contábil",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
