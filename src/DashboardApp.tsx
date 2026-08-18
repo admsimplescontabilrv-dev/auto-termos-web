@@ -42,8 +42,7 @@ export default function DashboardApp() {
       const response = await fetch('/api/ai-command', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || 'Simples@2026'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ prompt, context: { empresas, sindicatos } })
       });
@@ -156,17 +155,17 @@ export default function DashboardApp() {
       <div className="flex-1 flex flex-col space-y-6">
         
         {/* Lembretes de Hoje */}
-        <div className="bg-emerald-950/30 border border-emerald-900/50 p-6 rounded-2xl flex flex-col shadow-lg relative overflow-hidden">
+        <div className={`bg-emerald-950/30 border border-emerald-900/50 p-6 rounded-2xl flex flex-col shadow-lg relative overflow-hidden shrink-0 ${hojeLembretes.length === 0 ? 'items-center text-center' : ''}`}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
           
-          <h3 className="text-emerald-400 text-sm font-bold tracking-widest uppercase mb-4 flex items-center space-x-2 relative z-10">
+          <h3 className={`text-emerald-400 text-sm font-bold tracking-widest uppercase mb-4 flex items-center space-x-2 relative z-10 w-full ${hojeLembretes.length === 0 ? 'justify-center' : ''}`}>
             <Bell className="w-5 h-5" />
             <span>Para Hoje</span>
           </h3>
           
-          <div className="space-y-3 relative z-10">
+          <div className={`relative z-10 w-full flex flex-col items-center justify-center ${hojeLembretes.length === 0 ? '' : 'space-y-3'}`}>
             {hojeLembretes.length === 0 ? (
-              <div className="py-8 flex items-center justify-center border border-dashed border-emerald-800/30 rounded-xl bg-emerald-900/10">
+              <div className="py-6 flex flex-col items-center justify-center border border-dashed border-emerald-800/30 rounded-xl bg-emerald-900/10 w-full">
                 <p className="text-emerald-500/70 text-sm font-medium">Nenhum compromisso para hoje.</p>
               </div>
             ) : (

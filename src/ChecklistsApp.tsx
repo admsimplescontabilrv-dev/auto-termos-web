@@ -181,14 +181,12 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
       return;
     }
     const monthKey = format(currentRecurrentMonth, 'yyyy-MM');
-    const qCompletions = query(collection(db, 'recurrentCompletions'), where('monthKey', '==', monthKey));
+    const qCompletions = query(collection(db, 'recurrentCompletions'), where('monthKey', '==', monthKey), where('entityId', '==', selectedEntity.id));
     
     const unsub = onSnapshot(qCompletions, (snapshot) => {
       const completions: { [eventId: string]: number } = {};
       snapshot.docs.forEach(doc => {
         const data = doc.data();
-        // Since we query by monthKey, we just need to match the eventId for the selected entity (which is handled in the UI filter, or we can just load all completions for this month and let the UI match by event id).
-        // It's safe to load all for the monthKey as the count won't be massive in a typical SMB app, or we could add targetId to the query.
         completions[data.eventId] = data.completedAt;
       });
       setRecurrentCompletions(completions);
@@ -198,13 +196,17 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   }, [selectedEntity, currentRecurrentMonth]);
 
   const toggleRecurrentCompletion = async (eventId: string, isCompleted: boolean) => {
+    if (!selectedEntity) return;
     const monthKey = format(currentRecurrentMonth, 'yyyy-MM');
+    const docId = `${eventId}_${selectedEntity.id}_${monthKey}`;
+    
     if (isCompleted) {
-      await deleteDoc(doc(db, 'recurrentCompletions', `${eventId}_${monthKey}`));
+      await deleteDoc(doc(db, 'recurrentCompletions', docId));
     } else {
-      await setDoc(doc(db, 'recurrentCompletions', `${eventId}_${monthKey}`), {
+      await setDoc(doc(db, 'recurrentCompletions', docId), {
         eventId,
         monthKey,
+        entityId: selectedEntity.id,
         completedAt: Date.now(),
         createdAt: Date.now()
       });
@@ -337,6 +339,12 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   const filteredEmpresas = empresas.filter(e => e.nome.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredSindicatos = sindicatos.filter(s => s.nome.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  const currentMonthEvents = calendarEvents.filter(e => {
+    if (e.isRecurrent) return true;
+    const eDate = new Date(e.date);
+    return eDate.getMonth() === currentRecurrentMonth.getMonth() && eDate.getFullYear() === currentRecurrentMonth.getFullYear();
+  });
+
   return (
     <div className="flex-1 w-full max-w-7xl mx-auto p-6 md:p-8 flex flex-col h-full animate-in fade-in zoom-in-95 duration-200">
       <div className="flex items-center space-x-3 mb-8">
@@ -450,8 +458,8 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
             <div className="bg-slate-900 border border-slate-700/50 rounded-2xl overflow-hidden flex flex-col flex-1 shadow-xl">
               <div className="p-4 border-b border-slate-800 bg-slate-950/50 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Obrigações Fixas</h3>
-                  <span className="bg-indigo-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{calendarEvents.filter(e => e.isRecurrent).length}</span>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Obrigações do Mês</h3>
+                  <span className="bg-indigo-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{currentMonthEvents.length}</span>
                 </div>
                 <div className="flex items-center justify-between bg-slate-900 border border-slate-700/50 rounded-lg p-1">
                   <button onClick={() => setCurrentRecurrentMonth(subMonths(currentRecurrentMonth, 1))} className="p-1 text-slate-400 hover:text-slate-200 transition-colors">
@@ -464,10 +472,10 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 </div>
               </div>
               <div className="p-4 space-y-3 overflow-y-auto max-h-[350px] custom-scrollbar">
-                {calendarEvents.filter(e => e.isRecurrent).length === 0 && (
+                {currentMonthEvents.length === 0 && (
                   <p className="text-slate-500 text-sm italic">Nenhum evento programado.</p>
                 )}
-                {calendarEvents.filter(e => e.isRecurrent).map((event, i) => {
+                {currentMonthEvents.map((event, i) => {
                   const isCompleted = !!recurrentCompletions[event.id];
                   const completedAt = recurrentCompletions[event.id];
                   const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id;
@@ -492,11 +500,15 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                           </div>
                         </div>
                         <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap ml-2">
-                          {event.recurrentRule === 'NEAR_5' ? 'Prox. Dia 05' : 
-                           event.recurrentRule === 'NEAR_30' ? 'Prox. Dia 30' : 
-                           event.recurrentRule === 'WEEKLY' ? 'Semanal' :
-                           event.recurrentRule === 'DAILY' ? 'Diário' :
-                           `Todo dia ${event.recurrentDay}`}
+                          {event.isRecurrent ? (
+                            event.recurrentRule === 'NEAR_5' ? 'Prox. Dia 05' : 
+                            event.recurrentRule === 'NEAR_30' ? 'Prox. Dia 30' : 
+                            event.recurrentRule === 'WEEKLY' ? 'Semanal' :
+                            event.recurrentRule === 'DAILY' ? 'Diário' :
+                            `Todo dia ${event.recurrentDay}`
+                          ) : (
+                            `Dia ${format(new Date(event.date), 'dd/MM')}`
+                          )}
                         </span>
                       </div>
                       {isCompleted && completedAt && (

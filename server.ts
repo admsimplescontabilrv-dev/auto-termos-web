@@ -61,9 +61,9 @@ app.set('trust proxy', 1);
     frameguard: { action: 'sameorigin' } // PROTEÇÃO ATIVADA
   }));
 
-  // 2. PROTEÇÃO CONTRA DoS: Limite do body para 50mb
-  app.use(express.json({ limit: "50mb" })); // PDFs comuns não passam de 2-3MB
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // 2. PROTEÇÃO CONTRA DoS: Limite do body para 5mb
+  app.use(express.json({ limit: "5mb" }));
+  app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
   // Middleware de Autenticação de API Key Interna
   const requireApiKey = (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -798,7 +798,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
   // Global Error Handler para requisições com payload muito grande (evita que o Express retorne HTML 413 padrão)
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (err && err.type === 'entity.too.large') {
-      return res.status(413).json({ error: 'O arquivo PDF enviado é muito grande (acima do limite de 50MB suportado).' });
+      return res.status(413).json({ error: 'O arquivo PDF enviado é muito grande (acima do limite de 5MB suportado).' });
     }
     if (err && err instanceof SyntaxError && 'body' in err && (err as any).status === 400) {
       return res.status(400).json({ error: 'Formato JSON inválido.' });

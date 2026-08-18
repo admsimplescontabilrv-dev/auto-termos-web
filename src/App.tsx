@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { db } from './lib/firebase';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { Search, FileText, Download, Copy, ArrowRight, ArrowLeft, CheckCircle2, AlignLeft, AlignCenter, Activity, Loader2, Plus, Trash2, Upload, AlertTriangle, X, LogIn, LogOut, Home, Building2, CheckSquare, FileSignature, Receipt, FileStack, Briefcase, LayoutDashboard, CalendarDays, PanelLeftClose, PanelLeftOpen, Pencil, Check } from 'lucide-react';
+import DOMPurify from 'dompurify';
+import { initAuth, loginWithPassword, logout } from './auth';
 import { DEFAULT_TEMPLATES, INITIAL_TEMPLATE } from './data';
 import { SavedTemplate } from './types';
 import ReciboApp from './ReciboApp';
@@ -15,6 +17,35 @@ import { getTrimmedPdfBase64 } from './pdfUtils';
 import { ErrorLogViewer } from './ErrorLogViewer';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = initAuth(
+      (user, token) => {
+        setIsAuthenticated(true);
+        setIsCheckingAuth(false);
+      },
+      () => {
+        setIsAuthenticated(false);
+        setIsCheckingAuth(false);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    try {
+      await loginWithPassword(loginPassword);
+    } catch (err: any) {
+      setLoginError(err.message);
+    }
+  };
+
   const [modulo, setModulo] = useState<'dashboard' | 'empresas' | 'checklists' | 'calendario' | 'autotermos' | 'recibos' | 'boletos' | 'trct'>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // Commit trigger timestamp: 2026-08-13 05:06
@@ -716,6 +747,31 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
   };
 
   // UI Components per step
+  if (isCheckingAuth) {
+    return <div className="flex h-screen w-screen bg-slate-950 items-center justify-center text-slate-200">Carregando...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="h-screen w-screen bg-slate-950 flex items-center justify-center">
+        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-xl border border-slate-800 shadow-2xl flex flex-col w-full max-w-sm">
+          <h2 className="text-xl text-white font-medium mb-6 text-center">Acesso Restrito</h2>
+          <input
+            type="password"
+            placeholder="Senha"
+            value={loginPassword}
+            onChange={e => setLoginPassword(e.target.value)}
+            className="bg-slate-950 border border-slate-800 text-white px-4 py-3 rounded-lg mb-4 focus:border-indigo-500 focus:outline-none"
+          />
+          {loginError && <p className="text-red-500 text-sm mb-4">{loginError}</p>}
+          <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-colors">
+            Entrar
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500 selection:text-white overflow-hidden">
       
@@ -1194,7 +1250,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                   contentEditable
                   suppressContentEditableWarning
                   className="flex-1 w-full bg-transparent p-10 focus:outline-none font-serif text-[15px] leading-relaxed text-[#2C2114] overflow-y-auto"
-                  dangerouslySetInnerHTML={{ __html: templateCode }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(templateCode) }}
                   onBlur={(e) => handleContentChange(e.currentTarget.innerHTML)}
                 />
               </div>
@@ -1505,7 +1561,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                       <div className="relative z-10 px-[25mm] pt-[72mm] pb-[50mm] text-neutral-900 text-[10.5pt] font-serif leading-[1.5] h-full flex flex-col">
                         <div 
                           className="flex-1 text-justify doc-content"
-                          dangerouslySetInnerHTML={{ __html: pageContent.trim() || '&nbsp;' }}
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(pageContent.trim() || '&nbsp;') }}
                         />
                       </div>
                    </div>

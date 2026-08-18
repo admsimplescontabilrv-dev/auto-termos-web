@@ -1,39 +1,37 @@
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { auth } from './lib/firebase';
+
+// Escuta mudanças de estado para saber se o usuário já tem sessão salva
 export const initAuth = (
   onAuthSuccess?: (user: any, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  const token = localStorage.getItem('app_token');
-  if (token) {
-    if (onAuthSuccess) onAuthSuccess({ name: 'Admin' }, token);
-  } else {
-    if (onAuthFailure) onAuthFailure();
-  }
-  return () => {}; // return empty unsubscribe function
+  return onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const token = await user.getIdToken();
+      if (onAuthSuccess) onAuthSuccess({ name: 'Admin' }, token);
+    } else {
+      if (onAuthFailure) onAuthFailure();
+    }
+  });
 };
 
 export const loginWithPassword = async (password: string): Promise<any> => {
-  const res = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password })
-  });
-  const data = await res.json();
-  if (res.ok && data.token) {
-    localStorage.setItem('app_token', data.token);
-    return { user: { name: 'Admin' }, accessToken: data.token };
-  } else {
-    throw new Error(data.error || 'Erro ao fazer login');
+  // O usuário digita só a senha na tela, mas por baixo dos panos usamos um email fixo
+  const email = 'admin@simples.com';
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const token = await userCredential.user.getIdToken();
+    return { user: { name: 'Admin' }, accessToken: token };
+  } catch (error: any) {
+    throw new Error('Senha incorreta ou acesso negado.');
   }
 };
 
-export const getAccessToken = async (): Promise<string | null> => {
-  return localStorage.getItem('app_token');
-};
-
-export const getFirebaseIdToken = async (): Promise<string | null> => {
-  return localStorage.getItem('app_token');
-};
-
 export const logout = async () => {
-  localStorage.removeItem('app_token');
+  await signOut(auth);
+};
+
+export const getAccessToken = async (): Promise<string | null> => {
+  return auth.currentUser ? await auth.currentUser.getIdToken() : null;
 };
