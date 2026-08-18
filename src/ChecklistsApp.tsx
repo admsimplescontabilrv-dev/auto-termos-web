@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from './lib/firebase';
 import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Empresa, Sindicato, ChecklistRule, CalendarEvent, ScheduleFrequency } from './types';
-import { CheckSquare, Plus, Trash2, Calendar, FileText, Briefcase, Building2, AlertCircle, Search, Clock, CheckCircle2, X, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
+import { CheckSquare, Plus, Trash2, Calendar, FileText, Briefcase, Building2, AlertCircle, Search, Clock, CheckCircle2, X, ChevronLeft, ChevronRight, Pencil, Upload, Loader2 } from 'lucide-react';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getTrimmedPdfBase64 } from './pdfUtils';
+import UnifiedAddModal from './components/UnifiedAddModal';
 
 interface ChecklistsAppProps {
   onEditEntity?: (id: string, type: 'EMPRESA' | 'SINDICATO') => void;
@@ -29,85 +31,109 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
 
-  const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
-  const [isAvisoModalOpen, setIsAvisoModalOpen] = useState(false);
-  const [avisoData, setAvisoData] = useState({ 
-    nome: '',
-    dataInicio: format(new Date(), 'yyyy-MM-dd'),
-    tipoCalculo: 'DIAS' as 'DIAS' | 'DATA',
-    dias: 30,
-    dataFim: ''
-  });
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, action: () => void, message: string } | null>(null);
 
-  const handleLancarAviso = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedEntity || !avisoData.nome) return;
+  const handleSaveProcess = async (data: any) => {
+    const isSindicato = sindicatos.some(s => s.id === data.empresaId);
+    await addDoc(collection(db, 'checklistRules'), {
+      taskName: data.taskName,
+      type: data.processType,
+      targetType: isSindicato ? 'SPECIFIC_SINDICATO' : 'SPECIFIC_EMPRESA',
+      targetId: data.empresaId,
+      frequency: 'CONSULTA',
+      createdAt: Date.now()
+    });
+  };
+
+  const handleSaveFixo = async (data: any) => {
+    const emp = empresas.find(e => e.id === data.empresaId);
+    const sind = sindicatos.find(s => s.id === data.empresaId);
+    const nome = emp ? emp.nome : (sind ? sind.nome : '');
     
+    await addDoc(collection(db, 'calendarEvents'), {
+      title: data.taskName,
+      date: Date.now(),
+      empresaId: data.empresaId,
+      empresaNome: nome,
+      type: 'RECORRENTE',
+      isRecurrent: true,
+      recurrentDay: data.dayValue,
+      recurrentMonth: data.monthValue,
+      recurrentRule: data.frequency,
+      status: 'ATIVO',
+      createdAt: Date.now()
+    });
+  };
+
+  const handleSaveCalendario = async (data: any) => {
+    const emp = empresas.find(e => e.id === data.empresaId);
+    const sind = sindicatos.find(s => s.id === data.empresaId);
+    const nome = emp ? emp.nome : (sind ? sind.nome : '');
+
+    let finalSpecificDate = data.specificDate;
+    let eventDate = Date.now();
+    
+    if (data.calendarDateType === 'CALCULADA') {
+       let d = new Date(data.calcYear, data.calcMonth, data.calcDay);
+       if (d.getDay() === 6) d.setDate(d.getDate() - 1);
+       else if (d.getDay() === 0) d.setDate(d.getDate() - 2);
+       finalSpecificDate = format(d, 'yyyy-MM-dd');
+    }
+
+    if (finalSpecificDate) {
+      const parts = finalSpecificDate.split('-');
+      if (parts.length === 3) {
+        eventDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
+      }
+    }
+    await addDoc(collection(db, 'calendarEvents'), {
+      title: data.taskName,
+      date: eventDate,
+      empresaId: data.empresaId,
+      empresaNome: nome,
+      type: 'PRAZO',
+      isRecurrent: false,
+      specificDate: finalSpecificDate,
+      status: 'ATIVO',
+      createdAt: Date.now()
+    });
+  };
+
+  const handleSaveAviso = async (data: any) => {
+    const emp = empresas.find(e => e.id === data.empresaId);
+    const sind = sindicatos.find(s => s.id === data.empresaId);
+    const nome = emp ? emp.nome : (sind ? sind.nome : '');
+
     let targetDate = new Date();
-    let dataInicioStr = avisoData.dataInicio;
+    let dataInicioStr = data.dataInicio;
     
-    if (avisoData.tipoCalculo === 'DIAS') {
-        const parts = avisoData.dataInicio.split('-');
+    if (data.tipoCalculo === 'DIAS') {
+        const parts = data.dataInicio.split('-');
         if (parts.length === 3) {
            targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         }
-        targetDate.setDate(targetDate.getDate() + avisoData.dias);
+        targetDate.setDate(targetDate.getDate() + data.dias);
     } else {
-        const parts = avisoData.dataFim.split('-');
+        const parts = data.dataFim.split('-');
         if (parts.length === 3) {
             targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         }
     }
     
     await addDoc(collection(db, 'calendarEvents'), {
-      title: `Aviso Prévio: ${avisoData.nome}`,
+      title: `Aviso Prévio: ${data.nome}`,
       description: `Término do aviso prévio (Início: ${dataInicioStr.split('-').reverse().join('/')}).`,
       date: targetDate.getTime(),
       type: 'AVISO_PREVIO',
-      empresaId: selectedEntity.id,
-      empresaNome: selectedEntity.nome,
+      empresaId: data.empresaId,
+      empresaNome: nome,
       status: 'ATIVO',
       createdAt: Date.now()
-    });
-    
-    setIsAvisoModalOpen(false);
-    setAvisoData({ 
-      nome: '',
-      dataInicio: format(new Date(), 'yyyy-MM-dd'),
-      tipoCalculo: 'DIAS',
-      dias: 30,
-      dataFim: ''
     });
   };
 
   const [transientChecks, setTransientChecks] = useState<Record<string, boolean>>({});
-
-  const [newItem, setNewItem] = useState<{
-    taskName: string,
-    addType: 'processo' | 'fixo' | 'calendario',
-    processType: string,
-    frequency: ScheduleFrequency,
-    dayValue: number,
-    monthValue: number,
-    specificDate: string,
-    calendarDateType: 'EXATA' | 'CALCULADA',
-    calcDay: number,
-    calcMonth: number,
-    calcYear: number
-  }>({
-    taskName: '',
-    addType: 'processo',
-    processType: 'RESCISAO',
-    frequency: 'MONTHLY_EXACT',
-    dayValue: 5,
-    monthValue: 0,
-    specificDate: format(new Date(), 'yyyy-MM-dd'),
-    calendarDateType: 'EXATA',
-    calcDay: 5,
-    calcMonth: new Date().getMonth(),
-    calcYear: new Date().getFullYear()
-  });
 
   useEffect(() => {
     const unsubEmpresas = onSnapshot(collection(db, 'empresas'), (snapshot) => {
@@ -233,71 +259,6 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     setNewCategoryName('');
   };
 
-  const handleAddItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newItem.taskName || !selectedEntity) return;
-
-    if (newItem.addType === 'processo') {
-      await addDoc(collection(db, 'checklistRules'), {
-        taskName: newItem.taskName,
-        type: newItem.processType,
-        targetType: selectedEntity.type === 'EMPRESA' ? 'SPECIFIC_EMPRESA' : 'SPECIFIC_SINDICATO',
-        targetId: selectedEntity.id,
-        frequency: 'CONSULTA',
-        createdAt: Date.now()
-      });
-    } else if (newItem.addType === 'fixo') {
-      await addDoc(collection(db, 'calendarEvents'), {
-        title: newItem.taskName,
-        date: Date.now(),
-        empresaId: selectedEntity.id,
-        empresaNome: selectedEntity.nome,
-        type: 'RECORRENTE',
-        isRecurrent: true,
-        recurrentDay: newItem.dayValue,
-        recurrentMonth: newItem.monthValue,
-        recurrentRule: newItem.frequency,
-        status: 'ATIVO',
-        createdAt: Date.now()
-      });
-    } else if (newItem.addType === 'calendario') {
-      let finalSpecificDate = newItem.specificDate;
-      let eventDate = Date.now();
-      
-      if (newItem.calendarDateType === 'CALCULADA') {
-         let d = new Date(newItem.calcYear, newItem.calcMonth, newItem.calcDay);
-         // Antecipar fim de semana
-         if (d.getDay() === 6) { // Sábado
-            d.setDate(d.getDate() - 1);
-         } else if (d.getDay() === 0) { // Domingo
-            d.setDate(d.getDate() - 2);
-         }
-         finalSpecificDate = format(d, 'yyyy-MM-dd');
-      }
-
-      if (finalSpecificDate) {
-        const parts = finalSpecificDate.split('-');
-        if (parts.length === 3) {
-          eventDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
-        }
-      }
-      await addDoc(collection(db, 'calendarEvents'), {
-        title: newItem.taskName,
-        date: eventDate,
-        empresaId: selectedEntity.id,
-        empresaNome: selectedEntity.nome,
-        type: 'PRAZO',
-        isRecurrent: false,
-        specificDate: finalSpecificDate,
-        status: 'ATIVO',
-        createdAt: Date.now()
-      });
-    }
-
-    setIsAddItemModalOpen(false);
-    setNewItem({ taskName: '', addType: 'processo', processType: activeProcessType, frequency: 'MONTHLY_EXACT', dayValue: 5, monthValue: 0, specificDate: format(new Date(), 'yyyy-MM-dd'), calendarDateType: 'EXATA', calcDay: 5, calcMonth: new Date().getMonth(), calcYear: new Date().getFullYear() });
-  };
-
   const handleDeleteRule = async (id: string, taskName: string) => {
     setConfirmModal({
       isOpen: true,
@@ -321,10 +282,9 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   // Determine dynamic tabs
   const baseTabs = [
     { id: 'RESCISAO', label: 'Rescisão' },
-    { id: 'FOLHA', label: 'Folha Mensal' },
     { id: 'FERIAS', label: 'Férias' }
   ];
-  const customTabIds = Array.from(new Set(checklistRules.map(r => r.type))).filter(t => !baseTabs.find(b => b.id === t));
+  const customTabIds = Array.from(new Set(checklistRules.map(r => r.type)) as Set<string>).filter(t => !baseTabs.find(b => b.id === t));
   const allTabs = [...baseTabs, ...customTabIds.map(id => ({ id, label: id }))];
 
   const toggleTransientCheck = (ruleId: string) => {
@@ -596,24 +556,12 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 </div>
                 <div className="flex flex-col space-y-2">
                   <button
-                    onClick={() => {
-                      setNewItem(prev => ({ ...prev, addType: 'processo', processType: activeProcessType }));
-                      setIsAddItemModalOpen(true);
-                    }}
+                    onClick={() => setIsAddModalOpen(true)}
                     className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center space-x-2 whitespace-nowrap shadow-lg w-full"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Adicionar Item</span>
                   </button>
-                  {activeProcessType === 'RESCISAO' && (
-                    <button
-                      onClick={() => setIsAvisoModalOpen(true)}
-                      className="bg-amber-600/20 hover:bg-amber-600/30 text-amber-500 border border-amber-600/50 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center space-x-2 whitespace-nowrap shadow-lg w-full"
-                    >
-                      <Clock className="w-4 h-4" />
-                      <span>Lançar Aviso Prévio</span>
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -687,265 +635,19 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
         </div>
       )}
 
-      {/* Add Item Modal */}
-      {isAddItemModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-slate-200">Adicionar Item ao Checklist</h2>
-              <button onClick={() => setIsAddItemModalOpen(false)} className="text-slate-500 hover:text-slate-300 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleAddItem} className="p-6 space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Descrição da Tarefa / Conferência *</label>
-                <input type="text" autoFocus required placeholder="Ex: Verificar FGTS" value={newItem.taskName} onChange={e => setNewItem({...newItem, taskName: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors" />
-              </div>
-
-              <div className="bg-slate-950 rounded-xl p-1 border border-slate-800 flex flex-col sm:flex-row gap-1">
-                <button
-                  type="button"
-                  onClick={() => setNewItem({...newItem, addType: 'processo'})}
-                  className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-all ${newItem.addType === 'processo' ? 'bg-slate-800 text-emerald-400 shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Checklist de Processo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewItem({...newItem, addType: 'fixo'})}
-                  className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-all ${newItem.addType === 'fixo' ? 'bg-slate-800 text-indigo-400 shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Obrigação Fixa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewItem({...newItem, addType: 'calendario'})}
-                  className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-all ${newItem.addType === 'calendario' ? 'bg-slate-800 text-amber-400 shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Calendário
-                </button>
-              </div>
-
-              {newItem.addType === 'processo' && (
-                <div className="bg-emerald-900/10 border border-emerald-500/20 rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2">
-                  <div>
-                    <label className="block text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2">Processo</label>
-                    <select 
-                      value={newItem.processType}
-                      onChange={e => setNewItem({...newItem, processType: e.target.value})}
-                      className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-emerald-500"
-                    >
-                      {allTabs.map((tab, i) => (
-                        <option key={tab.id || `opt-${i}`} value={tab.id}>{tab.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {newItem.addType === 'fixo' && (
-                <div className="bg-indigo-900/10 border border-indigo-500/20 rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2">
-                  <div>
-                    <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Frequência (Recorrente)</label>
-                    <select 
-                      value={newItem.frequency}
-                      onChange={e => setNewItem({...newItem, frequency: e.target.value as ScheduleFrequency})}
-                      className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="MONTHLY_EXACT">Todo dia X do Mês</option>
-                      <option value="YEARLY">Anual (Uma vez ao ano)</option>
-                      <option value="NEAR_5">Sempre próximo ao Dia 05</option>
-                      <option value="NEAR_20">Sempre próximo ao Dia 20</option>
-                      <option value="NEAR_30">Sempre próximo ao Dia 30</option>
-                      <option value="WEEKLY">Semanal (Toda semana)</option>
-                      <option value="DAILY">Diário</option>
-                    </select>
-                  </div>
-
-                  {(newItem.frequency === 'MONTHLY_EXACT' || newItem.frequency === 'YEARLY') && (
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Dia do Mês</label>
-                        <input 
-                          type="number" min="1" max="31" required 
-                          value={newItem.dayValue} 
-                          onChange={e => setNewItem({...newItem, dayValue: parseInt(e.target.value)})}
-                          className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      {newItem.frequency === 'YEARLY' && (
-                        <div className="flex-1">
-                          <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Mês</label>
-                          <select 
-                            value={newItem.monthValue} 
-                            onChange={e => setNewItem({...newItem, monthValue: parseInt(e.target.value)})}
-                            className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500"
-                          >
-                            <option value={0}>Janeiro</option>
-                            <option value={1}>Fevereiro</option>
-                            <option value={2}>Março</option>
-                            <option value={3}>Abril</option>
-                            <option value={4}>Maio</option>
-                            <option value={5}>Junho</option>
-                            <option value={6}>Julho</option>
-                            <option value={7}>Agosto</option>
-                            <option value={8}>Setembro</option>
-                            <option value={9}>Outubro</option>
-                            <option value={10}>Novembro</option>
-                            <option value={11}>Dezembro</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {(newItem.frequency === 'NEAR_5' || newItem.frequency === 'NEAR_20' || newItem.frequency === 'NEAR_30') && (
-                    <p className="text-xs text-slate-400 flex items-start space-x-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 text-indigo-400" />
-                      <span>O sistema priorizará alocar esta tarefa de Segunda a Sexta, antecipando caso o dia base caia num fim de semana.</span>
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {newItem.addType === 'calendario' && (
-                <div className="bg-amber-900/10 border border-amber-500/20 rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2">
-                  <div>
-                    <label className="block text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">Tipo de Data</label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center space-x-2 text-slate-300 cursor-pointer">
-                        <input type="radio" checked={newItem.calendarDateType === 'EXATA'} onChange={() => setNewItem({...newItem, calendarDateType: 'EXATA'})} className="text-amber-500 focus:ring-amber-500 bg-slate-900 border-slate-700" />
-                        <span className="text-sm">Data Exata</span>
-                      </label>
-                      <label className="flex items-center space-x-2 text-slate-300 cursor-pointer">
-                        <input type="radio" checked={newItem.calendarDateType === 'CALCULADA'} onChange={() => setNewItem({...newItem, calendarDateType: 'CALCULADA'})} className="text-amber-500 focus:ring-amber-500 bg-slate-900 border-slate-700" />
-                        <span className="text-sm">Dia Fixo (Antecipa FDS)</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {newItem.calendarDateType === 'EXATA' ? (
-                    <div>
-                      <label className="block text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">Data Específica</label>
-                      <input 
-                        type="date" required 
-                        value={newItem.specificDate} 
-                        onChange={e => setNewItem({...newItem, specificDate: e.target.value})}
-                        className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex gap-3">
-                        <div className="flex-1">
-                          <label className="block text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">Dia base</label>
-                          <input 
-                            type="number" min="1" max="31" required 
-                            value={newItem.calcDay} 
-                            onChange={e => setNewItem({...newItem, calcDay: parseInt(e.target.value)})}
-                            className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-amber-500"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="block text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">Mês</label>
-                          <select 
-                            value={newItem.calcMonth} 
-                            onChange={e => setNewItem({...newItem, calcMonth: parseInt(e.target.value)})}
-                            className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-amber-500"
-                          >
-                            <option value={0}>Janeiro</option>
-                            <option value={1}>Fevereiro</option>
-                            <option value={2}>Março</option>
-                            <option value={3}>Abril</option>
-                            <option value={4}>Maio</option>
-                            <option value={5}>Junho</option>
-                            <option value={6}>Julho</option>
-                            <option value={7}>Agosto</option>
-                            <option value={8}>Setembro</option>
-                            <option value={9}>Outubro</option>
-                            <option value={10}>Novembro</option>
-                            <option value={11}>Dezembro</option>
-                          </select>
-                        </div>
-                        <div className="w-24">
-                          <label className="block text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">Ano</label>
-                          <input 
-                            type="number" min="2020" max="2100" required 
-                            value={newItem.calcYear} 
-                            onChange={e => setNewItem({...newItem, calcYear: parseInt(e.target.value)})}
-                            className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-amber-500"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-400 flex items-start space-x-2">
-                        <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-                        <span>O sistema irá salvar o evento na data mais próxima de segunda a sexta (antecipando se for fim de semana).</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="pt-4 border-t border-slate-800">
-                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">
-                  Salvar Item
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* Aviso Modal */}
-      {isAvisoModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-slate-200">Lançar Aviso Prévio</h2>
-              <button onClick={() => setIsAvisoModalOpen(false)} className="text-slate-500 hover:text-slate-300 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleLancarAviso} className="p-6 space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Nome do Colaborador *</label>
-                <input type="text" autoFocus required placeholder="Ex: João da Silva" value={avisoData.nome} onChange={e => setAvisoData({...avisoData, nome: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Data de Início *</label>
-                <input type="date" required value={avisoData.dataInicio} onChange={e => setAvisoData({...avisoData, dataInicio: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors" />
-              </div>
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Calcular término por:</label>
-                <div className="flex gap-4 mb-3">
-                  <label className="flex items-center space-x-2 text-slate-300 cursor-pointer">
-                    <input type="radio" name="tipoCalculo" checked={avisoData.tipoCalculo === 'DIAS'} onChange={() => setAvisoData({...avisoData, tipoCalculo: 'DIAS'})} className="text-amber-500 focus:ring-amber-500 bg-slate-900 border-slate-700" />
-                    <span className="text-sm">Dias Corridos</span>
-                  </label>
-                  <label className="flex items-center space-x-2 text-slate-300 cursor-pointer">
-                    <input type="radio" name="tipoCalculo" checked={avisoData.tipoCalculo === 'DATA'} onChange={() => setAvisoData({...avisoData, tipoCalculo: 'DATA'})} className="text-amber-500 focus:ring-amber-500 bg-slate-900 border-slate-700" />
-                    <span className="text-sm">Data Específica</span>
-                  </label>
-                </div>
-                
-                {avisoData.tipoCalculo === 'DIAS' ? (
-                  <input type="number" min="1" required placeholder="Ex: 30" value={avisoData.dias} onChange={e => setAvisoData({...avisoData, dias: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors" />
-                ) : (
-                  <input type="date" required value={avisoData.dataFim} onChange={e => setAvisoData({...avisoData, dataFim: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors" />
-                )}
-              </div>
-              
-              <div className="pt-4 border-t border-slate-800">
-                <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg flex justify-center items-center space-x-2">
-                  <Clock className="w-5 h-5" />
-                  <span>Criar Lembrete no Calendário</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <UnifiedAddModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        empresas={empresas}
+        sindicatos={sindicatos}
+        initialEmpresaId={selectedEntity?.id}
+        initialProcessType={activeProcessType}
+        processTabs={allTabs}
+        onSaveProcess={handleSaveProcess}
+        onSaveFixo={handleSaveFixo}
+        onSaveCalendario={handleSaveCalendario}
+        onSaveAviso={handleSaveAviso}
+      />
 
       {/* Confirm Modal */}
       {confirmModal && (

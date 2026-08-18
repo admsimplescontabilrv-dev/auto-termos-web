@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from './lib/firebase';
 import { collection, onSnapshot, query, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { CalendarEvent, Empresa, Sindicato, ScheduleFrequency } from './types';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Trash2, Edit2, X, Clock, AlertTriangle, Search, Briefcase, Building2, Globe } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Trash2, Edit2, X, Clock, AlertTriangle, Search, Briefcase, Building2, Globe, Upload, Loader2 } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, getDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getTrimmedPdfBase64 } from './pdfUtils';
+import UnifiedAddModal from './components/UnifiedAddModal';
 
 export default function CalendarioApp() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -15,29 +17,109 @@ export default function CalendarioApp() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalTab, setModalTab] = useState<'EVENT' | 'CHECKLIST'>('EVENT');
   const [editingEvent, setEditingEvent] = useState<Partial<CalendarEvent> | null>(null);
-  
-  const [newChecklistItem, setNewChecklistItem] = useState<{
-    taskName: string,
-    isProgrammed: boolean,
-    frequency: ScheduleFrequency,
-    dayValue: number,
-    monthValue: number,
-    specificDate: string,
-    category: string,
-    empresaId: string
-  }>({
-    taskName: '',
-    isProgrammed: false,
-    frequency: 'MONTHLY_EXACT',
-    dayValue: 5,
-    monthValue: 0,
-    specificDate: format(new Date(), 'yyyy-MM-dd'),
-    category: 'FOLHA',
-    empresaId: ''
-  });
-  
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const handleSaveProcess = async (data: any) => {
+    const isSindicato = sindicatos.some(s => s.id === data.empresaId);
+    await addDoc(collection(db, 'checklistRules'), {
+      taskName: data.taskName,
+      type: data.processType,
+      targetType: isSindicato ? 'SPECIFIC_SINDICATO' : 'SPECIFIC_EMPRESA',
+      targetId: data.empresaId,
+      frequency: 'CONSULTA',
+      createdAt: Date.now()
+    });
+  };
+
+  const handleSaveFixo = async (data: any) => {
+    const emp = empresas.find(e => e.id === data.empresaId);
+    const sind = sindicatos.find(s => s.id === data.empresaId);
+    const nome = emp ? emp.nome : (sind ? sind.nome : '');
+    
+    await addDoc(collection(db, 'calendarEvents'), {
+      title: data.taskName,
+      date: Date.now(),
+      empresaId: data.empresaId,
+      empresaNome: nome,
+      type: 'RECORRENTE',
+      isRecurrent: true,
+      recurrentDay: data.dayValue,
+      recurrentMonth: data.monthValue,
+      recurrentRule: data.frequency,
+      status: 'ATIVO',
+      createdAt: Date.now()
+    });
+  };
+
+  const handleSaveCalendario = async (data: any) => {
+    const emp = empresas.find(e => e.id === data.empresaId);
+    const sind = sindicatos.find(s => s.id === data.empresaId);
+    const nome = emp ? emp.nome : (sind ? sind.nome : '');
+
+    let finalSpecificDate = data.specificDate;
+    let eventDate = Date.now();
+    
+    if (data.calendarDateType === 'CALCULADA') {
+       let d = new Date(data.calcYear, data.calcMonth, data.calcDay);
+       if (d.getDay() === 6) d.setDate(d.getDate() - 1);
+       else if (d.getDay() === 0) d.setDate(d.getDate() - 2);
+       finalSpecificDate = format(d, 'yyyy-MM-dd');
+    }
+
+    if (finalSpecificDate) {
+      const parts = finalSpecificDate.split('-');
+      if (parts.length === 3) {
+        eventDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
+      }
+    }
+    await addDoc(collection(db, 'calendarEvents'), {
+      title: data.taskName,
+      date: eventDate,
+      empresaId: data.empresaId,
+      empresaNome: nome,
+      type: 'PRAZO',
+      isRecurrent: false,
+      specificDate: finalSpecificDate,
+      status: 'ATIVO',
+      createdAt: Date.now()
+    });
+  };
+
+  const handleSaveAviso = async (data: any) => {
+    const emp = empresas.find(e => e.id === data.empresaId);
+    const sind = sindicatos.find(s => s.id === data.empresaId);
+    const nome = emp ? emp.nome : (sind ? sind.nome : '');
+
+    let targetDate = new Date();
+    let dataInicioStr = data.dataInicio;
+    
+    if (data.tipoCalculo === 'DIAS') {
+        const parts = data.dataInicio.split('-');
+        if (parts.length === 3) {
+           targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+        targetDate.setDate(targetDate.getDate() + data.dias);
+    } else {
+        const parts = data.dataFim.split('-');
+        if (parts.length === 3) {
+            targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+    }
+    
+    await addDoc(collection(db, 'calendarEvents'), {
+      title: `Aviso Prévio: ${data.nome}`,
+      description: `Término do aviso prévio (Início: ${dataInicioStr.split('-').reverse().join('/')}).`,
+      date: targetDate.getTime(),
+      type: 'AVISO_PREVIO',
+      empresaId: data.empresaId,
+      empresaNome: nome,
+      status: 'ATIVO',
+      createdAt: Date.now()
+    });
+  };
+
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, action: () => void, message: string } | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -126,10 +208,13 @@ export default function CalendarioApp() {
       }
     }
 
-    const payload = {
+    const payload: any = {
       ...editingEvent,
-      empresaNome: empresaNome || undefined,
     };
+    if (empresaNome) {
+      payload.empresaNome = empresaNome;
+    }
+
 
     if (editingEvent.id) {
       await updateDoc(doc(db, 'calendarEvents', editingEvent.id), payload as any);
@@ -140,74 +225,6 @@ export default function CalendarioApp() {
       });
     }
     setIsModalOpen(false);
-  };
-
-  const handleSaveChecklistItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newChecklistItem.taskName || !newChecklistItem.empresaId) return;
-
-    let targetType = 'SPECIFIC_EMPRESA';
-    let targetName = '';
-    const emp = empresas.find(e => e.id === newChecklistItem.empresaId);
-    if (emp) {
-       targetName = emp.nome;
-    } else {
-       const sind = sindicatos.find(s => s.id === newChecklistItem.empresaId);
-       if (sind) {
-          targetName = sind.nome;
-          targetType = 'SPECIFIC_SINDICATO';
-       }
-    }
-
-    await addDoc(collection(db, 'checklistRules'), {
-      taskName: newChecklistItem.taskName,
-      type: newChecklistItem.category,
-      targetType: targetType,
-      targetId: newChecklistItem.empresaId,
-      dueDateRule: 'FIXED_DAY',
-      dayValue: newChecklistItem.dayValue,
-      monthValue: newChecklistItem.monthValue,
-      specificDate: newChecklistItem.specificDate,
-      frequency: newChecklistItem.isProgrammed ? newChecklistItem.frequency : 'CONSULTA',
-      createdAt: Date.now()
-    });
-
-    if (newChecklistItem.isProgrammed) {
-      let eventDate = Date.now();
-      if (newChecklistItem.frequency === 'ONCE' && newChecklistItem.specificDate) {
-        const parts = newChecklistItem.specificDate.split('-');
-        if (parts.length === 3) {
-          eventDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
-        }
-      }
-
-      await addDoc(collection(db, 'calendarEvents'), {
-        title: newChecklistItem.taskName,
-        date: eventDate,
-        empresaId: newChecklistItem.empresaId,
-        empresaNome: targetName,
-        type: newChecklistItem.frequency === 'ONCE' ? 'PRAZO' : 'RECORRENTE',
-        isRecurrent: newChecklistItem.frequency !== 'ONCE',
-        recurrentDay: newChecklistItem.dayValue,
-        recurrentMonth: newChecklistItem.monthValue,
-        specificDate: newChecklistItem.specificDate,
-        recurrentRule: newChecklistItem.frequency !== 'ONCE' ? newChecklistItem.frequency : undefined,
-        status: 'ATIVO',
-        createdAt: Date.now()
-      });
-    }
-
-    setIsModalOpen(false);
-    setNewChecklistItem({
-      taskName: '',
-      isProgrammed: false,
-      frequency: 'MONTHLY_EXACT',
-      dayValue: 5,
-      monthValue: 0,
-      specificDate: format(new Date(), 'yyyy-MM-dd'),
-      category: 'FOLHA',
-      empresaId: ''
-    });
   };
 
   const handleDeleteEvent = async (id: string) => {
@@ -338,6 +355,13 @@ export default function CalendarioApp() {
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center space-x-2 shadow-lg h-full"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Adicionar</span>
+          </button>
         </div>
       </div>
 
@@ -461,27 +485,7 @@ export default function CalendarioApp() {
               </button>
             </div>
             
-            {!editingEvent.id && (
-              <div className="flex border-b border-slate-800 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setModalTab('EVENT')}
-                  className={`flex-1 py-3 text-sm font-bold text-center transition-colors ${modalTab === 'EVENT' ? 'bg-indigo-600/10 text-indigo-400 border-b-2 border-indigo-500' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
-                >
-                  Lembrete Simples
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('CHECKLIST')}
-                  className={`flex-1 py-3 text-sm font-bold text-center transition-colors ${modalTab === 'CHECKLIST' ? 'bg-emerald-600/10 text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
-                >
-                  Adicionar ao Checklist
-                </button>
-              </div>
-            )}
-
             <div className="overflow-y-auto custom-scrollbar">
-              {modalTab === 'EVENT' || editingEvent.id ? (
                 <form onSubmit={handleSaveEvent} className="p-6 space-y-4">
                   {editingEvent.id && !!sindicatos.find(s => s.id === editingEvent.empresaId) && (
                     <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-start space-x-3 text-amber-400 mb-4">
@@ -562,144 +566,6 @@ export default function CalendarioApp() {
                     </div>
                   </div>
                 </form>
-              ) : (
-                <form onSubmit={handleSaveChecklistItem} className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Entidade (Empresa/Sindicato) *</label>
-                    <select 
-                      required
-                      value={newChecklistItem.empresaId} 
-                      onChange={e => setNewChecklistItem({...newChecklistItem, empresaId: e.target.value})} 
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors"
-                    >
-                      <option value="" disabled>Selecione...</option>
-                      <optgroup label="Empresas">
-                        {empresas.map(emp => (
-                          <option key={emp.id} value={emp.id}>{emp.nome}</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Sindicatos">
-                        {sindicatos.map(s => (
-                          <option key={s.id} value={s.id}>{s.nome}</option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Categoria *</label>
-                    <select 
-                      required
-                      value={newChecklistItem.category} 
-                      onChange={e => setNewChecklistItem({...newChecklistItem, category: e.target.value})} 
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors"
-                    >
-                      <option value="FOLHA">Folha de Pagamento</option>
-                      <option value="FERIAS">Férias</option>
-                      <option value="RESCISAO">Rescisão</option>
-                      <option value="MONTHLY">Obrigações Mensais</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Descrição da Tarefa *</label>
-                    <input type="text" required placeholder="Ex: Verificar FGTS" value={newChecklistItem.taskName} onChange={e => setNewChecklistItem({...newChecklistItem, taskName: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors" />
-                  </div>
-
-                  <div className="bg-slate-950 rounded-xl p-1 border border-slate-800 flex">
-                    <button
-                      type="button"
-                      onClick={() => setNewChecklistItem({...newChecklistItem, isProgrammed: false})}
-                      className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${!newChecklistItem.isProgrammed ? 'bg-slate-800 text-emerald-400 shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                      Consulta / Check
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNewChecklistItem({...newChecklistItem, isProgrammed: true})}
-                      className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${newChecklistItem.isProgrammed ? 'bg-slate-800 text-indigo-400 shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                      Programado
-                    </button>
-                  </div>
-
-                  {newChecklistItem.isProgrammed && (
-                    <div className="bg-indigo-900/10 border border-indigo-500/20 rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2">
-                      <div>
-                        <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Frequência</label>
-                        <select 
-                          value={newChecklistItem.frequency}
-                          onChange={e => setNewChecklistItem({...newChecklistItem, frequency: e.target.value as ScheduleFrequency})}
-                          className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="MONTHLY_EXACT">Todo dia X do Mês</option>
-                          <option value="YEARLY">Anual (Uma vez ao ano)</option>
-                          <option value="ONCE">Apenas uma vez na data XX/XX/XXXX</option>
-                          <option value="NEAR_5">Sempre próximo ao Dia 05</option>
-                          <option value="NEAR_20">Sempre próximo ao Dia 20</option>
-                          <option value="NEAR_30">Sempre próximo ao Dia 30</option>
-                          <option value="WEEKLY">Semanal (Toda semana)</option>
-                          <option value="DAILY">Diário</option>
-                        </select>
-                      </div>
-
-                      {newChecklistItem.frequency === 'ONCE' && (
-                        <div>
-                          <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Data Específica</label>
-                          <input 
-                            type="date" required 
-                            value={newChecklistItem.specificDate} 
-                            onChange={e => setNewChecklistItem({...newChecklistItem, specificDate: e.target.value})}
-                            className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500"
-                          />
-                        </div>
-                      )}
-
-                      {(newChecklistItem.frequency === 'MONTHLY_EXACT' || newChecklistItem.frequency === 'YEARLY') && (
-                        <div className="flex gap-3">
-                          <div className="flex-1">
-                            <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Dia do Mês</label>
-                            <input 
-                              type="number" min="1" max="31" required 
-                              value={newChecklistItem.dayValue} 
-                              onChange={e => setNewChecklistItem({...newChecklistItem, dayValue: parseInt(e.target.value)})}
-                              className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500"
-                            />
-                          </div>
-                          {newChecklistItem.frequency === 'YEARLY' && (
-                            <div className="flex-1">
-                              <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Mês</label>
-                              <select 
-                                value={newChecklistItem.monthValue} 
-                                onChange={e => setNewChecklistItem({...newChecklistItem, monthValue: parseInt(e.target.value)})}
-                                className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500"
-                              >
-                                <option value={0}>Janeiro</option>
-                                <option value={1}>Fevereiro</option>
-                                <option value={2}>Março</option>
-                                <option value={3}>Abril</option>
-                                <option value={4}>Maio</option>
-                                <option value={5}>Junho</option>
-                                <option value={6}>Julho</option>
-                                <option value={7}>Agosto</option>
-                                <option value={8}>Setembro</option>
-                                <option value={9}>Outubro</option>
-                                <option value={10}>Novembro</option>
-                                <option value={11}>Dezembro</option>
-                              </select>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="pt-4 flex justify-end space-x-3 border-t border-slate-800 mt-4">
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
-                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-emerald-500/20">Salvar Checklist</button>
-                  </div>
-                </form>
-              )}
             </div>
           </div>
         </div>
@@ -731,6 +597,23 @@ export default function CalendarioApp() {
           </div>
         </div>
       )}
+
+      <UnifiedAddModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        empresas={empresas}
+        sindicatos={sindicatos}
+        initialEmpresaId={filterEmpresaId === 'ALL' ? undefined : filterEmpresaId}
+        processTabs={[
+          { id: 'FOLHA', label: 'Folha de Pagamento' },
+          { id: 'FERIAS', label: 'Férias' },
+          { id: 'RESCISAO', label: 'Rescisão' }
+        ]}
+        onSaveProcess={handleSaveProcess}
+        onSaveFixo={handleSaveFixo}
+        onSaveCalendario={handleSaveCalendario}
+        onSaveAviso={handleSaveAviso}
+      />
     </div>
   );
 }

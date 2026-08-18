@@ -453,7 +453,7 @@ ${e?.stack || 'N/A'}`);
       showNotification('Permita pop-ups para imprimir', 'error');
       return;
     }
-    const tituloExportacao = `TRCT - ${calculatedData.nome || 'COLABORADOR'}`.toUpperCase();
+    const tituloExportacao = `TRCT EXTRACONTABIL ${calculatedData.nome || 'COLABORADOR'}`.toUpperCase();
     const html = `
       <!DOCTYPE html>
       <html>
@@ -621,7 +621,7 @@ ${e?.stack || 'N/A'}`);
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `TRCT - ${calculatedData.nome || 'COLABORADOR'}.xlsx`.toUpperCase();
+    a.download = `TRCT EXTRACONTABIL ${calculatedData.nome || 'COLABORADOR'}.xlsx`.toUpperCase();
     a.click();
     window.URL.revokeObjectURL(url);
   };

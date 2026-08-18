@@ -348,7 +348,15 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `RECIBO EXTRACONTABIL ${dadosFuncionario.nome?.trim() || 'FUNCIONARIO'} - ${dadosEmpresa.geracaoEmLote ? 'LOTE' : dadosEmpresa.mesAno}.xlsx`.toUpperCase();
+      const formatMesAno = (ma: string) => ma && ma.includes('-') ? `${ma.split('-')[1]}/${ma.split('-')[0]}` : ma;
+      const mesRef = dadosEmpresa.geracaoEmLote ? 'LOTE' : formatMesAno(dadosEmpresa.mesAno);
+      const nomeFormatado = dadosFuncionario.nome?.trim() || 'FUNCIONARIO';
+      
+      const fileName = dadosEmpresa.tipoRecibo === 'prolabore'
+        ? `[PROLABORE] [${mesRef}] [${nomeFormatado}].xlsx`.toUpperCase()
+        : `RECIBO EXTRACONTABIL - [${mesRef}] - [${nomeFormatado}].xlsx`.toUpperCase();
+        
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -766,10 +774,17 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                   <h3 className="text-xl font-bold text-slate-200 mb-2">Impressão Direta</h3>
                   <p className="text-slate-400 text-sm mb-8 flex-1">Gera a prévia para impressão ou PDF.</p>
                   <button onClick={() => {
+                    const formatMesAno = (ma: string) => ma && ma.includes('-') ? `${ma.split('-')[1]}/${ma.split('-')[0]}` : ma;
+                    const mesRef = dadosEmpresa.geracaoEmLote ? 'LOTE' : formatMesAno(dadosEmpresa.mesAno);
+                    const nomeFormatado = dadosFuncionario.nome?.trim() || 'FUNCIONARIO';
+                    const docTitle = (dadosEmpresa.tipoRecibo === 'prolabore'
+                      ? `[PROLABORE] [${mesRef}] [${nomeFormatado}]`
+                      : `RECIBO EXTRACONTABIL - [${mesRef}] - [${nomeFormatado}]`).toUpperCase();
+                      
                     const printWindow = window.open('', '_blank');
                     if (!printWindow) return alert('Permita pop-ups.');
                     printWindow.document.write(`
-                      <!DOCTYPE html><html><head><title>RECIBO EXTRACONTABIL ${dadosFuncionario.nome || 'FUNCIONARIO'} - ${dadosEmpresa.geracaoEmLote ? 'LOTE' : dadosEmpresa.mesAno}</title>
+                      <!DOCTYPE html><html><head><title>${docTitle}</title>
                       <style>@media print { @page { size: A4 portrait; margin: 5mm; } body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: Arial, Helvetica, sans-serif; } }</style>
                       </head><body><div style="display:flex; flex-direction:column; gap:16px;">
                       ${document.getElementById('print-area')?.innerHTML}

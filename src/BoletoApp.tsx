@@ -148,7 +148,7 @@ export default function BoletoApp() {
         }
         
         if (foundName) {
-           setFileName(`BOLETO - ${foundName}`);
+           setFileName(`BOLETO ${foundName}`);
         }
       } catch (textErr) {
         console.error('Erro ao extrair texto com pdfjs:', textErr);

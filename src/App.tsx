@@ -131,11 +131,11 @@ export default function App() {
       if (!exists1) {
         await addDoc(collection(db, 'calendarEvents'), {
           title: title1,
-          description: `${experienciaAviso.dias1} dias. Empresa: ${experienciaAviso.nomeEmpresa}`,
+          description: `${experienciaAviso.dias1} dias. Empresa: ${experienciaAviso.nomeEmpresa || ''}`,
           date: experienciaAviso.fimExp1.getTime(),
           type: 'PRAZO',
           empresaId: experienciaAviso.empresaId || '',
-          empresaNome: experienciaAviso.nomeEmpresa,
+          ...(experienciaAviso.nomeEmpresa ? { empresaNome: experienciaAviso.nomeEmpresa } : {}),
           status: 'ATIVO',
           createdAt: Date.now()
         });
@@ -144,11 +144,11 @@ export default function App() {
       if (experienciaAviso.prorrogaDate && experienciaAviso.dias2 && !exists2) {
         await addDoc(collection(db, 'calendarEvents'), {
           title: title2,
-          description: `Prorrogação de ${experienciaAviso.dias2} dias. Empresa: ${experienciaAviso.nomeEmpresa}`,
+          description: `Prorrogação de ${experienciaAviso.dias2} dias. Empresa: ${experienciaAviso.nomeEmpresa || ''}`,
           date: experienciaAviso.prorrogaDate.getTime(),
           type: 'PRAZO',
           empresaId: experienciaAviso.empresaId || '',
-          empresaNome: experienciaAviso.nomeEmpresa,
+          ...(experienciaAviso.nomeEmpresa ? { empresaNome: experienciaAviso.nomeEmpresa } : {}),
           status: 'ATIVO',
           createdAt: Date.now()
         });
@@ -322,15 +322,12 @@ export default function App() {
     
     try {
       let printTitle = 'DOCUMENTOS EM LOTE';
-      if (batchTemplateIds.length === 1) {
-         const tplId = batchTemplateIds[0];
-         let tplName = 'Documento';
-         if (tplId === 'tpl-custom') {
-           tplName = activeTemplateId === 'tpl-custom' ? templateName : customTemplate.name;
-         } else {
-           const tpl = templates.find(t => t.id === tplId);
-           if (tpl) tplName = tpl.name;
-         }
+      if (batchTemplateIds.length > 0) {
+         const tplNames = batchTemplateIds.map(id => {
+           if (id === 'tpl-custom') return activeTemplateId === 'tpl-custom' ? templateName : customTemplate.name;
+           const tpl = templates.find(t => t.id === id);
+           return tpl ? tpl.name : 'Documento';
+         }).join(' e ');
 
          const collabNames = collaboratorsData.map((collab, index) => {
            const nameKey = collaboratorVariables.find(v => v.toUpperCase().includes('NOME'));
@@ -341,8 +338,8 @@ export default function App() {
            return firstVal || `Colaborador ${index + 1}`;
          });
 
-         const allCollabNames = collabNames.join(', ');
-         printTitle = `${tplName} - ${allCollabNames}`;
+         const allCollabNames = Array.from(new Set(collabNames)).join(', ');
+         printTitle = `${tplNames} - ${allCollabNames}`.toUpperCase();
       }
 
       const printWindow = window.open('', '_blank');

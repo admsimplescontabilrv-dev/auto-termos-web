@@ -28,7 +28,7 @@ const AiCommandSchema = z.object({
 
 const ExtractPdfSchema = z.object({
   pdfBase64: z.string().min(1, "PDF não enviado."),
-  type: z.enum(['cnpj', 'recibo', 'admissional', 'trct', 'custom']).default('admissional'),
+  type: z.enum(['cnpj', 'recibo', 'admissional', 'trct', 'custom', 'aviso_previo']).default('admissional'),
   globalVars: z.array(z.string()).optional(),
   collabVars: z.array(z.string()).optional(),
   registeredCompanies: z.array(z.object({
@@ -70,7 +70,9 @@ app.set('trust proxy', 1);
     const clientKey = req.headers['x-api-key'];
     const serverKey = process.env.API_SECRET_KEY; // Você deve criar essa variável na Vercel
     
-    if (!serverKey) return next(); // Bypass se não estiver configurado (dev local)
+    if (!serverKey) {
+      return res.status(500).json({ error: 'Erro: API_SECRET_KEY ausente.' });
+    }
     if (clientKey !== serverKey) {
       return res.status(401).json({ error: 'Acesso negado. Chave de API ausente ou inválida.' });
     }
@@ -236,37 +238,55 @@ REGRAS IMPORTANTES:
 - Se não encontrar um campo, use string vazia ou array vazio.
 Retorne SOMENTE o JSON.`;
       } else if (type === 'trct') {
-        systemInstruction = `Extraia os dados deste TRCT para o seguinte esquema JSON estrito.
+        systemInstruction = `Extraia os dados deste Termo de Rescisão de Contrato de Trabalho (TRCT) para o seguinte esquema JSON estrito.
 Retorne APENAS o objeto JSON. Se o campo não existir, use "".
 {
-  "cnpj": "CNPJ da empresa (formatado)",
-  "razaoSocial": "Razão social ou nome da empresa",
-  "enderecoEmpresa": "Endereço da empresa (Logradouro, número, complemento)",
-  "bairroEmpresa": "Bairro da empresa",
-  "municipioEmpresa": "Município da empresa",
-  "ufEmpresa": "UF da empresa (sigla com 2 letras)",
-  "cepEmpresa": "CEP da empresa (formatado)",
-  "pis": "PIS/PASEP do trabalhador",
-  "nome": "Nome completo do trabalhador",
-  "enderecoTrabalhador": "Endereço do trabalhador",
-  "bairroTrabalhador": "Bairro do trabalhador",
-  "municipioTrabalhador": "Município do trabalhador",
-  "ufTrabalhador": "UF do trabalhador (sigla com 2 letras)",
-  "cepTrabalhador": "CEP do trabalhador",
-  "ctps": "Número e série da CTPS",
-  "cpf": "CPF do trabalhador (formatado)",
-  "dataNascimento": "Data de nascimento (YYYY-MM-DD)",
-  "nomeMae": "Nome da mãe do trabalhador",
-  "tipoContrato": "Tipo de contrato",
-  "causaAfastamento": "Causa do afastamento ou rescisão",
+  "cnpj": "CNPJ do Empregador (formatado)",
+  "razaoSocial": "Razão Social/Nome do Empregador",
+  "enderecoEmpresa": "Endereço do Empregador",
+  "bairroEmpresa": "Bairro do Empregador",
+  "municipioEmpresa": "Município do Empregador",
+  "ufEmpresa": "UF do Empregador",
+  "cepEmpresa": "CEP do Empregador",
+  "cnae": "CNAE do Empregador",
+  "pis": "PIS/PASEP do Trabalhador",
+  "nome": "Nome do Trabalhador",
+  "enderecoTrabalhador": "Endereço do Trabalhador",
+  "bairroTrabalhador": "Bairro do Trabalhador",
+  "municipioTrabalhador": "Município do Trabalhador",
+  "ufTrabalhador": "UF do Trabalhador",
+  "cepTrabalhador": "CEP do Trabalhador",
+  "ctps": "CTPS (Número, Série, UF)",
+  "cpf": "CPF do Trabalhador",
+  "dataNascimento": "Data de Nascimento (YYYY-MM-DD)",
+  "nomeMae": "Nome da Mãe do Trabalhador",
+  "tipoContrato": "Tipo de Contrato",
+  "causaAfastamento": "Causa do Afastamento",
   "remuneracaoMesAnterior": 0.00,
-  "dataAdmissao": "Data de admissão (YYYY-MM-DD)",
-  "dataAvisoPrevio": "Data do aviso prévio (YYYY-MM-DD)",
-  "dataAfastamento": "Data de afastamento/demissão (YYYY-MM-DD)",
-  "codigoAfastamento": "Código de afastamento",
-  "sindicato": "Nome do sindicato da categoria profissional",
-  "cnpjSindicato": "CNPJ do sindicato"
+  "dataAdmissao": "Data de Admissão (YYYY-MM-DD)",
+  "dataAvisoPrevio": "Data do Aviso Prévio (YYYY-MM-DD)",
+  "dataAfastamento": "Data de Afastamento (YYYY-MM-DD)",
+  "codigoAfastamento": "Código de Afastamento",
+  "pensaoAlimenticia": 0.00,
+  "pensaoAlimenticiaFGTS": 0.00,
+  "sindicato": "Sindicato da Categoria",
+  "cnpjSindicato": "CNPJ do Sindicato"
 }`;
+      } else if (type === 'aviso_previo') {
+        systemInstruction = `Extraia os dados deste Aviso Prévio e retorne EXATAMENTE este JSON:
+{
+  "dataAviso": "YYYY-MM-DD",
+  "dataTermino": "YYYY-MM-DD",
+  "duracaoDias": 30,
+  "nomeEmpresa": "Razão Social",
+  "nomeColaborador": "Nome Completo"
+}
+INSTRUÇÕES CRÍTICAS PARA O AVISO PRÉVIO:
+1. Encontre a data em que o aviso foi assinado/entregue (geralmente no rodapé ou cabeçalho). Preencha em "dataAviso".
+2. Encontre a quantidade de dias do aviso (ex: 30 dias, 33 dias). Preencha em "duracaoDias" como número.
+3. Se não encontrar a data de término explícita no documento, DEIXE EM BRANCO (""). NÃO TENTE CALCULAR.
+4. Extraia o nome da empresa e do funcionário exatamente como constam no documento.
+Se algum campo não existir, use string vazia. Retorne SOMENTE o JSON válido.`;
       } else if (type === 'custom') {
         const globals = (globalVars || []).join(', ');
         const collabs = (collabVars || []).join(', ');
