@@ -38,6 +38,7 @@ export interface ChecklistRule {
   specificDate?: string; // YYYY-MM-DD
   taskName?: string;
   frequency?: ScheduleFrequency; // Reusing this for the new UI
+  order?: number;
 }
 
 export interface ChecklistItem {
@@ -59,6 +60,7 @@ export interface ChecklistItem {
 
 export interface CalendarEvent {
   id: string;
+  originalEventId?: string; // Usado para eventos gerados a partir de eventos recorrentes
   title: string;
   description?: string;
   date: string | number;
@@ -127,4 +129,20 @@ export interface ResultadoCalculo {
   salarioBase: number;
   baseFGTS: number;
   valorFGTS: number;
+}
+
+export interface Colaborador {
+  id?: string;
+  nome: string;
+  ativo: boolean;
+  createdAt: number;
+}
+
+export interface BancoHorasLancamento {
+  id?: string;
+  colaboradorId: string;
+  mesAno: string; // Formato "YYYY-MM"
+  minutosPositivos: number;
+  minutosNegativos: number;
+  observacoes: string;
 }

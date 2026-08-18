@@ -2,17 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from './lib/firebase';
 import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Empresa, Sindicato, ChecklistRule, CalendarEvent, ScheduleFrequency } from './types';
-import { CheckSquare, Plus, Trash2, Calendar, FileText, Briefcase, Building2, AlertCircle, Search, Clock, CheckCircle2, X, ChevronLeft, ChevronRight, Pencil, Upload, Loader2 } from 'lucide-react';
+import { CheckSquare, Plus, Trash2, Calendar, FileText, Briefcase, Building2, AlertCircle, Search, Clock, CheckCircle2, X, ChevronLeft, ChevronRight, Pencil, Upload, Loader2, GripVertical } from 'lucide-react';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import UnifiedAddModal from './components/UnifiedAddModal';
+import RelatoriosChecklistTab from './components/RelatoriosChecklistTab';
 
 interface ChecklistsAppProps {
   onEditEntity?: (id: string, type: 'EMPRESA' | 'SINDICATO') => void;
 }
 
 export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
+  const [mainTab, setMainTab] = useState<'gerenciamento' | 'relatorios'>('gerenciamento');
+  
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [sindicatos, setSindicatos] = useState<Sindicato[]>([]);
   
@@ -33,6 +36,93 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, action: () => void, message: string } | null>(null);
+
+  const [editingRule, setEditingRule] = useState<ChecklistRule | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [dragEnabled, setDragEnabled] = useState<string | null>(null);
+
+  const [newCategoryNameEdit, setNewCategoryNameEdit] = useState('');
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+
+  const [dragEventEnabled, setDragEventEnabled] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, ruleId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `rule:${ruleId}`);
+    const target = e.currentTarget;
+    setTimeout(() => {
+      if (target) target.classList.add('opacity-50');
+    }, 0);
+  };
+
+  const handleEventDragStart = (e: React.DragEvent<HTMLDivElement>, eventId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `event:${eventId}`);
+    const target = e.currentTarget;
+    setTimeout(() => {
+      if (target) target.classList.add('opacity-50');
+    }, 0);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetRuleId: string) => {
+    e.preventDefault();
+    const draggedData = e.dataTransfer.getData('text/plain');
+    if (!draggedData.startsWith('rule:')) return;
+    const draggedRuleId = draggedData.replace('rule:', '');
+    
+    if (!draggedRuleId || draggedRuleId === targetRuleId) {
+       return;
+    }
+
+    const newRules = [...currentProcessRules];
+    const draggedIndex = newRules.findIndex(r => r.id === draggedRuleId);
+    const targetIndex = newRules.findIndex(r => r.id === targetRuleId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const [draggedItem] = newRules.splice(draggedIndex, 1);
+    newRules.splice(targetIndex, 0, draggedItem);
+
+    // Update the order for all affected items
+    const updates = newRules.map((rule, idx) => {
+      return setDoc(doc(db, 'checklistRules', rule.id), { order: idx }, { merge: true });
+    });
+
+    await Promise.all(updates);
+  };
+
+  const handleEventDrop = async (e: React.DragEvent<HTMLDivElement>, targetEventId: string) => {
+    e.preventDefault();
+    const draggedData = e.dataTransfer.getData('text/plain');
+    if (!draggedData.startsWith('event:')) return;
+    const draggedEventId = draggedData.replace('event:', '');
+    
+    if (!draggedEventId || draggedEventId === targetEventId) return;
+
+    const newEvents = [...currentMonthEvents];
+    const draggedIndex = newEvents.findIndex(ev => ev.id === draggedEventId);
+    const targetIndex = newEvents.findIndex(ev => ev.id === targetEventId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const [draggedItem] = newEvents.splice(draggedIndex, 1);
+    newEvents.splice(targetIndex, 0, draggedItem);
+
+    const updates = newEvents.map((ev, idx) => {
+      return setDoc(doc(db, 'calendarEvents', ev.id), { order: idx }, { merge: true });
+    });
+
+    await Promise.all(updates);
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.currentTarget) e.currentTarget.classList.remove('opacity-50');
+  };
 
   const handleSaveProcess = async (data: any) => {
     const isSindicato = sindicatos.some(s => s.id === data.empresaId);
@@ -280,12 +370,14 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   const nextMonths = [0, 1, 2].map(i => addMonths(new Date(), i));
 
   // Determine dynamic tabs
-  const baseTabs = [
-    { id: 'RESCISAO', label: 'Rescisão' },
-    { id: 'FERIAS', label: 'Férias' }
-  ];
-  const customTabIds = Array.from(new Set(checklistRules.map(r => r.type)) as Set<string>).filter(t => !baseTabs.find(b => b.id === t));
-  const allTabs = [...baseTabs, ...customTabIds.map(id => ({ id, label: id }))];
+  const allTabs = Array.from(new Set([
+    ...checklistRules.filter(r => r.targetId === selectedEntity?.id).map(r => r.type || ''),
+    ...(selectedEntity?.type === 'EMPRESA' ? checklistRules.filter(r => r.targetType === 'SPECIFIC_SINDICATO').map(r => r.type || '') : []),
+    ...(activeProcessType && !checklistRules.some(r => r.type === activeProcessType && (r.targetId === selectedEntity?.id || r.targetType === 'SPECIFIC_SINDICATO')) ? [activeProcessType] : [])
+  ])).filter(Boolean).map(type => ({
+    id: type,
+    label: type
+  }));
 
   const toggleTransientCheck = (ruleId: string) => {
     setTransientChecks(prev => ({
@@ -294,7 +386,9 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     }));
   };
 
-  const currentProcessRules = checklistRules.filter(r => r.type === activeProcessType && r.taskName !== '___CATEGORY_PLACEHOLDER___' && r.frequency === 'CONSULTA');
+  const currentProcessRules = checklistRules
+    .filter(r => r.type === activeProcessType && r.taskName !== '___CATEGORY_PLACEHOLDER___' && r.frequency === 'CONSULTA')
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   const filteredEmpresas = empresas.filter(e => e.nome.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredSindicatos = sindicatos.filter(s => s.nome.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -303,16 +397,41 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     if (e.isRecurrent) return true;
     const eDate = new Date(e.date);
     return eDate.getMonth() === currentRecurrentMonth.getMonth() && eDate.getFullYear() === currentRecurrentMonth.getFullYear();
-  });
+  }).sort((a, b) => (a.order || 0) - (b.order || 0));
 
   return (
-    <div className="flex-1 w-full max-w-7xl mx-auto p-6 md:p-8 flex flex-col h-full animate-in fade-in zoom-in-95 duration-200">
-      <div className="flex items-center space-x-3 mb-8">
-        <CheckSquare className="w-8 h-8 text-indigo-400" />
-        <h1 className="text-3xl font-medium text-indigo-400 tracking-wider uppercase">Programação e Processos</h1>
+    <div className="flex-1 w-full max-w-7xl mx-auto p-6 md:p-8 flex flex-col h-full animate-in fade-in zoom-in-95 duration-200 print:p-0 print:m-0 print:max-w-none">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 print:hidden">
+        <div className="flex items-center space-x-3 mb-4 sm:mb-0">
+          <CheckSquare className="w-8 h-8 text-indigo-400" />
+          <h1 className="text-3xl font-medium text-indigo-400 tracking-wider uppercase">Programação e Processos</h1>
+        </div>
+        
+        <div className="flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <button
+            onClick={() => setMainTab('gerenciamento')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              mainTab === 'gerenciamento' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Gerenciamento
+          </button>
+          <button
+            onClick={() => setMainTab('relatorios')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              mainTab === 'relatorios' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Relatórios
+          </button>
+        </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-700/50 p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center gap-6 shadow-xl relative" ref={dropdownRef}>
+      {mainTab === 'relatorios' ? (
+        <RelatoriosChecklistTab empresas={empresas} />
+      ) : (
+        <>
+          <div className="bg-slate-900 border border-slate-700/50 p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center gap-6 shadow-xl relative" ref={dropdownRef}>
         <div className="flex-1 w-full relative">
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
             Buscar Empresa ou Sindicato
@@ -441,7 +560,15 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                   const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id;
 
                   return (
-                    <div key={event.id || `recurrent-${i}`} className={`bg-slate-800/50 border border-slate-700 rounded-lg p-3 flex flex-col group transition-colors ${isCompleted ? 'border-emerald-500/50 bg-emerald-500/5' : ''}`}>
+                    <div 
+                      key={event.id || `recurrent-${i}`} 
+                      draggable={true}
+                      onDragStart={(e) => handleEventDragStart(e, event.id)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleEventDrop(e, event.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`bg-slate-800/50 border border-slate-700 rounded-lg p-3 flex flex-col group transition-colors ${isCompleted ? 'border-emerald-500/50 bg-emerald-500/5' : ''}`}
+                    >
                       <div className="flex justify-between items-start">
                         <div className="flex items-start space-x-3">
                           <button 
@@ -470,6 +597,19 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                             `Dia ${format(new Date(event.date), 'dd/MM')}`
                           )}
                         </span>
+                        {!isFromSindicato && (
+                          <div className="flex items-center space-x-1 ml-3">
+                            <button onClick={() => setEditingEvent(event)} className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <div 
+                              className={`p-2 text-slate-500 hover:text-indigo-400 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity`}
+                              title="Arrastar para Reordenar"
+                            >
+                              <GripVertical className="w-4 h-4" />
+                            </div>
+                          </div>
+                        )}
                       </div>
                       {isCompleted && completedAt && (
                         <div className="mt-2 pl-8 flex items-center space-x-1">
@@ -493,12 +633,19 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                        {calendarEvents.filter(e => !e.isRecurrent && new Date(e.date).getMonth() === month.getMonth() && new Date(e.date).getFullYear() === month.getFullYear()).map((event, j) => {
                          const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id;
                          return (
-                         <div key={event.id || `avulso-${i}-${j}`} className="text-sm flex items-center">
+                         <div key={event.id || `avulso-${i}-${j}`} className="group text-sm flex items-center">
                            <span className="text-slate-300 font-medium">{format(new Date(event.date), 'dd/MM')}</span>
                            <span className="text-slate-500 mx-2">-</span>
                            <span className="text-slate-400">{event.title}</span>
                            {isFromSindicato && (
                              <span className="ml-2 text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
+                           )}
+                           {!isFromSindicato && (
+                             <div className="flex space-x-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                               <button onClick={() => setEditingEvent(event)} className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded transition-opacity">
+                                 <Pencil className="w-4 h-4" />
+                               </button>
+                             </div>
                            )}
                          </div>
                          );
@@ -522,19 +669,32 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
 
             {/* Horizontal Tabs */}
             <div className="flex items-center space-x-2 mb-6 overflow-x-auto custom-scrollbar pb-2">
-              {allTabs.map((tab, i) => (
-                <button
-                  key={tab.id || `tab-${i}`}
-                  onClick={() => setActiveProcessType(tab.id)}
-                  className={`px-6 py-3 rounded-xl font-bold tracking-wide transition-all whitespace-nowrap ${
-                    activeProcessType === tab.id 
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' 
-                      : 'bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-700/50'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+              {allTabs.map((tab, i) => {
+                const isSindicatoOnlyTab = selectedEntity?.type === 'EMPRESA' && checklistRules.some(r => r.type === tab.id && r.targetType === 'SPECIFIC_SINDICATO') && !checklistRules.some(r => r.type === tab.id && r.targetId === selectedEntity?.id);
+                return (
+                <div key={tab.id || `tab-${i}`} className="relative group flex items-center shrink-0">
+                  <button
+                    onClick={() => setActiveProcessType(tab.id)}
+                    className={`px-6 py-3 rounded-xl font-bold tracking-wide transition-all whitespace-nowrap ${!isSindicatoOnlyTab ? 'pr-10' : ''} ${
+                      activeProcessType === tab.id 
+                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' 
+                        : 'bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-700/50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                  {!isSindicatoOnlyTab && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingCategory(tab.id); setNewCategoryNameEdit(tab.label); }}
+                      className={`absolute right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${activeProcessType === tab.id ? 'text-emerald-100 hover:bg-emerald-500' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
+                      title="Editar/Excluir Categoria"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                );
+              })}
               <button
                 onClick={() => setIsNewCategoryModalOpen(true)}
                 className="px-4 py-3 rounded-xl border border-dashed border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors flex items-center space-x-2 shrink-0"
@@ -570,7 +730,15 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                   const isChecked = !!transientChecks[rule.id];
                   const isFromSindicato = selectedEntity?.type === 'EMPRESA' && rule.targetId !== selectedEntity.id;
                   return (
-                  <div key={rule.id || `rule-${i}`} className={`flex items-center justify-between bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl group transition-colors ${isChecked ? 'border-emerald-500/50 bg-emerald-500/5' : 'hover:border-emerald-500/30'}`}>
+                  <div 
+                    key={rule.id || `rule-${i}`} 
+                    draggable={true}
+                    onDragStart={(e) => handleDragStart(e, rule.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, rule.id)}
+                    onDragEnd={handleDragEnd}
+                    className={`flex items-center justify-between bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl group transition-all ${isChecked ? 'border-emerald-500/50 bg-emerald-500/5' : 'hover:border-emerald-500/30'}`}
+                  >
                     <div className="flex items-start space-x-4">
                       <button 
                         onClick={() => toggleTransientCheck(rule.id)}
@@ -588,13 +756,21 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                       </div>
                     </div>
                     {!isFromSindicato && (
-                      <button 
-                        onClick={() => handleDeleteRule(rule.id, rule.taskName || '')}
-                        className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-2"
-                        title="Remover Item"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center space-x-1">
+                        <button 
+                          onClick={() => setEditingRule(rule)}
+                          className="text-slate-500 hover:text-indigo-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Editar Item"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <div 
+                          className={`p-2 text-slate-500 hover:text-indigo-400 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity`}
+                          title="Arrastar para Reordenar"
+                        >
+                          <GripVertical className="w-5 h-5" />
+                        </div>
+                      </div>
                     )}
                   </div>
                   );
@@ -609,6 +785,8 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* New Category Modal */}
@@ -648,6 +826,208 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
         onSaveCalendario={handleSaveCalendario}
         onSaveAviso={handleSaveAviso}
       />
+
+      {/* Edit Category Modal */}
+      {editingCategory && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h2 className="text-lg font-medium text-slate-200 mb-4">Editar Processo (Checklist)</h2>
+            <input 
+              type="text" 
+              value={newCategoryNameEdit} 
+              onChange={e => setNewCategoryNameEdit(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors mb-6"
+            />
+            <div className="flex justify-between items-center">
+              <button 
+                onClick={() => {
+                  setConfirmModal({
+                    isOpen: true,
+                    message: `Deseja excluir o processo "${editingCategory}" e TODOS os seus itens?\n\nItens afetados: ${currentProcessRules.length}`,
+                    action: async () => {
+                      const rulesToDelete = currentProcessRules.filter(r => r.processType === editingCategory);
+                      await Promise.all(rulesToDelete.map(r => deleteDoc(doc(db, 'checklistRules', r.id))));
+                      
+                      if (activeProcessType === editingCategory) {
+                        const remaining = allTabs.filter(t => t.id !== editingCategory);
+                        setActiveProcessType(remaining.length > 0 ? remaining[0].id : '');
+                      }
+                      setEditingCategory(null);
+                      setConfirmModal(null);
+                    }
+                  });
+                }}
+                className="text-red-400 hover:text-red-300 flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="text-sm font-medium">Excluir Processo</span>
+              </button>
+              <div className="flex space-x-3">
+                <button onClick={() => setEditingCategory(null)} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
+                <button 
+                  onClick={async () => {
+                    if (!newCategoryNameEdit.trim()) return;
+                    const newType = newCategoryNameEdit.trim().toUpperCase();
+                    const rulesToUpdate = currentProcessRules.filter(r => r.processType === editingCategory);
+                    await Promise.all(rulesToUpdate.map(r => setDoc(doc(db, 'checklistRules', r.id), { processType: newType }, { merge: true })));
+                    
+                    if (activeProcessType === editingCategory) {
+                      setActiveProcessType(newType);
+                    }
+                    setEditingCategory(null);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+                >Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {editingCategory && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h2 className="text-lg font-medium text-slate-200 mb-4">Editar Processo (Checklist)</h2>
+            <input 
+              type="text" 
+              value={newCategoryNameEdit} 
+              onChange={e => setNewCategoryNameEdit(e.target.value)} 
+              className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors mb-6"
+            />
+            <div className="flex justify-between items-center">
+              <button 
+                onClick={() => {
+                  const rulesToDelete = checklistRules.filter(r => r.type === editingCategory && r.targetId === selectedEntity?.id);
+                  setConfirmModal({
+                    isOpen: true,
+                    message: `Deseja excluir o processo "${editingCategory}" e TODOS os seus itens?\n\nItens afetados: ${rulesToDelete.length}`,
+                    action: async () => {
+                      await Promise.all(rulesToDelete.map(r => deleteDoc(doc(db, 'checklistRules', r.id))));
+                      
+                      if (activeProcessType === editingCategory) {
+                        const remaining = allTabs.filter(t => t.id !== editingCategory);
+                        setActiveProcessType(remaining.length > 0 ? remaining[0].id : '');
+                      }
+                      setEditingCategory(null);
+                      setConfirmModal(null);
+                    }
+                  });
+                }}
+                className="text-red-400 hover:text-red-300 flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="text-sm font-medium">Excluir Processo</span>
+              </button>
+              <div className="flex space-x-3">
+                <button onClick={() => setEditingCategory(null)} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
+                <button 
+                  onClick={async () => {
+                    if (!newCategoryNameEdit.trim()) return;
+                    const newType = newCategoryNameEdit.trim().toUpperCase();
+                    const rulesToUpdate = checklistRules.filter(r => r.type === editingCategory && r.targetId === selectedEntity?.id);
+                    await Promise.all(rulesToUpdate.map(r => setDoc(doc(db, 'checklistRules', r.id), { type: newType }, { merge: true })));
+                    
+                    if (activeProcessType === editingCategory) {
+                      setActiveProcessType(newType);
+                    }
+                    setEditingCategory(null);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+                >Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Rule Modal */}
+      {editingRule && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h2 className="text-lg font-medium text-slate-200 mb-4">Editar Item de Checklist</h2>
+            <input 
+              type="text" 
+              value={editingRule.taskName || ''} 
+              onChange={e => setEditingRule({...editingRule, taskName: e.target.value})} 
+              className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors mb-6"
+            />
+            <div className="flex justify-between items-center">
+              <button 
+                onClick={() => {
+                  setConfirmModal({
+                    isOpen: true,
+                    message: 'Deseja excluir este item?',
+                    action: async () => {
+                      await handleDeleteRule(editingRule.id, editingRule.taskName || '');
+                      setEditingRule(null);
+                      setConfirmModal(null);
+                    }
+                  });
+                }}
+                className="text-red-400 hover:text-red-300 flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="text-sm font-medium">Excluir Item</span>
+              </button>
+              <div className="flex space-x-3">
+                <button onClick={() => setEditingRule(null)} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
+                <button 
+                  onClick={async () => {
+                    await setDoc(doc(db, 'checklistRules', editingRule.id), { taskName: editingRule.taskName }, { merge: true });
+                    setEditingRule(null);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+                >Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Event Modal */}
+      {editingEvent && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h2 className="text-lg font-medium text-slate-200 mb-4">Editar Evento</h2>
+            <input 
+              type="text" 
+              value={editingEvent.title} 
+              onChange={e => setEditingEvent({...editingEvent, title: e.target.value})} 
+              className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors mb-6"
+            />
+            <div className="flex justify-between items-center">
+              <button 
+                onClick={() => {
+                  setConfirmModal({
+                    isOpen: true,
+                    message: 'Deseja excluir este evento?',
+                    action: async () => {
+                      await deleteDoc(doc(db, 'calendarEvents', editingEvent.id));
+                      setEditingEvent(null);
+                      setConfirmModal(null);
+                    }
+                  });
+                }}
+                className="text-red-400 hover:text-red-300 flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="text-sm font-medium">Excluir Evento</span>
+              </button>
+              <div className="flex space-x-3">
+                <button onClick={() => setEditingEvent(null)} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
+                <button 
+                  onClick={async () => {
+                    await setDoc(doc(db, 'calendarEvents', editingEvent.id), { title: editingEvent.title }, { merge: true });
+                    setEditingEvent(null);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+                >Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Modal */}
       {confirmModal && (

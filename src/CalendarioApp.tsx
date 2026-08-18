@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from './lib/firebase';
-import { collection, onSnapshot, query, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, doc, deleteDoc, where, setDoc } from 'firebase/firestore';
 import { CalendarEvent, Empresa, Sindicato, ScheduleFrequency } from './types';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Trash2, Edit2, X, Clock, AlertTriangle, Search, Briefcase, Building2, Globe, Upload, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Trash2, Edit2, X, Clock, AlertTriangle, Search, Briefcase, Building2, Globe, Upload, Loader2, CheckSquare } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, getDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
@@ -19,7 +19,26 @@ export default function CalendarioApp() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Partial<CalendarEvent> | null>(null);
 
+  const [isDaySummaryModalOpen, setIsDaySummaryModalOpen] = useState(false);
+  const [summaryDayEvents, setSummaryDayEvents] = useState<(CalendarEvent & { originalEventId?: string })[]>([]);
+  const [recurrentCompletions, setRecurrentCompletions] = useState<Record<string, number>>({});
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  useEffect(() => {
+    const monthKey = format(currentDate, 'yyyy-MM');
+    const qCompletions = query(collection(db, 'recurrentCompletions'), where('monthKey', '==', monthKey));
+    
+    const unsub = onSnapshot(qCompletions, (snapshot) => {
+      const completions: Record<string, number> = {};
+      snapshot.docs.forEach(doc => {
+        completions[doc.id] = doc.data().completedAt;
+      });
+      setRecurrentCompletions(completions);
+    });
+
+    return () => unsub();
+  }, [currentDate]);
 
   const handleSaveProcess = async (data: any) => {
     const isSindicato = sindicatos.some(s => s.id === data.empresaId);
@@ -176,6 +195,31 @@ export default function CalendarioApp() {
   }
 
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const openDaySummaryModal = (date: Date, dayEvents: (CalendarEvent & { originalEventId?: string })[]) => {
+    setSelectedDate(date);
+    setSummaryDayEvents(dayEvents);
+    setIsDaySummaryModalOpen(true);
+  };
+
+  const toggleDaySummaryCompletion = async (event: CalendarEvent & { originalEventId?: string }, date: Date, isCompleted: boolean) => {
+    const actualEventId = event.originalEventId || event.id;
+    const entityId = event.empresaId || 'GERAL';
+    const monthKey = format(date, 'yyyy-MM');
+    const docId = `${actualEventId}_${entityId}_${monthKey}`;
+
+    if (isCompleted) {
+      await deleteDoc(doc(db, 'recurrentCompletions', docId));
+    } else {
+      await setDoc(doc(db, 'recurrentCompletions', docId), {
+        eventId: actualEventId,
+        monthKey,
+        entityId,
+        completedAt: Date.now(),
+        createdAt: Date.now()
+      });
+    }
+  };
 
   const openEventModal = (date: Date, event?: CalendarEvent) => {
     if (event) {
@@ -377,7 +421,9 @@ export default function CalendarioApp() {
         <div className="flex-1 grid grid-cols-7 grid-rows-5 lg:grid-rows-auto">
           {calendarDays.map((day, idx) => {
             const isCurrentMonth = isSameMonth(day, currentDate);
-            const dayEvents = events.filter(e => {
+            const expandedDayEvents: (CalendarEvent & { originalEventId?: string })[] = [];
+            
+            events.forEach(e => {
               let matchDate = false;
               if (e.isRecurrent) {
                 if (e.recurrentRule === 'DAILY') {
@@ -403,30 +449,63 @@ export default function CalendarioApp() {
                 matchDate = isSameDay(new Date(e.date), day);
               }
 
-              if (!matchDate) return false;
+              if (!matchDate) return;
 
-              if (filterEmpresaId === 'ALL') return true;
-
-              // Check if event belongs directly to the selected empresa
-              if (e.empresaId === filterEmpresaId) return true;
-
-              // Check if event belongs to the sindicato of the selected empresa
-              const currentEmpresa = empresas.find(emp => emp.id === filterEmpresaId);
-              if (currentEmpresa && currentEmpresa.sindicatoId && e.empresaId === currentEmpresa.sindicatoId) {
-                return true;
+              if (filterEmpresaId === 'ALL') {
+                 const isSindicato = sindicatos.some(s => s.id === e.empresaId);
+                 if (isSindicato) {
+                     const linkedEmpresas = empresas.filter(emp => emp.sindicatoId === e.empresaId);
+                     if (linkedEmpresas.length > 0) {
+                         linkedEmpresas.forEach(emp => {
+                             expandedDayEvents.push({
+                                 ...e,
+                                 empresaId: emp.id,
+                                 empresaNome: emp.nome,
+                                 originalEventId: e.id
+                             });
+                         });
+                     } else {
+                         expandedDayEvents.push(e);
+                     }
+                 } else {
+                     expandedDayEvents.push(e);
+                 }
+              } else {
+                  if (e.empresaId === filterEmpresaId) {
+                      expandedDayEvents.push(e);
+                  } else {
+                      const currentEmpresa = empresas.find(emp => emp.id === filterEmpresaId);
+                      if (currentEmpresa && currentEmpresa.sindicatoId && e.empresaId === currentEmpresa.sindicatoId) {
+                          expandedDayEvents.push({
+                              ...e,
+                              empresaId: currentEmpresa.id,
+                              empresaNome: currentEmpresa.nome,
+                              originalEventId: e.id
+                          });
+                      }
+                  }
               }
-
-              return false;
             });
             
+            const groupedDayEvents = expandedDayEvents.reduce((acc, event) => {
+              const existing = acc.find(e => e.title === event.title);
+              if (existing) {
+                existing.count += 1;
+                existing.events.push(event);
+              } else {
+                acc.push({ ...event, count: 1, events: [event] });
+              }
+              return acc;
+            }, [] as (CalendarEvent & { count: number, events: CalendarEvent[] })[]);
+
             return (
               <div 
                 key={day.toISOString()} 
-                className={`min-h-[120px] p-2 border-r border-b border-slate-800 relative group transition-colors hover:bg-slate-800/30
+                className={`min-h-[120px] p-2 border-r border-b border-slate-800 relative group transition-colors hover:bg-slate-800/30 cursor-pointer
                   ${!isCurrentMonth ? 'bg-slate-950/30' : ''}
                   ${idx % 7 === 6 ? 'border-r-0' : ''}
                 `}
-                onClick={() => openEventModal(day)}
+                onClick={() => openDaySummaryModal(day, expandedDayEvents)}
               >
                 <div className="flex justify-between items-start mb-2">
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium
@@ -446,18 +525,23 @@ export default function CalendarioApp() {
                 </div>
                 
                 <div className="space-y-1 overflow-y-auto max-h-[80px] custom-scrollbar pr-1">
-                  {dayEvents.map(event => {
-                    const isSindicatoEvent = !!sindicatos.find(s => s.id === event.empresaId);
+                  {groupedDayEvents.map(group => {
+                    const isSindicatoEvent = !!sindicatos.find(s => s.id === group.empresaId);
                     return (
                     <div 
-                      key={event.id}
-                      onClick={(e) => { e.stopPropagation(); openEventModal(day, event); }}
-                      className={`text-[10px] sm:text-xs px-2 py-1 rounded border cursor-pointer hover:opacity-80 transition-opacity ${getTypeColor(event.type)} flex flex-col`}
-                      title={event.title + (event.empresaNome ? ` - ${event.empresaNome}` : '')}
+                      key={group.id}
+                      onClick={(e) => { e.stopPropagation(); if (group.count === 1) { openEventModal(day, group.events[0]); } else { openDaySummaryModal(day, expandedDayEvents); } }}
+                      className={`text-[10px] sm:text-xs px-2 py-1 rounded border hover:opacity-80 transition-opacity ${getTypeColor(group.type)} flex flex-col`}
+                      title={group.title + (group.count === 1 && group.empresaNome ? ` - ${group.empresaNome}` : '')}
                     >
-                      <div className="font-medium truncate">{event.title}</div>
-                      {event.empresaNome && <div className="text-[9px] opacity-75 truncate">{event.empresaNome}</div>}
-                      {isSindicatoEvent && filterEmpresaId !== 'ALL' && (
+                      <div className="font-medium truncate flex justify-between items-center">
+                        <span className="truncate">{group.title}</span>
+                        {group.count > 1 && (
+                          <span className="ml-1 bg-black/20 px-1 rounded-full text-[9px] font-bold shrink-0">{group.count}</span>
+                        )}
+                      </div>
+                      {group.count === 1 && group.empresaNome && <div className="text-[9px] opacity-75 truncate">{group.empresaNome}</div>}
+                      {group.count === 1 && isSindicatoEvent && filterEmpresaId !== 'ALL' && (
                         <div className="text-[8px] font-bold uppercase mt-0.5 bg-black/20 rounded px-1 w-max">Via Sindicato</div>
                       )}
                     </div>
@@ -468,6 +552,87 @@ export default function CalendarioApp() {
           })}
         </div>
       </div>
+
+      {/* Day Summary Modal */}
+      {isDaySummaryModalOpen && selectedDate && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center shrink-0">
+              <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-3">
+                <CalendarIcon className="w-6 h-6 text-indigo-400" />
+                <span>Resumo do Dia</span>
+                <span className="text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full text-sm font-bold ml-2">
+                  {format(selectedDate, 'dd/MM/yyyy')}
+                </span>
+              </h2>
+              <button onClick={() => setIsDaySummaryModalOpen(false)} className="text-slate-500 hover:text-slate-300 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              {summaryDayEvents.length === 0 ? (
+                <div className="text-center py-10 text-slate-500">
+                  <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                  <p>Nenhum evento neste dia.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(
+                    summaryDayEvents.reduce((acc, event) => {
+                      if (!acc[event.title]) acc[event.title] = [];
+                      acc[event.title].push(event);
+                      return acc;
+                    }, {} as Record<string, CalendarEvent[]>)
+                  ).map(([title, eventsGroup]: [string, CalendarEvent[]]) => (
+                    <div key={title} className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+                      <div className="bg-slate-800/50 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-200">{title}</h3>
+                        <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-full">{eventsGroup.length}</span>
+                      </div>
+                      <div className="p-2 space-y-1 max-h-[250px] overflow-y-auto custom-scrollbar">
+                        {eventsGroup.map((ev: CalendarEvent, i: number) => {
+                          const actualEventId = ev.originalEventId || ev.id;
+                          const entityId = ev.empresaId || 'GERAL';
+                          const checkKey = `${actualEventId}_${entityId}_${format(selectedDate, 'yyyy-MM')}`;
+                          const isChecked = !!recurrentCompletions[checkKey];
+                          return (
+                            <div key={ev.id + (ev.empresaId || '') || i} className={`flex justify-between items-center p-2 rounded-lg transition-colors group ${isChecked ? 'bg-emerald-500/10 border-emerald-500/20' : 'hover:bg-slate-800 border-transparent'} border`}>
+                              <div className="flex items-center space-x-3">
+                                <button 
+                                  onClick={() => toggleDaySummaryCompletion(ev, selectedDate, isChecked)}
+                                  className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isChecked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500 hover:border-indigo-400'}`}
+                                >
+                                  {isChecked && <CheckSquare className="w-3 h-3 text-white" />}
+                                </button>
+                                <span className={`text-sm ${isChecked ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                                  {ev.empresaNome || 'Evento Geral'}
+                                </span>
+                              </div>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); openEventModal(selectedDate, ev); }}
+                                className="text-slate-500 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                title="Editar Evento"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-slate-800 bg-slate-950/50 flex justify-end">
+              <button onClick={() => setIsDaySummaryModalOpen(false)} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Event Modal */}
       {isModalOpen && editingEvent && (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './lib/firebase';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
-import { Search, FileText, Download, Copy, ArrowRight, ArrowLeft, CheckCircle2, AlignLeft, AlignCenter, Activity, Loader2, Plus, Trash2, Upload, AlertTriangle, X, LogIn, LogOut, Home, Building2, CheckSquare, FileSignature, Receipt, FileStack, Briefcase, LayoutDashboard, CalendarDays, PanelLeftClose, PanelLeftOpen, Pencil, Check } from 'lucide-react';
+import { Search, FileText, Download, Copy, ArrowRight, ArrowLeft, CheckCircle2, AlignLeft, AlignCenter, Activity, Loader2, Plus, Trash2, Upload, AlertTriangle, X, LogIn, LogOut, Home, Building2, CheckSquare, FileSignature, Receipt, FileStack, Briefcase, LayoutDashboard, CalendarDays, PanelLeftClose, PanelLeftOpen, Pencil, Check, Clock } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { initAuth, loginWithPassword, logout } from './auth';
 import { DEFAULT_TEMPLATES, INITIAL_TEMPLATE } from './data';
@@ -15,6 +15,8 @@ import DashboardApp from './DashboardApp';
 import CalendarioApp from './CalendarioApp';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import { ErrorLogViewer } from './ErrorLogViewer';
+
+import BancoDeHorasApp from './pages/banco-horas/BancoDeHorasApp';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -46,7 +48,7 @@ export default function App() {
     }
   };
 
-  const [modulo, setModulo] = useState<'dashboard' | 'empresas' | 'checklists' | 'calendario' | 'autotermos' | 'recibos' | 'boletos' | 'trct'>('dashboard');
+  const [modulo, setModulo] = useState<'dashboard' | 'empresas' | 'checklists' | 'calendario' | 'autotermos' | 'recibos' | 'boletos' | 'trct' | 'banco-horas'>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // Commit trigger timestamp: 2026-08-13 05:06
   
@@ -770,7 +772,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
   }
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500 selection:text-white overflow-hidden">
+    <div className="flex h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500 selection:text-white overflow-hidden print:overflow-visible print:h-auto">
       
       {/* Toast Notification */}
       {notification.visible && (
@@ -1018,6 +1020,26 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
 
           <div className="pt-4 pb-1">
             {sidebarOpen ? (
+              <div className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestão</div>
+            ) : (
+              <div className="border-t border-slate-700/50 mx-2"></div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setModulo('banco-horas')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              modulo === 'banco-horas'
+                ? 'bg-indigo-600/20 text-indigo-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Clock className="w-5 h-5 shrink-0" />
+            {sidebarOpen && <span>Banco de Horas</span>}
+          </button>
+
+          <div className="pt-4 pb-1">
+            {sidebarOpen ? (
               <div className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Geradores</div>
             ) : (
               <div className="border-t border-slate-700/50 mx-2"></div>
@@ -1083,7 +1105,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 overflow-auto bg-slate-950 relative">
+      <main className="flex-1 overflow-auto bg-slate-950 relative print:overflow-visible print:bg-white">
       
         {modulo === 'dashboard' ? (
           <DashboardApp />
@@ -1100,6 +1122,10 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
         ) : modulo === 'boletos' ? (
           <main className="w-full flex flex-col print:p-0 print:m-0">
             <BoletoApp />
+          </main>
+        ) : modulo === 'banco-horas' ? (
+          <main className="w-full flex flex-col print:p-0 print:m-0">
+            <BancoDeHorasApp />
           </main>
         ) : modulo === 'trct' ? (
           <main className="w-full flex flex-col print:p-0 print:m-0">
