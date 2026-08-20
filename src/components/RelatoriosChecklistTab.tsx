@@ -234,7 +234,7 @@ export default function RelatoriosChecklistTab({ empresas }: RelatoriosChecklist
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-slate-950 rounded-xl border border-slate-800 custom-scrollbar">
+      <div className="flex-1 overflow-auto bg-slate-950 rounded-xl border border-slate-800 custom-scrollbar print:hidden">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />

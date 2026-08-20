@@ -170,7 +170,7 @@ export default function ChatApp() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full relative">
+    <div className="flex flex-col flex-1 h-full w-full relative">
       <div className="mb-6 flex items-center justify-between z-10 relative">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-indigo-500/20 rounded-xl">
