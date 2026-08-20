@@ -71,7 +71,7 @@ app.set('trust proxy', 1);
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: false,
-    frameguard: { action: 'sameorigin' } // PROTEÇÃO ATIVADA
+    frameguard: false // <-- DESATIVE AQUI
   }));
 
   // 2. PROTEÇÃO CONTRA DoS: Limite do body para 5mb

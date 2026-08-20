@@ -103,7 +103,7 @@ export default function DashboardApp() {
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="flex flex-col h-full p-4 md:p-8 z-10">
+        <div className="flex flex-col flex-1 min-h-0 p-4 md:p-8 z-10">
           <ChatApp />
         </div>
       </div>

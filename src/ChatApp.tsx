@@ -18,7 +18,7 @@ export default function ChatApp() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [contextData, setContextData] = useState<{empresas: any[], sindicatos: any[]}>({ empresas: [], sindicatos: [] });
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
@@ -40,7 +40,9 @@ export default function ChatApp() {
   }, []);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
@@ -187,7 +189,10 @@ export default function ChatApp() {
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
+      >
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`flex max-w-[90%] gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -249,7 +254,6 @@ export default function ChatApp() {
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       <div className="shrink-0 border-t border-slate-800/50 pt-4 mt-4 relative">
