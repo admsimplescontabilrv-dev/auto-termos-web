@@ -40,8 +40,8 @@ export interface TrctData {
   proventos: { id: string; codigo: string; descricao: string; valor: number; }[];
   descontos: { id: string; codigo: string; descricao: string; valor: number; }[];
   
-  diasSaldoSalario: number;
-  faltasDsr: number;
+  diasSaldoSalario?: number;
+  faltasDsr?: number;
 
   totalBruto: number;
   totalDeducoes: number;

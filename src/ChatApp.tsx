@@ -266,7 +266,7 @@ export default function ChatApp() {
               }
             }}
             placeholder="Pergunte sobre as empresas, sindicatos, regras trabalhistas..."
-            className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3.5 pr-12 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none min-h-[52px] max-h-32 scrollbar-thin transition-colors text-sm shadow-inner"
+            className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3.5 pr-12 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none min-h-[60px] max-h-32 scrollbar-thin transition-colors text-sm shadow-inner"
             rows={1}
             style={{ height: 'auto' }}
             onInput={(e) => {

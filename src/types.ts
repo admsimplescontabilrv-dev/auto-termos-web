@@ -39,6 +39,7 @@ export interface ChecklistRule {
   taskName?: string;
   frequency?: ScheduleFrequency; // Reusing this for the new UI
   order?: number;
+  processType?: string;
 }
 
 export interface ChecklistItem {
@@ -75,6 +76,7 @@ export interface CalendarEvent {
   recurrentRule?: ScheduleFrequency; // New field for specific recurrence logic
   status?: 'ATIVO' | 'CONCLUIDO';
   createdAt: number;
+  order?: number;
 }
 
 export interface SavedTemplate {
