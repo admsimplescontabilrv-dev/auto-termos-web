@@ -19,6 +19,7 @@ export default function ChatApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [contextData, setContextData] = useState<{empresas: any[], sindicatos: any[]}>({ empresas: [], sindicatos: [] });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,6 +55,9 @@ export default function ChatApp() {
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '120px';
+    }
     setIsLoading(true);
     setActionFeedback(null);
 
@@ -170,8 +174,8 @@ export default function ChatApp() {
   };
 
   return (
-    <div className="flex flex-col flex-1 h-full w-full relative">
-      <div className="mb-6 flex items-center justify-between z-10 relative">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="shrink-0 mb-6 flex items-center justify-between z-10 relative">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-indigo-500/20 rounded-xl">
             <Bot className="w-7 h-7 text-indigo-400" />
@@ -183,7 +187,7 @@ export default function ChatApp() {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto space-y-6 z-10 relative scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent pr-4">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`flex max-w-[90%] gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -248,7 +252,7 @@ export default function ChatApp() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="mt-4 pt-4 border-t border-slate-800/50 z-10 relative">
+      <div className="shrink-0 border-t border-slate-800/50 pt-4 mt-4 relative">
         {actionFeedback && (
           <div className="absolute -top-10 left-0 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -257,6 +261,7 @@ export default function ChatApp() {
         )}
         <form onSubmit={handleSend} className="relative flex items-end gap-2">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -266,13 +271,12 @@ export default function ChatApp() {
               }
             }}
             placeholder="Pergunte sobre as empresas, sindicatos, regras trabalhistas..."
-            className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3.5 pr-12 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none min-h-[60px] max-h-32 scrollbar-thin transition-colors text-sm shadow-inner"
-            rows={1}
-            style={{ height: 'auto' }}
+            className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 pr-12 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none min-h-[120px] max-h-[250px] scrollbar-thin transition-colors text-sm shadow-inner"
+            style={{ height: '120px' }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+              target.style.height = '120px';
+              target.style.height = Math.min(target.scrollHeight, 250) + 'px';
             }}
           />
           <button

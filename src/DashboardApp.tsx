@@ -98,12 +98,14 @@ export default function DashboardApp() {
     <div className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 flex flex-col lg:flex-row gap-8 lg:h-[calc(100vh-4rem)] animate-in fade-in zoom-in-95 duration-200">
       
       {/* Esquerda: Assistente IA */}
-      <div className="flex-[2] bg-slate-900 border border-slate-700/50 rounded-2xl p-4 md:p-8 pb-3 md:pb-8 shadow-2xl flex flex-col relative overflow-hidden h-[65vh] min-h-[400px] lg:h-auto">
+      <div className="flex-[2] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col relative overflow-hidden h-[65vh] min-h-[400px] lg:h-full">
         {/* Background Decoration */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <ChatApp />
+        <div className="flex flex-col h-full p-4 md:p-8 z-10">
+          <ChatApp />
+        </div>
       </div>
 
       {/* Direita: Lembretes */}
