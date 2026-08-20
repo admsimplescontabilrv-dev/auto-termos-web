@@ -26,6 +26,19 @@ const AiCommandSchema = z.object({
   })
 });
 
+const ChatSchema = z.object({
+  history: z.array(z.object({
+    role: z.enum(['user', 'model']),
+    parts: z.array(z.object({
+      text: z.string()
+    }))
+  })),
+  context: z.object({
+    empresas: z.array(z.any()).optional(),
+    sindicatos: z.array(z.any()).optional()
+  }).optional()
+});
+
 const ExtractPdfSchema = z.object({
   pdfBase64: z.string().min(1, "PDF não enviado."),
   type: z.enum(['cnpj', 'recibo', 'admissional', 'trct', 'custom', 'aviso_previo']).default('admissional'),
@@ -154,6 +167,48 @@ Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.`;
     } catch (error: any) {
       console.error('AI Command Error:', error);
       res.status(500).json({ error: 'Erro ao processar comando com IA: ' + error.message });
+    }
+  });
+
+  app.post('/api/chat', requireApiKey, async (req, res) => {
+    try {
+      const parseResult = ChatSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: parseResult.error.issues[0].message });
+      }
+
+      const { history, context } = parseResult.data;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
+      }
+      
+      const ai = new GoogleGenAI({ apiKey });
+
+      const systemInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal e Contabilidade.
+Sua função é tirar dúvidas do usuário e ajudá-lo com dados do sistema.
+Responda diretamente e de forma amigável e concisa no chat.
+
+DADOS DISPONÍVEIS DO SISTEMA DO USUÁRIO:
+EMPRESAS: ${JSON.stringify(context?.empresas || [])}
+SINDICATOS: ${JSON.stringify(context?.sindicatos || [])}
+
+Use essas informações para responder sobre quais empresas estão vinculadas a quais sindicatos, dados das empresas (CNPJ, endereço, etc).
+Se perguntarem algo fora desse escopo, responda com base nos seus conhecimentos gerais de Departamento Pessoal e leis trabalhistas.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: history,
+        config: {
+          systemInstruction: systemInstruction,
+          temperature: 0.7
+        }
+      });
+
+      res.json({ text: response.text });
+    } catch (error: any) {
+      console.error('Chat AI Error:', error);
+      res.status(500).json({ error: 'Erro ao processar conversa com IA: ' + error.message });
     }
   });
 

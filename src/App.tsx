@@ -17,6 +17,8 @@ import { getTrimmedPdfBase64 } from './pdfUtils';
 import { ErrorLogViewer } from './ErrorLogViewer';
 
 import BancoDeHorasApp from './pages/banco-horas/BancoDeHorasApp';
+import ChatApp from './ChatApp';
+import { BotMessageSquare } from 'lucide-react';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -48,7 +50,7 @@ export default function App() {
     }
   };
 
-  const [modulo, setModulo] = useState<'dashboard' | 'empresas' | 'checklists' | 'calendario' | 'autotermos' | 'recibos' | 'boletos' | 'trct' | 'banco-horas'>('dashboard');
+  const [modulo, setModulo] = useState<'dashboard' | 'empresas' | 'checklists' | 'calendario' | 'autotermos' | 'recibos' | 'boletos' | 'trct' | 'banco-horas' | 'chat'>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // Commit trigger timestamp: 2026-08-13 05:06
   
@@ -983,6 +985,18 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </button>
 
           <button
+            onClick={() => setModulo('chat')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              modulo === 'chat'
+                ? 'bg-indigo-600/20 text-indigo-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <BotMessageSquare className="w-5 h-5 shrink-0" />
+            {sidebarOpen && <span>Assistente DP</span>}
+          </button>
+
+          <button
             onClick={() => setModulo('empresas')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'empresas'
@@ -1109,6 +1123,10 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
       
         {modulo === 'dashboard' ? (
           <DashboardApp />
+        ) : modulo === 'chat' ? (
+          <div className="h-full p-4 md:p-6 lg:p-8 max-w-[1200px] mx-auto w-full">
+            <ChatApp />
+          </div>
         ) : modulo === 'empresas' ? (
           <EmpresasApp entityToEdit={entityToEdit} clearEntityToEdit={() => setEntityToEdit(null)} />
         ) : modulo === 'checklists' ? (
