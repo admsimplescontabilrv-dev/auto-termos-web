@@ -196,16 +196,40 @@ SINDICATOS: ${JSON.stringify(context?.sindicatos || [])}
 Use essas informações para responder sobre quais empresas estão vinculadas a quais sindicatos, dados das empresas (CNPJ, endereço, etc).
 Se perguntarem algo fora desse escopo, responda com base nos seus conhecimentos gerais de Departamento Pessoal e leis trabalhistas.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
-        contents: history,
-        config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.7
-        }
-      });
+      const modelsToTry = [
+        'gemini-3.5-flash-lite', 
+        'gemini-3.5-flash', 
+        'gemini-3.7-flash', 
+        'gemini-flash-latest'
+      ];
 
-      res.json({ text: response.text });
+      let responseText = '';
+      let lastError = null;
+
+      for (let attempt = 0; attempt < modelsToTry.length; attempt++) {
+        const currentModel = modelsToTry[attempt];
+        try {
+          const response = await ai.models.generateContent({
+            model: currentModel,
+            contents: history,
+            config: {
+              systemInstruction: systemInstruction,
+              temperature: 0.7
+            }
+          });
+          responseText = response.text || '';
+          break; // Sucesso, sai do loop
+        } catch (err: any) {
+          console.log(`Chat - Tentativa ${attempt + 1} (modelo: ${currentModel}) falhou:`, err.message);
+          lastError = err;
+          // Se for a última tentativa, lança o erro para o catch externo
+          if (attempt === modelsToTry.length - 1) throw lastError;
+          // Espera antes de tentar o próximo modelo (backoff)
+          await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 2000));
+        }
+      }
+
+      res.json({ text: responseText });
     } catch (error: any) {
       console.error('Chat AI Error:', error);
       res.status(500).json({ error: 'Erro ao processar conversa com IA: ' + error.message });
