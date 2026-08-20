@@ -185,16 +185,43 @@ Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.`;
       
       const ai = new GoogleGenAI({ apiKey });
 
-      const systemInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal e Contabilidade.
-Sua função é tirar dúvidas do usuário e ajudá-lo com dados do sistema.
-Responda diretamente e de forma amigável e concisa no chat.
+      const systemInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
+Sua função é tirar dúvidas do usuário, ajudá-lo com dados do sistema, e também interpretar comandos para registrar coisas no sistema.
 
 DADOS DISPONÍVEIS DO SISTEMA DO USUÁRIO:
 EMPRESAS: ${JSON.stringify(context?.empresas || [])}
 SINDICATOS: ${JSON.stringify(context?.sindicatos || [])}
 
-Use essas informações para responder sobre quais empresas estão vinculadas a quais sindicatos, dados das empresas (CNPJ, endereço, etc).
-Se perguntarem algo fora desse escopo, responda com base nos seus conhecimentos gerais de Departamento Pessoal e leis trabalhistas.`;
+Se o usuário fizer uma pergunta geral, responda de forma amigável e concisa.
+Se o usuário pedir para realizar uma ação no sistema (criar um lembrete no calendário, um evento, ou uma regra de checklist), você DEVE primeiro pedir confirmação. 
+Exemplo de text: "Você gostaria de adicionar um lembrete para a empresa X no dia Y para falar sobre Z?"
+E estruture a ação proposta no campo "proposedAction" do JSON de saída.
+
+INSTRUÇÕES DE SAÍDA:
+Retorne SEMPRE um JSON válido, no seguinte formato estrito:
+{
+  "text": "Sua resposta amigável e conversacional para o usuário (pode usar markdown). Se for uma ação, pergunte se o usuário deseja confirmar a criação.",
+  "proposedAction": {
+    "intent": "CREATE_CALENDAR_EVENT" | "CREATE_CHECKLIST_RULE" | "UNKNOWN",
+    "parameters": { ... } // Parâmetros extraídos, se aplicável
+  }
+}
+
+Se a intent for "CREATE_CALENDAR_EVENT", parameters deve ter:
+- title: string (resumo)
+- type: "MEETING" | "DEADLINE" | "REMINDER" | "HOLIDAY"
+- date: timestamp em milissegundos (calcule corretamente: se o usuário pedir "dia 23", retorne o timestamp correspondente ao dia 23 do mês e ano atuais: ${new Date().toISOString()})
+- empresaId: string (se aplicável, envie o ID exato da empresa ou sindicato correspondente. É muito importante associar o ID para que apareça no calendário da empresa)
+
+Se a intent for "CREATE_CHECKLIST_RULE", parameters deve ter:
+- taskName: string
+- targetType: "ALL" | "SPECIFIC_EMPRESA" | "SPECIFIC_SINDICATO"
+- targetId: string (ID da empresa ou sindicato se aplicável)
+- dueDateRule: "FIXED_DAY" | "LAST_DAY_OF_MONTH" | "FIFTH_BUSINESS_DAY"
+- dayValue: number (apenas se FIXED_DAY)
+
+Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.
+Se não houver nenhuma ação a ser proposta, não envie o campo "proposedAction" ou envie "intent": "UNKNOWN".`;
 
       const modelsToTry = [
         'gemini-3.5-flash-lite', 
@@ -205,31 +232,47 @@ Se perguntarem algo fora desse escopo, responda com base nos seus conhecimentos 
 
       let responseText = '';
       let lastError = null;
+      let usedModel = '';
+      let usedAttempts = 0;
 
       for (let attempt = 0; attempt < modelsToTry.length; attempt++) {
         const currentModel = modelsToTry[attempt];
+        usedModel = currentModel;
+        usedAttempts = attempt + 1;
         try {
           const response = await ai.models.generateContent({
             model: currentModel,
             contents: history,
             config: {
               systemInstruction: systemInstruction,
-              temperature: 0.7
+              temperature: 0.3,
+              responseMimeType: "application/json"
             }
           });
-          responseText = response.text || '';
+          responseText = response.text || '{}';
           break; // Sucesso, sai do loop
         } catch (err: any) {
           console.log(`Chat - Tentativa ${attempt + 1} (modelo: ${currentModel}) falhou:`, err.message);
           lastError = err;
-          // Se for a última tentativa, lança o erro para o catch externo
           if (attempt === modelsToTry.length - 1) throw lastError;
-          // Espera antes de tentar o próximo modelo (backoff)
           await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 2000));
         }
       }
 
-      res.json({ text: responseText });
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(responseText);
+      } catch (e) {
+        parsedResponse = { text: responseText, proposedAction: { intent: "UNKNOWN" } };
+      }
+
+      res.json({
+        ...parsedResponse,
+        metadata: {
+          model: usedModel,
+          attempts: usedAttempts
+        }
+      });
     } catch (error: any) {
       console.error('Chat AI Error:', error);
       res.status(500).json({ error: 'Erro ao processar conversa com IA: ' + error.message });

@@ -55,8 +55,8 @@ export default function ColaboradoresTab() {
         </button>
       </form>
 
-      <div className="bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden">
-        <table className="w-full text-left text-sm text-slate-300">
+      <div className="bg-slate-900 border border-slate-700/50 rounded-xl overflow-x-auto">
+        <table className="w-full text-left text-sm text-slate-300 min-w-[500px]">
           <thead className="bg-slate-800/50 text-slate-400 font-medium">
             <tr>
               <th className="px-6 py-4">Nome do Colaborador</th>

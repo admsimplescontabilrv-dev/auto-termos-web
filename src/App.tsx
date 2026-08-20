@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './lib/firebase';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
-import { Search, FileText, Download, Copy, ArrowRight, ArrowLeft, CheckCircle2, AlignLeft, AlignCenter, Activity, Loader2, Plus, Trash2, Upload, AlertTriangle, X, LogIn, LogOut, Home, Building2, CheckSquare, FileSignature, Receipt, FileStack, Briefcase, LayoutDashboard, CalendarDays, PanelLeftClose, PanelLeftOpen, Pencil, Check, Clock } from 'lucide-react';
+import { Search, Menu, FileText, Download, Copy, ArrowRight, ArrowLeft, CheckCircle2, AlignLeft, AlignCenter, Activity, Loader2, Plus, Trash2, Upload, AlertTriangle, X, LogIn, LogOut, Home, Building2, CheckSquare, FileSignature, Receipt, FileStack, Briefcase, LayoutDashboard, CalendarDays, PanelLeftClose, PanelLeftOpen, Pencil, Check, Clock } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { initAuth, loginWithPassword, logout } from './auth';
 import { DEFAULT_TEMPLATES, INITIAL_TEMPLATE } from './data';
@@ -17,7 +17,6 @@ import { getTrimmedPdfBase64 } from './pdfUtils';
 import { ErrorLogViewer } from './ErrorLogViewer';
 
 import BancoDeHorasApp from './pages/banco-horas/BancoDeHorasApp';
-import ChatApp from './ChatApp';
 import { BotMessageSquare } from 'lucide-react';
 
 export default function App() {
@@ -50,8 +49,16 @@ export default function App() {
     }
   };
 
-  const [modulo, setModulo] = useState<'dashboard' | 'empresas' | 'checklists' | 'calendario' | 'autotermos' | 'recibos' | 'boletos' | 'trct' | 'banco-horas' | 'chat'>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [modulo, setModulo] = useState<'dashboard' | 'empresas' | 'checklists' | 'calendario' | 'autotermos' | 'recibos' | 'boletos' | 'trct' | 'banco-horas'>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
+
+  const handleNavigate = (mod: any) => {
+    setModulo(mod);
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
+
   // Commit trigger timestamp: 2026-08-13 05:06
   
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -774,7 +781,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
   }
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500 selection:text-white overflow-hidden print:overflow-visible print:h-auto">
+    <div className="flex h-[100dvh] bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500 selection:text-white overflow-hidden print:overflow-visible print:h-auto">
       
       {/* Toast Notification */}
       {notification.visible && (
@@ -962,8 +969,16 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
         </div>
       )}
 
+      {/* SIDEBAR OVERLAY FOR MOBILE */}
+      {sidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-40" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* SIDEBAR */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-slate-900 border-r border-slate-700/50 flex flex-col transition-all duration-300 shrink-0 print:hidden z-50`}>
+      <aside className={`fixed md:relative inset-y-0 left-0 z-50 ${sidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full md:w-16 md:translate-x-0'} bg-slate-900 border-r border-slate-700/50 flex flex-col transition-all duration-300 shrink-0 print:hidden`}>
         {/* Logo / Nome do App */}
         <div className="p-4 border-b border-slate-700/50 flex items-center gap-3">
           <img src="/logo.png" alt="DP Simples" className="h-8 w-8 object-contain shrink-0" />
@@ -973,7 +988,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
         {/* Menu Items */}
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
           <button
-            onClick={() => setModulo('dashboard')}
+            onClick={() => handleNavigate('dashboard')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'dashboard'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -985,19 +1000,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </button>
 
           <button
-            onClick={() => setModulo('chat')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === 'chat'
-                ? 'bg-indigo-600/20 text-indigo-400'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-            }`}
-          >
-            <BotMessageSquare className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Assistente DP</span>}
-          </button>
-
-          <button
-            onClick={() => setModulo('empresas')}
+            onClick={() => handleNavigate('empresas')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'empresas'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -1009,7 +1012,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </button>
 
           <button
-            onClick={() => setModulo('checklists')}
+            onClick={() => handleNavigate('checklists')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'checklists'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -1021,7 +1024,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </button>
 
           <button
-            onClick={() => setModulo('calendario')}
+            onClick={() => handleNavigate('calendario')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'calendario'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -1041,7 +1044,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </div>
 
           <button
-            onClick={() => setModulo('banco-horas')}
+            onClick={() => handleNavigate('banco-horas')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'banco-horas'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -1061,7 +1064,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </div>
 
           <button
-            onClick={() => setModulo('autotermos')}
+            onClick={() => handleNavigate('autotermos')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'autotermos'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -1073,7 +1076,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </button>
 
           <button
-            onClick={() => setModulo('recibos')}
+            onClick={() => handleNavigate('recibos')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'recibos'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -1085,7 +1088,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </button>
 
           <button
-            onClick={() => setModulo('boletos')}
+            onClick={() => handleNavigate('boletos')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'boletos'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -1097,7 +1100,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
           </button>
 
           <button
-            onClick={() => setModulo('trct')}
+            onClick={() => handleNavigate('trct')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === 'trct'
                 ? 'bg-indigo-600/20 text-indigo-400'
@@ -1119,18 +1122,24 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 overflow-auto bg-slate-950 relative print:overflow-visible print:bg-white">
+      <main className="flex-1 overflow-auto bg-slate-950 relative flex flex-col print:overflow-visible print:bg-white w-full max-w-full">
+        {/* Mobile Header */}
+        <div className="md:hidden sticky top-0 z-40 flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900 shrink-0 shadow-sm">
+          <div className="flex items-center gap-3">
+             <img src="/logo.png" alt="DP Simples" className="h-8 w-8 object-contain shrink-0" />
+             <span className="text-lg font-semibold text-white tracking-tight">DP Simples</span>
+          </div>
+          <button onClick={() => setSidebarOpen(true)} className="text-slate-400 hover:text-white p-2">
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
       
         {modulo === 'dashboard' ? (
           <DashboardApp />
-        ) : modulo === 'chat' ? (
-          <div className="h-full p-4 md:p-6 lg:p-8 max-w-[1200px] mx-auto w-full">
-            <ChatApp />
-          </div>
         ) : modulo === 'empresas' ? (
           <EmpresasApp entityToEdit={entityToEdit} clearEntityToEdit={() => setEntityToEdit(null)} />
         ) : modulo === 'checklists' ? (
-          <ChecklistsApp onEditEntity={(id, type) => { setEntityToEdit({id, type}); setModulo('empresas'); }} />
+          <ChecklistsApp onEditEntity={(id, type) => { setEntityToEdit({id, type}); handleNavigate('empresas'); }} />
         ) : modulo === 'calendario' ? (
           <CalendarioApp />
         ) : modulo === 'recibos' ? (
