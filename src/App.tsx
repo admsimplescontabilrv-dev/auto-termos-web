@@ -4,6 +4,7 @@ import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { Search, Menu, FileText, Download, Copy, ArrowRight, ArrowLeft, CheckCircle2, AlignLeft, AlignCenter, Activity, Loader2, Plus, Trash2, Upload, AlertTriangle, X, LogIn, LogOut, Home, Building2, CheckSquare, FileSignature, Receipt, FileStack, Briefcase, LayoutDashboard, CalendarDays, PanelLeftClose, PanelLeftOpen, Pencil, Check, Clock } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { initAuth, loginWithPassword, logout } from './auth';
+import { auth } from './lib/firebase';
 import { DEFAULT_TEMPLATES, INITIAL_TEMPLATE } from './data';
 import { SavedTemplate } from './types';
 import ReciboApp from './ReciboApp';
@@ -511,7 +512,7 @@ export default function App() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
+          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
         },
         body: JSON.stringify({ 
           pdfBase64: base64,

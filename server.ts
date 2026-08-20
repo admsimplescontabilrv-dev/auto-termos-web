@@ -5,6 +5,13 @@ import ExcelJS from 'exceljs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+
+// Initialize Firebase Admin for token verification
+if (getApps().length === 0) {
+  initializeApp({ projectId: 'gen-lang-client-0268052290' });
+}
 
 
 // --- Middlewares de Segurança ---
@@ -78,18 +85,22 @@ app.set('trust proxy', 1);
   app.use(express.json({ limit: "5mb" }));
   app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
-  // Middleware de Autenticação de API Key Interna
-  const requireApiKey = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const clientKey = req.headers['x-api-key'];
-    const serverKey = process.env.API_SECRET_KEY; // Você deve criar essa variável na Vercel
+  // Middleware de Autenticação via Firebase Auth Token
+  const requireApiKey = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<any> => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Acesso negado. Token de autenticação ausente.' });
+    }
     
-    if (!serverKey) {
-      return res.status(500).json({ error: 'Erro: API_SECRET_KEY ausente.' });
+    const token = authHeader.split('Bearer ')[1];
+    try {
+      const decodedToken = await getAuth().verifyIdToken(token);
+      (req as any).user = decodedToken;
+      next();
+    } catch (error) {
+      console.error("Auth erro:", error);
+      return res.status(401).json({ error: 'Acesso negado. Token inválido.' });
     }
-    if (clientKey !== serverKey) {
-      return res.status(401).json({ error: 'Acesso negado. Chave de API ausente ou inválida.' });
-    }
-    next();
   };
 
   // (Error handler moved after routes)

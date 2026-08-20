@@ -1,3 +1,4 @@
+import { auth } from '../lib/firebase';
 import React, { useState, useEffect, useRef } from 'react';
 import { Empresa, Sindicato, ScheduleFrequency } from '../types';
 import { X, Search, Briefcase, Building2, Upload, Loader2 } from 'lucide-react';
@@ -85,7 +86,7 @@ export default function UnifiedAddModal({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
+          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
         },
         body: JSON.stringify({ pdfBase64: base64Pdf, type: 'aviso_previo' })
       });

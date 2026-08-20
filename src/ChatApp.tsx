@@ -1,3 +1,4 @@
+import { auth } from './lib/firebase';
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Sparkles, Building2, Briefcase, CheckCircle2 } from 'lucide-react';
 import { collection, getDocs, addDoc } from 'firebase/firestore';
@@ -71,7 +72,7 @@ export default function ChatApp() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
+          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
         },
         body: JSON.stringify({ 
           history: historyToSend,

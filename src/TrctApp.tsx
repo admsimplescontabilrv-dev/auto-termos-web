@@ -1,3 +1,4 @@
+import { auth } from './lib/firebase';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Upload, Loader2, ArrowRight, ArrowLeft, Download, Printer, Plus, Trash2, CheckCircle2, AlertTriangle, FileText, CheckSquare, Square } from 'lucide-react';
 import LayoutTRCT, { TrctData } from './LayoutTRCT';
@@ -87,7 +88,7 @@ export default function TrctApp() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
+          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
         },
         body: JSON.stringify({ 
           pdfBase64: base64,

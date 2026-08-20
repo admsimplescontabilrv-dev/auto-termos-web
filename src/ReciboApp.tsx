@@ -1,3 +1,4 @@
+import { auth } from './lib/firebase';
 import React, { useState, useEffect } from 'react';
 import { Upload, Loader2, Plus, Trash2, ArrowRight, ArrowLeft, Download, ExternalLink, Printer, Activity, FileText } from 'lucide-react';
 import { Rubrica, DadosEmpresa, DadosFuncionario, ResultadoCalculo } from './types';
@@ -86,7 +87,7 @@ export default function ReciboApp() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
+          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
         },
         body: JSON.stringify({
           pdfBase64: base64,
@@ -175,7 +176,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_API_SECRET_KEY || ''
+          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
         },
         body: JSON.stringify({
           pdfBase64: base64,
