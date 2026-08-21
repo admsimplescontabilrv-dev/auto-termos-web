@@ -21,6 +21,8 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit }: Empresa
   const [editingEmpresa, setEditingEmpresa] = useState<Partial<Empresa> | null>(null);
 
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, action: () => void, message: string } | null>(null);
+  
+  const [isSindicatoDropdownOpen, setIsSindicatoDropdownOpen] = useState(false);
 
   useEffect(() => {
     const unsubSindicatos = onSnapshot(collection(db, 'sindicatos'), (snapshot) => {
@@ -398,31 +400,41 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit }: Empresa
                   <input
                     type="text"
                     placeholder="Pesquisar sindicato..."
-                    value={editingEmpresa.sindicatoNome || sindicatos.find(s => s.id === editingEmpresa.sindicatoId)?.nome || ''}
+                    value={editingEmpresa.sindicatoNome !== undefined ? editingEmpresa.sindicatoNome : (sindicatos.find(s => s.id === editingEmpresa.sindicatoId)?.nome || '')}
                     onChange={e => {
                       setEditingEmpresa({...editingEmpresa, sindicatoNome: e.target.value, sindicatoId: ''});
+                      setIsSindicatoDropdownOpen(true);
                     }}
-                    onFocus={(e) => e.target.select()}
+                    onFocus={(e) => {
+                      e.target.select();
+                      setIsSindicatoDropdownOpen(true);
+                    }}
+                    onBlur={() => {
+                      // timeout to allow click on dropdown items
+                      setTimeout(() => setIsSindicatoDropdownOpen(false), 200);
+                    }}
                     className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors"
                   />
-                  {editingEmpresa.sindicatoNome !== undefined && (
+                  {isSindicatoDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto custom-scrollbar">
                       <div 
                         className="px-4 py-2 hover:bg-slate-800 cursor-pointer text-slate-400 text-sm"
                         onClick={() => {
-                          setEditingEmpresa({...editingEmpresa, sindicatoId: '', sindicatoNome: ''});
+                          setEditingEmpresa({...editingEmpresa, sindicatoId: '', sindicatoNome: undefined});
+                          setIsSindicatoDropdownOpen(false);
                         }}
                       >
                         Nenhum
                       </div>
                       {sindicatos
-                        .filter(s => s.nome.toLowerCase().includes((editingEmpresa.sindicatoNome || '').toLowerCase()))
+                        .filter(s => s.nome.toLowerCase().includes((editingEmpresa.sindicatoNome !== undefined ? editingEmpresa.sindicatoNome : '').toLowerCase()))
                         .map(s => (
                         <div 
                           key={s.id}
                           className="px-4 py-2 hover:bg-slate-800 cursor-pointer text-slate-200 text-sm"
                           onClick={() => {
-                            setEditingEmpresa({...editingEmpresa, sindicatoId: s.id, sindicatoNome: s.nome});
+                            setEditingEmpresa({...editingEmpresa, sindicatoId: s.id, sindicatoNome: undefined});
+                            setIsSindicatoDropdownOpen(false);
                           }}
                         >
                           {s.nome}
