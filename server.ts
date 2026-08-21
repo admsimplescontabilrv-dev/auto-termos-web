@@ -7,7 +7,6 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin for token verification
 if (getApps().length === 0) {
@@ -32,8 +31,7 @@ const AiCommandSchema = z.object({
     empresas: z.array(z.any()),
     sindicatos: z.array(z.any())
   }),
-  sindicatoId: z.string().optional(),
-  empresaId: z.string().optional()
+  cctText: z.string().optional()
 });
 
 const ChatSchema = z.object({
@@ -47,8 +45,7 @@ const ChatSchema = z.object({
     empresas: z.array(z.any()).optional(),
     sindicatos: z.array(z.any()).optional()
   }).optional(),
-  sindicatoId: z.string().optional(),
-  empresaId: z.string().optional()
+  cctText: z.string().optional()
 });
 
 const ExtractPdfSchema = z.object({
@@ -118,79 +115,6 @@ app.set('trust proxy', 1);
     res.json({ status: "ok" });
   });
 
-  function normalizeSearchStr(str: string): string {
-    return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-  }
-
-  async function resolveCctText(options: {
-    explicitSindicatoId?: string;
-    explicitEmpresaId?: string;
-    queryText?: string;
-    contextEmpresas?: any[];
-    contextSindicatos?: any[];
-  }): Promise<{ cctText: string; sindicatoNome: string }> {
-    try {
-      const db = getFirestore(undefined, "ai-studio-documentautomato-5d1ea9b1-7d94-4229-bd61-9c62bcb6f636");
-      let targetSindicatoId = options.explicitSindicatoId;
-      let sindicatoNome = "";
-
-      // 1. Empresa explícita via ID
-      if (!targetSindicatoId && options.explicitEmpresaId && options.contextEmpresas) {
-        const emp = options.contextEmpresas.find((e: any) => e.id === options.explicitEmpresaId);
-        if (emp && emp.sindicatoId) {
-          targetSindicatoId = emp.sindicatoId;
-        }
-      }
-
-      // 2. Busca dinâmica inteligente no texto da conversa/pergunta por nome de empresa ou sindicato
-      if (!targetSindicatoId && options.queryText) {
-        const normQuery = normalizeSearchStr(options.queryText);
-        const empresas = options.contextEmpresas || [];
-
-        for (const emp of empresas) {
-          const empNomeNorm = normalizeSearchStr(emp.nome);
-          const words = empNomeNorm.split(/\s+/).filter(w => w.length >= 4 && !['ltda', 'eireli', 'me', 'epp', 's/a', 'comercio', 'servicos'].includes(w));
-          if (normQuery.includes(empNomeNorm) || (words.length > 0 && words.some(w => normQuery.includes(w)))) {
-            if (emp.sindicatoId) {
-              targetSindicatoId = emp.sindicatoId;
-              break;
-            }
-          }
-        }
-
-        if (!targetSindicatoId) {
-          const sindicatos = options.contextSindicatos || [];
-          for (const sind of sindicatos) {
-            const sindNomeNorm = normalizeSearchStr(sind.nome);
-            const acronymMatch = sindNomeNorm.match(/\(([a-z0-9\-]+)\)/);
-            const acronym = acronymMatch ? acronymMatch[1] : '';
-            const words = sindNomeNorm.split(/\s+/).filter(w => w.length >= 5 && !['sindicato', 'trabalhadores', 'empregados', 'estado', 'goias', 'regiao'].includes(w));
-            if (normQuery.includes(sindNomeNorm) || (acronym && normQuery.includes(acronym)) || (words.length > 0 && words.some(w => normQuery.includes(w)))) {
-              targetSindicatoId = sind.id;
-              sindicatoNome = sind.nome;
-              break;
-            }
-          }
-        }
-      }
-
-      if (targetSindicatoId) {
-        const docSnap = await db.collection('sindicatos').doc(targetSindicatoId).collection('cct_textos').doc('vigente').get();
-        if (docSnap.exists) {
-          const data = docSnap.data();
-          return {
-            cctText: data?.texto_puro || "",
-            sindicatoNome: sindicatoNome || data?.nome_sindicato || ""
-          };
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao resolver CCT no Firestore:", error);
-    }
-
-    return { cctText: "", sindicatoNome: "" };
-  }
-
   app.post('/api/ai-command', requireApiKey, async (req, res) => {
     try {
       const parseResult = AiCommandSchema.safeParse(req.body);
@@ -198,21 +122,13 @@ app.set('trust proxy', 1);
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { prompt, context, sindicatoId, empresaId } = parseResult.data;
+      const { prompt, context, cctText } = parseResult.data;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
       }
       
       const ai = new GoogleGenAI({ apiKey });
-
-      const { cctText } = await resolveCctText({
-        explicitSindicatoId: sindicatoId,
-        explicitEmpresaId: empresaId,
-        queryText: prompt,
-        contextEmpresas: context?.empresas,
-        contextSindicatos: context?.sindicatos
-      });
 
       let baseInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
 Sua função é interpretar a intenção do usuário e estruturar os dados para que o frontend crie regras de checklist ou eventos no calendário.
@@ -257,11 +173,14 @@ Abaixo, forneço o texto integral e atualizado da Convenção Coletiva de Trabal
 ${cctText}
 ---
 **SUAS REGRAS DE CONDUTA E VERIFICAÇÃO DE VIGÊNCIA (OBRIGATÓRIO):**
-1. **ALERTA OBRIGATÓRIO DE CCT VENCIDA (CRÍTICO):** 
+1. **SAÍDA PADRONIZADA E CONCISA DA VIGÊNCIA (SEM TEXTOS LONGOS OU NOTAS PROLIXAS):** 
    - Sempre identifique no texto a cláusula de vigência (ex: "CLÁUSULA PRIMEIRA - VIGÊNCIA E DATA-BASE", períodos como "01/XX/YYYY a 31/XX/YYYY").
    - Compare o período de vigência com a DATA ATUAL DO SISTEMA (${dataAtualFormatada}).
-   - Se a data atual for posterior ao término da vigência da CCT (ou seja, a CCT estiver vencida), você **DEVE OBRIGATORIAMENTE INICIAR SUA RESPOSTA COM UM ALERTA EM DESTAQUE**, por exemplo:
-     ⚠️ **ALERTA DE VIGÊNCIA:** *A Convenção Coletiva cadastrada para esta categoria teve vigência de [Data Início] a [Data Fim] e encontra-se VENCIDA perante a data atual. Os valores e condições abaixo referem-se à CCT anterior e podem ter sofrido reajustes em nova convenção ou termo aditivo.*
+   - Se a CCT estiver **VENCIDA** perante a data atual: inicie obrigatoriamente a resposta com o alerta em destaque no formato:
+     ⚠️ **ALERTA CCT VENCIDA DESDE DD/MM/AAAA**
+   - Se a CCT estiver **VIGENTE**: inclua a vigência de forma simples e direta em uma única linha (ao final da resposta ou após a citação):
+     **VIGÊNCIA CCT:** DD/MM/AAAA a DD/MM/AAAA
+   - **IMPORTANTE:** É ESTRITAMENTE PROIBIDO gerar parágrafos longos, notas explicativas, justificativas ou comentários discursivos sobre a vigência (como "Nota sobre a vigência: Conforme a Cláusula Primeira...", "Como a data atual do sistema é..."). A informação de vigência deve se limitar unicamente à linha padrão especificada.
 2. **FIDELIDADE E ZERO ALUCINAÇÃO:** Responda à dúvida do usuário baseando-se **EXCLUSIVAMENTE** nas cláusulas do texto da CCT acima. Cite o número da cláusula sempre que possível.
 3. **POSTURA CONSULTIVA CASO NÃO CONSTE:** Se a regra solicitada não constar expressamente no texto fornecido, **NÃO INVENTE** nem presuma regras. Adote uma postura consultiva, respondendo: *'Analisei a Convenção Coletiva anexada, mas não encontrei regras específicas sobre [Tema]. Essa dúvida refere-se a algo fora do escopo desta convenção? Posso consultar as regras gerais da CLT para você, se desejar.'*
 
@@ -298,25 +217,13 @@ ${baseInstruction}`;
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { history, context, sindicatoId, empresaId } = parseResult.data;
+      const { history, context, cctText } = parseResult.data;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
       }
       
       const ai = new GoogleGenAI({ apiKey });
-
-      const fullConversationText = history
-        .map((m: any) => m.parts?.map((p: any) => p.text).join(' '))
-        .join('\n');
-
-      const { cctText } = await resolveCctText({
-        explicitSindicatoId: sindicatoId,
-        explicitEmpresaId: empresaId,
-        queryText: fullConversationText,
-        contextEmpresas: context?.empresas,
-        contextSindicatos: context?.sindicatos
-      });
 
       let baseInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
 Sua função é tirar dúvidas do usuário, ajudá-lo com dados do sistema, e também interpretar comandos para registrar coisas no sistema.
@@ -368,11 +275,14 @@ Abaixo, forneço o texto integral e atualizado da Convenção Coletiva de Trabal
 ${cctText}
 ---
 **SUAS REGRAS DE CONDUTA E VERIFICAÇÃO DE VIGÊNCIA (OBRIGATÓRIO):**
-1. **ALERTA OBRIGATÓRIO DE CCT VENCIDA (CRÍTICO):** 
+1. **SAÍDA PADRONIZADA E CONCISA DA VIGÊNCIA (SEM TEXTOS LONGOS OU NOTAS PROLIXAS):** 
    - Sempre identifique no texto a cláusula de vigência (ex: "CLÁUSULA PRIMEIRA - VIGÊNCIA E DATA-BASE", períodos como "01/XX/YYYY a 31/XX/YYYY").
    - Compare o período de vigência com a DATA ATUAL DO SISTEMA (${dataAtualFormatada}).
-   - Se a data atual for posterior ao término da vigência da CCT (ou seja, a CCT estiver vencida), você **DEVE OBRIGATORIAMENTE INICIAR SUA RESPOSTA COM UM ALERTA EM DESTAQUE**, por exemplo:
-     ⚠️ **ALERTA DE VIGÊNCIA:** *A Convenção Coletiva cadastrada para esta categoria teve vigência de [Data Início] a [Data Fim] e encontra-se VENCIDA perante a data atual. Os valores e condições abaixo referem-se à CCT anterior e podem ter sofrido reajustes em nova convenção ou termo aditivo.*
+   - Se a CCT estiver **VENCIDA** perante a data atual: inicie obrigatoriamente a resposta com o alerta em destaque no formato:
+     ⚠️ **ALERTA CCT VENCIDA DESDE DD/MM/AAAA**
+   - Se a CCT estiver **VIGENTE**: inclua a vigência de forma simples e direta em uma única linha (ao final da resposta ou após a citação):
+     **VIGÊNCIA CCT:** DD/MM/AAAA a DD/MM/AAAA
+   - **IMPORTANTE:** É ESTRITAMENTE PROIBIDO gerar parágrafos longos, notas explicativas, justificativas ou comentários discursivos sobre a vigência (como "Nota sobre a vigência: Conforme a Cláusula Primeira...", "Como a data atual do sistema é..."). A informação de vigência deve se limitar unicamente à linha padrão especificada.
 2. **FIDELIDADE E ZERO ALUCINAÇÃO:** Responda à dúvida do usuário baseando-se **EXCLUSIVAMENTE** nas cláusulas do texto da CCT acima. Cite o número da cláusula sempre que possível.
 3. **POSTURA CONSULTIVA CASO NÃO CONSTE:** Se a regra solicitada não constar expressamente no texto fornecido, **NÃO INVENTE** nem presuma regras. Adote uma postura consultiva, respondendo: *'Analisei a Convenção Coletiva anexada, mas não encontrei regras específicas sobre [Tema]. Essa dúvida refere-se a algo fora do escopo desta convenção? Posso consultar as regras gerais da CLT para você, se desejar.'*
 
