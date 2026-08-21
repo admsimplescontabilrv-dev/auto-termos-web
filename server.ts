@@ -66,7 +66,7 @@ const GerarReciboSchema = z.object({
 
 // async function startServer() { // Remover encapsulamento de startServer() completo
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // Habilita a confiança no proxy (X-Forwarded-For) pois o app roda atrás do reverse proxy do Cloud Run.
 // Isso resolve o aviso do express-rate-limit e garante que as requisições sejam bloqueadas pelo IP do usuário, não do proxy.
@@ -986,7 +986,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
           });
         }
 
-        app.listen(PORT, () => {
+        app.listen(PORT, "0.0.0.0", () => {
           console.log(`Server running on http://localhost:${PORT}`);
         });
       } catch (err) {
