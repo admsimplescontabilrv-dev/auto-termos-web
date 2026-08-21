@@ -118,6 +118,79 @@ app.set('trust proxy', 1);
     res.json({ status: "ok" });
   });
 
+  function normalizeSearchStr(str: string): string {
+    return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  }
+
+  async function resolveCctText(options: {
+    explicitSindicatoId?: string;
+    explicitEmpresaId?: string;
+    queryText?: string;
+    contextEmpresas?: any[];
+    contextSindicatos?: any[];
+  }): Promise<{ cctText: string; sindicatoNome: string }> {
+    try {
+      const db = getFirestore(undefined, "ai-studio-documentautomato-5d1ea9b1-7d94-4229-bd61-9c62bcb6f636");
+      let targetSindicatoId = options.explicitSindicatoId;
+      let sindicatoNome = "";
+
+      // 1. Empresa explícita via ID
+      if (!targetSindicatoId && options.explicitEmpresaId && options.contextEmpresas) {
+        const emp = options.contextEmpresas.find((e: any) => e.id === options.explicitEmpresaId);
+        if (emp && emp.sindicatoId) {
+          targetSindicatoId = emp.sindicatoId;
+        }
+      }
+
+      // 2. Busca dinâmica inteligente no texto da conversa/pergunta por nome de empresa ou sindicato
+      if (!targetSindicatoId && options.queryText) {
+        const normQuery = normalizeSearchStr(options.queryText);
+        const empresas = options.contextEmpresas || [];
+
+        for (const emp of empresas) {
+          const empNomeNorm = normalizeSearchStr(emp.nome);
+          const words = empNomeNorm.split(/\s+/).filter(w => w.length >= 4 && !['ltda', 'eireli', 'me', 'epp', 's/a', 'comercio', 'servicos'].includes(w));
+          if (normQuery.includes(empNomeNorm) || (words.length > 0 && words.some(w => normQuery.includes(w)))) {
+            if (emp.sindicatoId) {
+              targetSindicatoId = emp.sindicatoId;
+              break;
+            }
+          }
+        }
+
+        if (!targetSindicatoId) {
+          const sindicatos = options.contextSindicatos || [];
+          for (const sind of sindicatos) {
+            const sindNomeNorm = normalizeSearchStr(sind.nome);
+            const acronymMatch = sindNomeNorm.match(/\(([a-z0-9\-]+)\)/);
+            const acronym = acronymMatch ? acronymMatch[1] : '';
+            const words = sindNomeNorm.split(/\s+/).filter(w => w.length >= 5 && !['sindicato', 'trabalhadores', 'empregados', 'estado', 'goias', 'regiao'].includes(w));
+            if (normQuery.includes(sindNomeNorm) || (acronym && normQuery.includes(acronym)) || (words.length > 0 && words.some(w => normQuery.includes(w)))) {
+              targetSindicatoId = sind.id;
+              sindicatoNome = sind.nome;
+              break;
+            }
+          }
+        }
+      }
+
+      if (targetSindicatoId) {
+        const docSnap = await db.collection('sindicatos').doc(targetSindicatoId).collection('cct_textos').doc('vigente').get();
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          return {
+            cctText: data?.texto_puro || "",
+            sindicatoNome: sindicatoNome || data?.nome_sindicato || ""
+          };
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao resolver CCT no Firestore:", error);
+    }
+
+    return { cctText: "", sindicatoNome: "" };
+  }
+
   app.post('/api/ai-command', requireApiKey, async (req, res) => {
     try {
       const parseResult = AiCommandSchema.safeParse(req.body);
@@ -133,26 +206,13 @@ app.set('trust proxy', 1);
       
       const ai = new GoogleGenAI({ apiKey });
 
-      let targetSindicatoId = sindicatoId;
-      if (!targetSindicatoId && empresaId && context?.empresas) {
-        const emp = context.empresas.find((e: any) => e.id === empresaId);
-        if (emp && emp.sindicatoId) {
-          targetSindicatoId = emp.sindicatoId;
-        }
-      }
-
-      let cctText = "";
-      if (targetSindicatoId) {
-        try {
-          const db = getFirestore(undefined, "ai-studio-documentautomato-5d1ea9b1-7d94-4229-bd61-9c62bcb6f636");
-          const docSnap = await db.collection('sindicatos').doc(targetSindicatoId).collection('cct_textos').doc('vigente').get();
-          if (docSnap.exists) {
-            cctText = docSnap.data()?.texto_puro || "";
-          }
-        } catch (error) {
-          console.error("Erro ao buscar CCT no Firestore:", error);
-        }
-      }
+      const { cctText } = await resolveCctText({
+        explicitSindicatoId: sindicatoId,
+        explicitEmpresaId: empresaId,
+        queryText: prompt,
+        contextEmpresas: context?.empresas,
+        contextSindicatos: context?.sindicatos
+      });
 
       let baseInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
 Sua função é interpretar a intenção do usuário e estruturar os dados para que o frontend crie regras de checklist ou eventos no calendário.
@@ -246,26 +306,17 @@ ${baseInstruction}`;
       
       const ai = new GoogleGenAI({ apiKey });
 
-      let targetSindicatoId = sindicatoId;
-      if (!targetSindicatoId && empresaId && context?.empresas) {
-        const emp = context.empresas.find((e: any) => e.id === empresaId);
-        if (emp && emp.sindicatoId) {
-          targetSindicatoId = emp.sindicatoId;
-        }
-      }
+      const fullConversationText = history
+        .map((m: any) => m.parts?.map((p: any) => p.text).join(' '))
+        .join('\n');
 
-      let cctText = "";
-      if (targetSindicatoId) {
-        try {
-          const db = getFirestore(undefined, "ai-studio-documentautomato-5d1ea9b1-7d94-4229-bd61-9c62bcb6f636");
-          const docSnap = await db.collection('sindicatos').doc(targetSindicatoId).collection('cct_textos').doc('vigente').get();
-          if (docSnap.exists) {
-            cctText = docSnap.data()?.texto_puro || "";
-          }
-        } catch (error) {
-          console.error("Erro ao buscar CCT no Firestore:", error);
-        }
-      }
+      const { cctText } = await resolveCctText({
+        explicitSindicatoId: sindicatoId,
+        explicitEmpresaId: empresaId,
+        queryText: fullConversationText,
+        contextEmpresas: context?.empresas,
+        contextSindicatos: context?.sindicatos
+      });
 
       let baseInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
 Sua função é tirar dúvidas do usuário, ajudá-lo com dados do sistema, e também interpretar comandos para registrar coisas no sistema.
