@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin for token verification
 if (getApps().length === 0) {
@@ -30,7 +31,9 @@ const AiCommandSchema = z.object({
   context: z.object({
     empresas: z.array(z.any()),
     sindicatos: z.array(z.any())
-  })
+  }),
+  sindicatoId: z.string().optional(),
+  empresaId: z.string().optional()
 });
 
 const ChatSchema = z.object({
@@ -43,7 +46,9 @@ const ChatSchema = z.object({
   context: z.object({
     empresas: z.array(z.any()).optional(),
     sindicatos: z.array(z.any()).optional()
-  }).optional()
+  }).optional(),
+  sindicatoId: z.string().optional(),
+  empresaId: z.string().optional()
 });
 
 const ExtractPdfSchema = z.object({
@@ -120,7 +125,7 @@ app.set('trust proxy', 1);
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { prompt, context } = parseResult.data;
+      const { prompt, context, sindicatoId, empresaId } = parseResult.data;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
@@ -128,7 +133,28 @@ app.set('trust proxy', 1);
       
       const ai = new GoogleGenAI({ apiKey });
 
-      const systemInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
+      let targetSindicatoId = sindicatoId;
+      if (!targetSindicatoId && empresaId && context?.empresas) {
+        const emp = context.empresas.find((e: any) => e.id === empresaId);
+        if (emp && emp.sindicatoId) {
+          targetSindicatoId = emp.sindicatoId;
+        }
+      }
+
+      let cctText = "";
+      if (targetSindicatoId) {
+        try {
+          const db = getFirestore(undefined, "ai-studio-documentautomato-5d1ea9b1-7d94-4229-bd61-9c62bcb6f636");
+          const docSnap = await db.collection('sindicatos').doc(targetSindicatoId).collection('cct_textos').doc('vigente').get();
+          if (docSnap.exists) {
+            cctText = docSnap.data()?.texto_puro || "";
+          }
+        } catch (error) {
+          console.error("Erro ao buscar CCT no Firestore:", error);
+        }
+      }
+
+      let baseInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
 Sua função é interpretar a intenção do usuário e estruturar os dados para que o frontend crie regras de checklist ou eventos no calendário.
 
 EMPRESAS DISPONÍVEIS: ${JSON.stringify(context.empresas)}
@@ -159,6 +185,30 @@ Se intent = "CREATE_CHECKLIST_RULE", parameters deve ter:
 
 Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.`;
 
+      let systemInstruction = baseInstruction;
+      const dataAtualFormatada = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeZone: 'America/Sao_Paulo' }).format(new Date());
+
+      if (cctText) {
+        systemInstruction = `Você é o Assistente Especialista de DP do 'Simples Contábil'.
+DATA ATUAL DO SISTEMA: ${dataAtualFormatada} (${new Date().toISOString().slice(0, 10)})
+
+Abaixo, forneço o texto integral e atualizado da Convenção Coletiva de Trabalho (CCT) do sindicato aplicável a este contexto:
+---
+${cctText}
+---
+**SUAS REGRAS DE CONDUTA E VERIFICAÇÃO DE VIGÊNCIA (OBRIGATÓRIO):**
+1. **ALERTA OBRIGATÓRIO DE CCT VENCIDA (CRÍTICO):** 
+   - Sempre identifique no texto a cláusula de vigência (ex: "CLÁUSULA PRIMEIRA - VIGÊNCIA E DATA-BASE", períodos como "01/XX/YYYY a 31/XX/YYYY").
+   - Compare o período de vigência com a DATA ATUAL DO SISTEMA (${dataAtualFormatada}).
+   - Se a data atual for posterior ao término da vigência da CCT (ou seja, a CCT estiver vencida), você **DEVE OBRIGATORIAMENTE INICIAR SUA RESPOSTA COM UM ALERTA EM DESTAQUE**, por exemplo:
+     ⚠️ **ALERTA DE VIGÊNCIA:** *A Convenção Coletiva cadastrada para esta categoria teve vigência de [Data Início] a [Data Fim] e encontra-se VENCIDA perante a data atual. Os valores e condições abaixo referem-se à CCT anterior e podem ter sofrido reajustes em nova convenção ou termo aditivo.*
+2. **FIDELIDADE E ZERO ALUCINAÇÃO:** Responda à dúvida do usuário baseando-se **EXCLUSIVAMENTE** nas cláusulas do texto da CCT acima. Cite o número da cláusula sempre que possível.
+3. **POSTURA CONSULTIVA CASO NÃO CONSTE:** Se a regra solicitada não constar expressamente no texto fornecido, **NÃO INVENTE** nem presuma regras. Adote uma postura consultiva, respondendo: *'Analisei a Convenção Coletiva anexada, mas não encontrei regras específicas sobre [Tema]. Essa dúvida refere-se a algo fora do escopo desta convenção? Posso consultar as regras gerais da CLT para você, se desejar.'*
+
+Além disso, siga estas instruções gerais de estruturação de resposta para criação de eventos e checklists:
+${baseInstruction}`;
+      }
+
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: [
@@ -188,7 +238,7 @@ Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.`;
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { history, context } = parseResult.data;
+      const { history, context, sindicatoId, empresaId } = parseResult.data;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
@@ -196,7 +246,28 @@ Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.`;
       
       const ai = new GoogleGenAI({ apiKey });
 
-      const systemInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
+      let targetSindicatoId = sindicatoId;
+      if (!targetSindicatoId && empresaId && context?.empresas) {
+        const emp = context.empresas.find((e: any) => e.id === empresaId);
+        if (emp && emp.sindicatoId) {
+          targetSindicatoId = emp.sindicatoId;
+        }
+      }
+
+      let cctText = "";
+      if (targetSindicatoId) {
+        try {
+          const db = getFirestore(undefined, "ai-studio-documentautomato-5d1ea9b1-7d94-4229-bd61-9c62bcb6f636");
+          const docSnap = await db.collection('sindicatos').doc(targetSindicatoId).collection('cct_textos').doc('vigente').get();
+          if (docSnap.exists) {
+            cctText = docSnap.data()?.texto_puro || "";
+          }
+        } catch (error) {
+          console.error("Erro ao buscar CCT no Firestore:", error);
+        }
+      }
+
+      let baseInstruction = `Você é um assistente de inteligência artificial de Departamento Pessoal ("Assistente IA do DP").
 Sua função é tirar dúvidas do usuário, ajudá-lo com dados do sistema, e também interpretar comandos para registrar coisas no sistema.
 
 DADOS DISPONÍVEIS DO SISTEMA DO USUÁRIO:
@@ -233,6 +304,30 @@ Se a intent for "CREATE_CHECKLIST_RULE", parameters deve ter:
 
 Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.
 Se não houver nenhuma ação a ser proposta, não envie o campo "proposedAction" ou envie "intent": "UNKNOWN".`;
+
+      let systemInstruction = baseInstruction;
+      const dataAtualFormatada = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeZone: 'America/Sao_Paulo' }).format(new Date());
+
+      if (cctText) {
+        systemInstruction = `Você é o Assistente Especialista de DP do 'Simples Contábil'.
+DATA ATUAL DO SISTEMA: ${dataAtualFormatada} (${new Date().toISOString().slice(0, 10)})
+
+Abaixo, forneço o texto integral e atualizado da Convenção Coletiva de Trabalho (CCT) do sindicato aplicável a este contexto:
+---
+${cctText}
+---
+**SUAS REGRAS DE CONDUTA E VERIFICAÇÃO DE VIGÊNCIA (OBRIGATÓRIO):**
+1. **ALERTA OBRIGATÓRIO DE CCT VENCIDA (CRÍTICO):** 
+   - Sempre identifique no texto a cláusula de vigência (ex: "CLÁUSULA PRIMEIRA - VIGÊNCIA E DATA-BASE", períodos como "01/XX/YYYY a 31/XX/YYYY").
+   - Compare o período de vigência com a DATA ATUAL DO SISTEMA (${dataAtualFormatada}).
+   - Se a data atual for posterior ao término da vigência da CCT (ou seja, a CCT estiver vencida), você **DEVE OBRIGATORIAMENTE INICIAR SUA RESPOSTA COM UM ALERTA EM DESTAQUE**, por exemplo:
+     ⚠️ **ALERTA DE VIGÊNCIA:** *A Convenção Coletiva cadastrada para esta categoria teve vigência de [Data Início] a [Data Fim] e encontra-se VENCIDA perante a data atual. Os valores e condições abaixo referem-se à CCT anterior e podem ter sofrido reajustes em nova convenção ou termo aditivo.*
+2. **FIDELIDADE E ZERO ALUCINAÇÃO:** Responda à dúvida do usuário baseando-se **EXCLUSIVAMENTE** nas cláusulas do texto da CCT acima. Cite o número da cláusula sempre que possível.
+3. **POSTURA CONSULTIVA CASO NÃO CONSTE:** Se a regra solicitada não constar expressamente no texto fornecido, **NÃO INVENTE** nem presuma regras. Adote uma postura consultiva, respondendo: *'Analisei a Convenção Coletiva anexada, mas não encontrei regras específicas sobre [Tema]. Essa dúvida refere-se a algo fora do escopo desta convenção? Posso consultar as regras gerais da CLT para você, se desejar.'*
+
+Além disso, siga estas instruções gerais para a formatação da sua resposta JSON:
+${baseInstruction}`;
+      }
 
       const modelsToTry = [
         'gemini-3.5-flash-lite', 
