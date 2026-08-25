@@ -91,7 +91,8 @@ export default function BoletoApp() {
       return;
     }
     setPdfFile(file);
-    setFileName(file.name.replace(/\.pdf$/i, ''));
+    const baseName = file.name.replace(/\.pdf$/i, '');
+    setFileName(baseName.toUpperCase().startsWith('BOLETO') ? baseName : `BOLETO ${baseName}`);
     setProcessedPdfUrl(null);
     setShowOriginal(false);
     

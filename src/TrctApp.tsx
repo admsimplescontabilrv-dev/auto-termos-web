@@ -540,7 +540,7 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
       showNotification('Permita pop-ups para imprimir', 'error');
       return;
     }
-    const tituloExportacao = `TRCT EXTRACONTABIL ${calculatedData.nome || 'COLABORADOR'}`.toUpperCase();
+    const tituloExportacao = `TRCT EXTRA CONTABIL ${calculatedData.nome || 'COLABORADOR'}`.toUpperCase();
     const html = `
       <!DOCTYPE html>
       <html>

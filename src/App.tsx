@@ -37,6 +37,8 @@ import {
   Check,
   Clock,
   Settings,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { initAuth, loginWithPassword, logout } from "./auth";
@@ -526,6 +528,19 @@ export default function App() {
     );
   };
 
+  const moveTemplate = (index, direction) => {
+    const newTemplates = [...templates];
+    if (direction === 'up' && index > 0) {
+      [newTemplates[index], newTemplates[index - 1]] = [newTemplates[index - 1], newTemplates[index]];
+    } else if (direction === 'down' && index < newTemplates.length - 1) {
+      [newTemplates[index], newTemplates[index + 1]] = [newTemplates[index + 1], newTemplates[index]];
+    } else {
+      return;
+    }
+    setTemplates(newTemplates);
+    localStorage.setItem("@app:templates", JSON.stringify(newTemplates));
+  };
+
   const generateFinalDocument = () => {
     // Triggering new commit for GitHub
     // Generate concatenated document
@@ -683,7 +698,7 @@ export default function App() {
     termName: string;
     content: string;
   }) => {
-    const printTitle = `${doc.collabName} - ${doc.termName}`.toUpperCase();
+    const printTitle = `${doc.termName} - ${doc.collabName}`.toUpperCase();
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       alert("Por favor, permita pop-ups no seu navegador para gerar o PDF.");
@@ -806,32 +821,9 @@ export default function App() {
     try {
       let printTitle = "DOCUMENTOS EM LOTE";
       if (batchTemplateIds.length > 0) {
-        const tplNames = batchTemplateIds
-          .map((id) => {
-            if (id === "tpl-custom")
-              return activeTemplateId === "tpl-custom"
-                ? templateName
-                : customTemplate.name;
-            const tpl = templates.find((t) => t.id === id);
-            return tpl ? tpl.name : "Documento";
-          })
-          .join(" e ");
-
-        const collabNames = collaboratorsData.map((collab, index) => {
-          const nameKey = collaboratorVariables.find((v) =>
-            v.toUpperCase().includes("NOME"),
-          );
-          if (nameKey && collab[nameKey] && collab[nameKey].trim() !== "") {
-            return collab[nameKey];
-          }
-          const firstVal = Object.values(collab).find(
-            (val: any) => typeof val === "string" && val.trim() !== "",
-          );
-          return firstVal || `Colaborador ${index + 1}`;
-        });
-
-        const allCollabNames = Array.from(new Set(collabNames)).join(", ");
-        printTitle = `${tplNames} - ${allCollabNames}`.toUpperCase();
+        const numTerms = batchTemplateIds.length;
+        const numCollabs = collaboratorsData.length;
+        printTitle = `${numTerms} TERMO${numTerms > 1 ? 'S' : ''} - ${numCollabs} COLABORADOR${numCollabs > 1 ? 'ES' : ''}`.toUpperCase();
       }
 
       const printWindow = window.open("", "_blank");
@@ -1980,7 +1972,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
             {step === 1 && (
               <div className="flex flex-col lg:flex-row flex-1 gap-8 h-full">
                 {/* Sidebar Left: biblioteca */}
-                <aside className="w-full lg:w-80 flex flex-col space-y-6 flex-shrink-0">
+                <aside className="w-full lg:w-96 flex flex-col space-y-6 flex-shrink-0">
                   <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6 flex-1 flex flex-col">
                     <h2 className="text-indigo-400 text-sm tracking-widest mb-6 flex items-center space-x-2 font-serif">
                       <FileText className="w-4 h-4" />
@@ -1999,7 +1991,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                       <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-3 mt-4">
                         SUGERIDOS
                       </h3>
-                      {templates.map((tpl) => (
+                      {templates.map((tpl, index) => (
                         <div
                           key={tpl.id}
                           className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
@@ -2008,6 +2000,14 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                               : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
                           }`}
                         >
+                          <div className="flex flex-col justify-center px-1 border-r border-slate-700/50">
+                            <button onClick={() => moveTemplate(index, 'up')} className="p-1 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={index === 0}>
+                              <ChevronUp className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => moveTemplate(index, 'down')} className="p-1 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={index === templates.length - 1}>
+                              <ChevronDown className="w-4 h-4" />
+                            </button>
+                          </div>
                           <div className="flex items-center pl-3">
                             <input
                               type="checkbox"
@@ -2020,7 +2020,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                             onClick={() => handleTemplateSelect(tpl.id)}
                             className="flex-1 text-left p-3"
                           >
-                            <p className="text-sm font-medium line-clamp-1">
+                            <p className="text-sm font-medium">
                               {tpl.name}
                             </p>
                             <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
@@ -2062,6 +2062,29 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                           </span>
                         </button>
                       </div>
+                      
+                      <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-3 mt-8">
+                        OUTROS DOCUMENTOS (PDF)
+                      </h3>
+                      <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
+                        <a 
+                          href="/CHECKLIST VEICULOS.pdf" 
+                          download="CHECKLIST VEICULOS.pdf"
+                          className="flex-1 flex items-center justify-between text-left p-3"
+                          title="Baixar Checklist Veículos"
+                        >
+                          <div>
+                            <p className="text-sm font-medium">
+                              CHECKLIST VEÍCULOS
+                            </p>
+                            <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
+                              PDF ESTÁTICO
+                            </span>
+                          </div>
+                          <Download className="w-4 h-4 text-indigo-400" />
+                        </a>
+                      </div>
+
                     </div>
                   </div>
                 </aside>

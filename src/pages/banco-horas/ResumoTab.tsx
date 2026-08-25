@@ -42,8 +42,13 @@ export default function ResumoTab() {
       setPrintWarning(true);
       setTimeout(() => setPrintWarning(false), 8000);
     }
+    
+    const originalTitle = document.title;
+    document.title = `BANCO DE HORAS RESUMO - ${new Date().toLocaleDateString('pt-BR')}`;
+    
     setTimeout(() => {
       window.print();
+      document.title = originalTitle;
     }, 100);
   };
 

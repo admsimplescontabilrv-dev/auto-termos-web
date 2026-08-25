@@ -135,8 +135,13 @@ export default function RelatoriosChecklistTab({ empresas }: RelatoriosChecklist
       setPrintWarning(true);
       setTimeout(() => setPrintWarning(false), 8000);
     }
+    
+    const originalTitle = document.title;
+    document.title = `RELATORIO CHECKLIST - ${new Date().toLocaleDateString('pt-BR')}`;
+    
     setTimeout(() => {
       window.print();
+      document.title = originalTitle;
     }, 100);
   };
 

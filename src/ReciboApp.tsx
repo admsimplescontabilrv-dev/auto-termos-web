@@ -938,9 +938,11 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                     const formatMesAno = (ma: string) => ma && ma.includes('-') ? `${ma.split('-')[1]}/${ma.split('-')[0]}` : ma;
                     const mesRef = dadosEmpresa.geracaoEmLote ? 'LOTE' : formatMesAno(dadosEmpresa.mesAno);
                     const nomeFormatado = dadosFuncionario.nome?.trim() || 'FUNCIONARIO';
-                    const docTitle = (dadosEmpresa.tipoRecibo === 'prolabore'
-                      ? `[PROLABORE] [${mesRef}] [${nomeFormatado}]`
-                      : `RECIBO EXTRACONTABIL - [${mesRef}] - [${nomeFormatado}]`).toUpperCase();
+                    const docTitle = (dadosEmpresa.geracaoEmLote
+                      ? `RECIBOS EXTRACONTABEIS - LOTE`
+                      : dadosEmpresa.tipoRecibo === 'prolabore'
+                        ? `PROLABORE ${mesRef} ${nomeFormatado}`
+                        : `RECIBO EXTRA CONTABIL ${mesRef} ${nomeFormatado}`).toUpperCase();
                       
                     const printWindow = window.open('', '_blank');
                     if (!printWindow) return alert('Permita pop-ups.');
