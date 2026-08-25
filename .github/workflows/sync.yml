@@ -1,0 +1,20 @@
+name: Espelhamento Automatico Vercel
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código original
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Enviando para o repositório privado
+        run: |
+          git remote add clone https://admsimplescontabilrv-dev:${{ secrets.DESTINATION_TOKEN }}@github.com/admsimplescontabilrv-dev/auto-termos-web.git
+          git push clone main --force

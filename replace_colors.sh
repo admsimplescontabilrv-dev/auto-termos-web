@@ -1,0 +1,40 @@
+#!/bin/bash
+find src -type f -name "*.tsx" | xargs sed -i \
+  -e 's/bg-\[#380E1C\]/bg-slate-950/g' \
+  -e 's/bg-\[#1E0810\]/bg-slate-900/g' \
+  -e 's/bg-\[#1A040B\]/bg-slate-900/g' \
+  -e 's/bg-\[#18060B\]/bg-slate-900/g' \
+  -e 's/bg-\[#110408\]/bg-slate-950/g' \
+  -e 's/bg-\[#2A0B16\]/bg-slate-800/g' \
+  -e 's/bg-\[#0C0305\]/bg-slate-950/g' \
+  -e 's/bg-\[#4A1828\]/bg-slate-700/g' \
+  -e 's/bg-\[#3A1221\]/bg-slate-800/g' \
+  -e 's/bg-\[#C49B4A\]/bg-indigo-600/g' \
+  -e 's/bg-\[#D1A751\]/bg-slate-200/g' \
+  -e 's/bg-\[#FDF4CD\]/bg-slate-50/g' \
+  -e 's/border-\[#4A1828\]/border-slate-700\/50/g' \
+  -e 's/border-\[#3A1221\]/border-slate-800/g' \
+  -e 's/border-\[#C49B4A\]/border-indigo-500/g' \
+  -e 's/border-\[#D1A751\]/border-indigo-500/g' \
+  -e 's/text-\[#C49B4A\]/text-indigo-400/g' \
+  -e 's/text-\[#D1A751\]/text-slate-200/g' \
+  -e 's/text-\[#A68759\]/text-slate-400/g' \
+  -e 's/text-\[#845a27\]/text-slate-500/g' \
+  -e 's/text-\[#6a4220\]/text-slate-600/g' \
+  -e 's/text-\[#1E0810\]/text-white/g' \
+  -e 's/text-\[#1A040B\]/text-white/g' \
+  -e 's/hover:bg-\[#D1A751\]/hover:bg-indigo-500/g' \
+  -e 's/hover:bg-\[#380E1C\]/hover:bg-slate-800/g' \
+  -e 's/hover:bg-\[#2A0B16\]/hover:bg-slate-800/g' \
+  -e 's/hover:bg-\[#1E0810\]/hover:bg-slate-800/g' \
+  -e 's/hover:border-\[#C49B4A\]/hover:border-indigo-500/g' \
+  -e 's/hover:border-\[#D1A751\]/hover:border-indigo-500/g' \
+  -e 's/hover:text-\[#D1A751\]/hover:text-slate-200/g' \
+  -e 's/hover:text-\[#C49B4A\]/hover:text-indigo-400/g' \
+  -e 's/hover:text-\[#845a27\]/hover:text-slate-400/g' \
+  -e 's/shadow-\[#110408\]\/50/shadow-black\/20/g' \
+  -e 's/shadow-\[#110408\]\/80/shadow-black\/40/g' \
+  -e 's/marker:text-\[#C49B4A\]/marker:text-indigo-400/g' \
+  -e 's/accent-\[#C49B4A\]/accent-indigo-500/g' \
+  -e 's/text-\[#1A040B\]/text-slate-900/g'
+

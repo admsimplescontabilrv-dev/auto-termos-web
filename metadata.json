@@ -1,0 +1,8 @@
+{
+  "name": "DP - SIMPLES CONTÁBIL",
+  "description": "Sistema de Departamento Pessoal - Simples Contábil",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
