@@ -46,6 +46,7 @@ export default function UnifiedAddModal({
   const [calcDay, setCalcDay] = useState(5);
   const [calcMonth, setCalcMonth] = useState(new Date().getMonth());
   const [calcYear, setCalcYear] = useState(new Date().getFullYear());
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Aviso specific
   const [avisoData, setAvisoData] = useState({ 
@@ -133,13 +134,21 @@ export default function UnifiedAddModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!empresaId) {
-      alert("Por favor, selecione uma empresa ou sindicato.");
+    setErrorMsg('');
+    
+    if (addType !== 'calendario' && !empresaId) {
+      setErrorMsg('Por favor, selecione uma Empresa ou Sindicato.');
       return;
     }
     
-    if (addType !== 'aviso' && !taskName) return;
-    if (addType === 'aviso' && !avisoData.nome) return;
+    if (addType !== 'aviso' && !taskName) {
+      setErrorMsg('Por favor, informe a descrição da tarefa.');
+      return;
+    }
+    if (addType === 'aviso' && !avisoData.nome) {
+      setErrorMsg('Por favor, informe o nome do colaborador.');
+      return;
+    }
 
     try {
       if (addType === 'processo') {
@@ -182,7 +191,7 @@ export default function UnifiedAddModal({
             {/* Empresa Selection (if not pre-selected or if allowed to change) */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
-                Entidade (Empresa/Sindicato) *
+                Entidade (Empresa/Sindicato) {addType === 'calendario' ? '(Opcional)' : '*'}
               </label>
               {!initialEmpresaId ? (
                 <div className="relative" ref={dropdownRef}>
@@ -487,9 +496,14 @@ export default function UnifiedAddModal({
           </form>
         </div>
         
-        <div className="p-6 border-t border-slate-800 flex justify-end space-x-3 shrink-0">
-          <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
-          <button type="submit" form="unified-add-form" className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-emerald-500/20">Salvar Item</button>
+        <div className="p-6 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 shrink-0">
+          <div className="flex-1 text-red-400 text-sm font-medium">
+            {errorMsg && <p>{errorMsg}</p>}
+          </div>
+          <div className="flex space-x-3 w-full sm:w-auto justify-end">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
+            <button type="submit" form="unified-add-form" className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-emerald-500/20">Salvar Item</button>
+          </div>
         </div>
       </div>
     </div>

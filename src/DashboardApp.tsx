@@ -154,9 +154,9 @@ export default function DashboardApp() {
               </div>
             ) : (
               hojeLembretes.map(lembrete => (
-                <div key={lembrete.id} className="bg-emerald-900/40 rounded-xl p-4 border border-emerald-500/30 flex flex-col gap-1 shadow-sm w-full">
-                  <span className="font-semibold text-emerald-100 text-base">{lembrete.title}</span>
-                  {lembrete.empresaNome && <span className="text-sm text-emerald-300/80">{lembrete.empresaNome}</span>}
+                <div key={lembrete.id} className="bg-emerald-900/40 rounded-xl p-4 border border-emerald-500/30 flex flex-col gap-1 shadow-sm w-full min-w-0">
+                  <span className="font-semibold text-emerald-100 text-base break-words leading-tight">{lembrete.title}</span>
+                  {lembrete.empresaNome && <span className="text-sm text-emerald-300/80 truncate">{lembrete.empresaNome}</span>}
                   <span className="text-xs text-emerald-400/60 mt-1 uppercase font-semibold tracking-wider">
                     HOJE
                   </span>
@@ -244,11 +244,11 @@ export default function DashboardApp() {
               <p className="text-slate-500 text-sm">Nenhum lembrete futuro encontrado.</p>
             ) : (
               proximosLembretes.map(lembrete => (
-                <div key={lembrete.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex flex-col gap-1 transition-colors hover:bg-slate-800">
-                  <span className="font-medium text-slate-200 text-base">{lembrete.title}</span>
-                  {lembrete.empresaNome && <span className="text-sm text-slate-400">{lembrete.empresaNome}</span>}
-                  <div className="mt-2">
-                    <span className="px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded text-xs font-semibold border border-indigo-500/20">
+                <div key={lembrete.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex flex-col gap-1 transition-colors hover:bg-slate-800 min-w-0">
+                  <span className="font-medium text-slate-200 text-base break-words leading-tight">{lembrete.title}</span>
+                  {lembrete.empresaNome && <span className="text-sm text-slate-400 truncate">{lembrete.empresaNome}</span>}
+                  <div className="mt-2 flex">
+                    <span className="px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded text-xs font-semibold border border-indigo-500/20 truncate max-w-full inline-block">
                       {format(new Date(lembrete.date), "dd 'de' MMMM yyyy", { locale: ptBR })}
                     </span>
                   </div>

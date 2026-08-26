@@ -384,16 +384,16 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit }: Empresa
               const linkedEmpresas = empresas.filter(e => e.sindicatoId === s.id);
               return (
               <div key={s.id} className="bg-slate-800/50 border border-slate-700/50 p-5 rounded-xl flex flex-col transition-colors hover:border-slate-600">
-                <div className="flex justify-between items-start w-full mb-3">
-                  <div>
-                    <h3 className="font-bold text-slate-200 text-lg mb-1">{s.nome}</h3>
+                <div className="flex justify-between items-start w-full mb-3 gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-slate-200 text-lg mb-1 break-words leading-tight">{s.nome}</h3>
                     <div className="text-sm text-slate-400 space-y-1">
-                      <p>CNPJ: <span className="text-slate-300">{s.cnpj || '-'}</span></p>
-                      <p>Código: <span className="text-slate-300">{s.codigo || '-'}</span></p>
-                      <p>Região: <span className="text-slate-300">{s.regiaoAtuacao || '-'}</span></p>
+                      <p className="truncate">CNPJ: <span className="text-slate-300">{s.cnpj || '-'}</span></p>
+                      <p className="truncate">Código: <span className="text-slate-300">{s.codigo || '-'}</span></p>
+                      <p className="truncate">Região: <span className="text-slate-300">{s.regiaoAtuacao || '-'}</span></p>
                     </div>
                   </div>
-                  <div className="flex space-x-2 shrink-0 ml-4">
+                  <div className="flex space-x-2 shrink-0">
                     <button onClick={() => openSindicatoModal(s)} className="text-slate-500 hover:text-indigo-400 p-2 transition-colors">
                       <Pencil className="w-5 h-5" />
                     </button>
@@ -447,16 +447,16 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit }: Empresa
             }).map(emp => {
               const sindicato = sindicatos.find(s => s.id === emp.sindicatoId);
               return (
-                <div key={emp.id} className="bg-slate-800/50 border border-slate-700/50 p-5 rounded-xl flex justify-between items-start transition-colors hover:border-slate-600">
-                  <div>
-                    <h3 className="font-bold text-slate-200 text-lg mb-1">{emp.nome}</h3>
+                <div key={emp.id} className="bg-slate-800/50 border border-slate-700/50 p-5 rounded-xl flex justify-between items-start transition-colors hover:border-slate-600 gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-slate-200 text-lg mb-1 break-words leading-tight">{emp.nome}</h3>
                     <div className="text-sm text-slate-400 space-y-1">
-                      <p>CNPJ: <span className="text-slate-300">{emp.cnpj || '-'}</span></p>
-                      <p>Código: <span className="text-slate-300">{emp.codigo || '-'}</span></p>
-                      <p>Sindicato: <span className="text-indigo-400">{sindicato ? sindicato.nome : 'Nenhum'}</span></p>
+                      <p className="truncate">CNPJ: <span className="text-slate-300">{emp.cnpj || '-'}</span></p>
+                      <p className="truncate">Código: <span className="text-slate-300">{emp.codigo || '-'}</span></p>
+                      <p className="truncate">Sindicato: <span className="text-indigo-400">{sindicato ? sindicato.nome : 'Nenhum'}</span></p>
                     </div>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 shrink-0">
                     <button onClick={() => openEmpresaModal(emp)} className="text-slate-500 hover:text-indigo-400 p-2 transition-colors">
                       <Pencil className="w-5 h-5" />
                     </button>

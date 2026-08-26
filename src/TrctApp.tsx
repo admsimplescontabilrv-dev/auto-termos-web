@@ -915,12 +915,12 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
               
               {/* Proventos */}
               <div className="flex flex-col bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden">
-                <div className="bg-slate-950 p-3 flex justify-between items-center border-b border-slate-700/50">
+                <div className="bg-slate-950 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-700/50">
                   <h4 className="text-indigo-400 font-bold tracking-widest text-sm">PROVENTOS</h4>
                   <select 
                     id="presetProventos"
                     name="presetProventos"
-                    className="bg-slate-950 border border-slate-700/50 text-slate-200 text-xs p-1 rounded"
+                    className="bg-slate-950 border border-slate-700/50 text-slate-200 text-xs p-1 rounded w-full sm:w-auto"
                     onChange={(e) => {
                       if(e.target.value) {
                         const pre = PRESET_PROVENTOS.find(p => p.codigo === e.target.value);
@@ -954,12 +954,12 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
 
               {/* Deduções */}
               <div className="flex flex-col bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden">
-                <div className="bg-slate-950 p-3 flex justify-between items-center border-b border-slate-700/50">
+                <div className="bg-slate-950 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-700/50">
                   <h4 className="text-indigo-400 font-bold tracking-widest text-sm">DEDUÇÕES</h4>
                   <select 
                     id="presetDescontos"
                     name="presetDescontos"
-                    className="bg-slate-950 border border-slate-700/50 text-slate-200 text-xs p-1 rounded"
+                    className="bg-slate-950 border border-slate-700/50 text-slate-200 text-xs p-1 rounded w-full sm:w-auto"
                     onChange={(e) => {
                       if(e.target.value) {
                         const pre = PRESET_DESCONTOS.find(p => p.codigo === e.target.value);

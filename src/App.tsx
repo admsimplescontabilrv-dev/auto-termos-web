@@ -1741,6 +1741,30 @@ ${error instanceof Error ? error.stack : "N/A"}`,
           </button>
 
           <button
+            onClick={() => handleNavigate("kanban")}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              modulo === "kanban"
+                ? "bg-indigo-600/20 text-indigo-400"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+            }`}
+          >
+            <KanbanSquare className="w-5 h-5 shrink-0" />
+            {sidebarOpen && <span>Kanban de Demandas</span>}
+          </button>
+
+          <button
+            onClick={() => handleNavigate("checklists")}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              modulo === "checklists"
+                ? "bg-indigo-600/20 text-indigo-400"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+            }`}
+          >
+            <CheckSquare className="w-5 h-5 shrink-0" />
+            {sidebarOpen && <span>Programação e Processos</span>}
+          </button>
+
+          <button
             onClick={() => handleNavigate("empresas")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === "empresas"
@@ -1753,18 +1777,6 @@ ${error instanceof Error ? error.stack : "N/A"}`,
           </button>
 
           <button
-            onClick={() => handleNavigate("checklists")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "checklists"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <CheckSquare className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Checklists</span>}
-          </button>
-
-          <button
             onClick={() => handleNavigate("calendario")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               modulo === "calendario"
@@ -1774,18 +1786,6 @@ ${error instanceof Error ? error.stack : "N/A"}`,
           >
             <CalendarDays className="w-5 h-5 shrink-0" />
             {sidebarOpen && <span>Calendário</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigate("kanban")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "kanban"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <KanbanSquare className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Kanban de Demandas</span>}
           </button>
 
           <div className="pt-4 pb-1">

@@ -197,11 +197,17 @@ Retorne SEMPRE um JSON válido, no seguinte formato estrito:
   "reply": "Sua resposta amigável e conversacional para o usuário (pode usar markdown). Se houver ações a tomar, confirme o que será feito.",
   "intents": [
     {
-      "action": "CREATE_CALENDAR_EVENT" | "CREATE_CHECKLIST_RULE" | "CREATE_KANBAN_TASK" | "UPDATE_KANBAN_TASK" | "GENERATE_TERMO",
+      "action": "CREATE_CALENDAR_EVENT" | "CREATE_CHECKLIST_RULE" | "CREATE_KANBAN_TASK" | "UPDATE_KANBAN_TASK" | "UPDATE_FECHAMENTO_FOLHA" | "GENERATE_TERMO",
       "payload": { ... } // Dados extraídos
     }
   ]
 }
+
+Se a action for "UPDATE_FECHAMENTO_FOLHA", payload deve ter:
+- empresaId: string (ID da empresa a atualizar, extraído do contexto de EMPRESAS)
+- monthKey: string (Chave do mês a atualizar, ex: "2026-08", ou a própria string literal "ATUAL" para o sistema calcular o mês atual)
+- field: string (Um dentre: "lancamento", "consignado", "adiantamento", "fgts", "dctf", "guiaSindicato", "verificarEnvio", "observacoes", "tipoFolha")
+- value: string (Novo valor do campo)
 
 Se a action for "CREATE_KANBAN_TASK", payload deve ter:
 - title: string
@@ -459,6 +465,16 @@ INTENT: UPDATE_KANBAN_TASK
       "title": "Novo título",    // opcional
       "archived": true           // opcional, para arquivar
     }
+  }
+
+INTENT: UPDATE_FECHAMENTO_FOLHA
+  Quando usar: O usuário pede para atualizar o status do fechamento de folha de uma empresa, como enviar DCTF, marcar FGTS como OK, alterar observações, etc.
+  Payload:
+  {
+    "empresaId": "ID da empresa (busque no contexto de EMPRESAS)",
+    "monthKey": "Chave do mês a atualizar, ex: '2026-08', ou a string literal 'ATUAL' se referir ao mês atual",
+    "field": "Campo a ser modificado. Escolha UM: 'lancamento', 'consignado', 'adiantamento', 'fgts', 'dctf', 'guiaSindicato', 'verificarEnvio', 'observacoes', 'tipoFolha'",
+    "value": "O novo valor. Ex: 'OK', 'PENDENTE', 'NÃO TEM', etc. Se for observação, o texto livre."
   }
 
 INTENT: CREATE_CALENDAR_EVENT

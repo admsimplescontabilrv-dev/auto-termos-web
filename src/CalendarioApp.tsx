@@ -96,7 +96,7 @@ export default function CalendarioApp() {
     await addDoc(collection(db, 'calendarEvents'), {
       title: data.taskName,
       date: eventDate,
-      empresaId: data.empresaId,
+      empresaId: data.empresaId || '',
       empresaNome: nome,
       type: 'PRAZO',
       isRecurrent: false,
@@ -501,14 +501,14 @@ export default function CalendarioApp() {
             return (
               <div 
                 key={day.toISOString()} 
-                className={`min-h-[120px] p-2 border-r border-b border-slate-800 relative group transition-colors hover:bg-slate-800/30 cursor-pointer
+                className={`min-h-[80px] sm:min-h-[120px] p-1 sm:p-2 border-r border-b border-slate-800 relative group transition-colors hover:bg-slate-800/30 cursor-pointer
                   ${!isCurrentMonth ? 'bg-slate-950/30' : ''}
                   ${idx % 7 === 6 ? 'border-r-0' : ''}
                 `}
                 onClick={() => openDaySummaryModal(day, expandedDayEvents)}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium
+                <div className="flex justify-between items-start mb-1 sm:mb-2">
+                  <span className={`w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full text-xs sm:text-sm font-medium
                     ${isToday(day) ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 
                       !isCurrentMonth ? 'text-slate-600' : 'text-slate-300'
                     }
@@ -524,7 +524,7 @@ export default function CalendarioApp() {
                   </button>
                 </div>
                 
-                <div className="space-y-1 overflow-y-auto max-h-[80px] custom-scrollbar pr-1">
+                <div className="space-y-1 overflow-y-auto max-h-[80px] custom-scrollbar pr-1 hidden sm:block">
                   {groupedDayEvents.map(group => {
                     const isSindicatoEvent = !!sindicatos.find(s => s.id === group.empresaId);
                     return (
@@ -546,6 +546,24 @@ export default function CalendarioApp() {
                       )}
                     </div>
                   )})}
+                </div>
+
+                <div className="flex flex-wrap gap-1 mt-1 sm:hidden">
+                  {groupedDayEvents.map(group => {
+                    const colorClasses = getTypeColor(group.type);
+                    let dotColor = 'bg-slate-500';
+                    if (colorClasses.includes('blue')) dotColor = 'bg-blue-500';
+                    else if (colorClasses.includes('red')) dotColor = 'bg-red-500';
+                    else if (colorClasses.includes('amber')) dotColor = 'bg-amber-500';
+                    else if (colorClasses.includes('purple')) dotColor = 'bg-purple-500';
+                    
+                    return (
+                      <div 
+                        key={group.id + '-mobile'}
+                        className={`w-2 h-2 rounded-full ${dotColor}`}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             );

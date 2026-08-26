@@ -236,14 +236,14 @@ export default function KanbanApp() {
 
   return (
     <div className="h-full flex flex-col bg-slate-950">
-      <div className="p-6 pb-2 flex items-end justify-between">
+      <div className="p-6 pb-2 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">Kanban de Demandas</h1>
           <p className="text-slate-400">Arraste os cartões e colunas. Clique nos títulos para editar.</p>
         </div>
         <button 
           onClick={() => setShowArchivedModal(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700 text-sm font-medium"
+          className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700 text-sm font-medium shrink-0"
         >
           <Archive className="w-4 h-4 text-indigo-400" />
           Arquivados

@@ -8,13 +8,14 @@ import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import UnifiedAddModal from './components/UnifiedAddModal';
 import RelatoriosChecklistTab from './components/RelatoriosChecklistTab';
+import FechamentoFolhaTab from './components/FechamentoFolhaTab';
 
 interface ChecklistsAppProps {
   onEditEntity?: (id: string, type: 'EMPRESA' | 'SINDICATO') => void;
 }
 
 export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
-  const [mainTab, setMainTab] = useState<'gerenciamento' | 'relatorios'>('gerenciamento');
+  const [mainTab, setMainTab] = useState<'gerenciamento' | 'relatorios' | 'fechamento'>('gerenciamento');
   
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [sindicatos, setSindicatos] = useState<Sindicato[]>([]);
@@ -180,7 +181,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     await addDoc(collection(db, 'calendarEvents'), {
       title: data.taskName,
       date: eventDate,
-      empresaId: data.empresaId,
+      empresaId: data.empresaId || '',
       empresaNome: nome,
       type: 'PRAZO',
       isRecurrent: false,
@@ -424,10 +425,20 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
           >
             Relatórios
           </button>
+          <button
+            onClick={() => setMainTab('fechamento')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              mainTab === 'fechamento' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Fechamento de Folha
+          </button>
         </div>
       </div>
 
-      {mainTab === 'relatorios' ? (
+      {mainTab === 'fechamento' ? (
+        <FechamentoFolhaTab empresas={empresas} />
+      ) : mainTab === 'relatorios' ? (
         <RelatoriosChecklistTab empresas={empresas} />
       ) : (
         <>

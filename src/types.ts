@@ -18,6 +18,17 @@ export interface Empresa {
   telefone?: string;
   email?: string;
   enderecoCompleto?: string;
+  ordemFechamento?: number;
+  fechamentoTemplate?: {
+    lancamento?: string;
+    consignado?: string;
+    adiantamento?: string;
+    fgts?: string;
+    dctf?: string;
+    guiaSindicato?: string;
+    verificarEnvio?: string;
+    tipoFolha?: string;
+  };
   createdAt: number;
 }
 

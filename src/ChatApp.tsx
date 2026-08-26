@@ -282,6 +282,22 @@ export default function ChatApp() {
           setActionFeedback(prev => (prev || '') + '✅ Cartão criado no Kanban!\n');
         }
 
+        else if (action === 'UPDATE_FECHAMENTO_FOLHA') {
+          if (payload.empresaId && payload.field) {
+            const monthKey = payload.monthKey === 'ATUAL' || !payload.monthKey ? new Date().toISOString().slice(0, 7) : payload.monthKey;
+            const docId = `${monthKey}_${payload.empresaId}`;
+            
+            await setDoc(doc(db, 'fechamentoFolha', docId), {
+              [payload.field]: payload.value,
+              monthKey,
+              empresaId: payload.empresaId,
+              updatedAt: Date.now()
+            }, { merge: true });
+            
+            setActionFeedback(prev => (prev || '') + `✅ Folha da empresa atualizada (${payload.field}: ${payload.value})!\n`);
+          }
+        }
+
         else if (action === 'UPDATE_KANBAN_TASK') {
           if (payload.taskId) {
             await updateDoc(doc(db, 'kanban_tasks', payload.taskId), {
