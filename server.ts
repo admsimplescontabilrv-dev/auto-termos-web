@@ -1371,7 +1371,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       // Checa a configuração do usuário no banco
       const configDoc = await db.collection('config').doc('settings').get();
       const configData = configDoc.data() || {};
-      const targetHour = configData.cronHour !== undefined ? Number(configData.cronHour) : 8; // Default 08:00
+      const targetHour = configData.cronHour !== undefined ? Number(configData.cronHour) : 7; // Default 07:00
       
       if (today.getHours() !== targetHour) {
          console.log(`Cron check skipped. Current BRT hour (${today.getHours()}) !== targetHour (${targetHour}).`);
