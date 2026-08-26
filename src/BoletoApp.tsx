@@ -160,6 +160,29 @@ export default function BoletoApp() {
     }
   };
 
+  useEffect(() => {
+    const autoBoletoStr = localStorage.getItem('@app:ai_generated_boleto');
+    if (autoBoletoStr) {
+      localStorage.removeItem('@app:ai_generated_boleto');
+      try {
+        const { pdfBase64, pdfName } = JSON.parse(autoBoletoStr);
+        if (pdfBase64) {
+          const byteCharacters = atob(pdfBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+          const file = new File([blob], pdfName || 'Boleto.pdf', { type: 'application/pdf' });
+          processSelectedFile(file);
+        }
+      } catch (e) {
+        console.error('Erro ao ler auto boleto do chat:', e);
+      }
+    }
+  }, []);
+
   // ---- Upload do PDF ----
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

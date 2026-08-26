@@ -328,6 +328,26 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
         createdAt: Date.now()
       });
     }
+
+    const event = calendarEvents.find(e => e.id === eventId);
+    if (event) {
+      let fechamentoField = '';
+      const upperTitle = event.title.toUpperCase();
+      if (upperTitle.includes('FGTS')) fechamentoField = 'fgts';
+      else if (upperTitle.includes('DCTF')) fechamentoField = 'dctf';
+      else if (upperTitle.includes('SINDICATO')) fechamentoField = 'guiaSindicato';
+      else if (upperTitle.includes('RECIBO')) fechamentoField = 'recibo';
+
+      if (fechamentoField) {
+        const fechamentoDocId = `${monthKey}_${selectedEntity.id}`;
+        await setDoc(doc(db, 'fechamentoFolha', fechamentoDocId), {
+          [fechamentoField]: isCompleted ? 'PENDENTE' : 'OK',
+          monthKey,
+          empresaId: selectedEntity.id,
+          updatedAt: Date.now()
+        }, { merge: true });
+      }
+    }
   };
 
 

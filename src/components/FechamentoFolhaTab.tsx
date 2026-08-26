@@ -75,12 +75,13 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
     await setDoc(doc(db, 'fechamentoFolha', docId), newData, { merge: true });
 
     // Sync with Calendar Completions if applicable
-    const syncFields = ['fgts', 'dctf', 'guiaSindicato'];
+    const syncFields = ['fgts', 'dctf', 'guiaSindicato', 'recibo'];
     if (syncFields.includes(field)) {
       let eventTitleMatch = '';
       if (field === 'fgts') eventTitleMatch = 'FGTS';
       if (field === 'dctf') eventTitleMatch = 'DCTF';
       if (field === 'guiaSindicato') eventTitleMatch = 'SINDICATO';
+      if (field === 'recibo') eventTitleMatch = 'RECIBO';
 
       if (eventTitleMatch) {
         const relatedEvents = calendarEvents.filter(e => 

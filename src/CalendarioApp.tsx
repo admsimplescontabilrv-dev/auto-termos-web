@@ -26,8 +26,14 @@ export default function CalendarioApp() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
-    const monthKey = format(currentDate, 'yyyy-MM');
-    const qCompletions = query(collection(db, 'recurrentCompletions'), where('monthKey', '==', monthKey));
+    const prevMonth = format(subMonths(currentDate, 1), 'yyyy-MM');
+    const currMonth = format(currentDate, 'yyyy-MM');
+    const nextMonth = format(addMonths(currentDate, 1), 'yyyy-MM');
+
+    const qCompletions = query(
+      collection(db, 'recurrentCompletions'), 
+      where('monthKey', 'in', [prevMonth, currMonth, nextMonth])
+    );
     
     const unsub = onSnapshot(qCompletions, (snapshot) => {
       const completions: Record<string, number> = {};
@@ -218,6 +224,25 @@ export default function CalendarioApp() {
         completedAt: Date.now(),
         createdAt: Date.now()
       });
+    }
+
+    if (entityId !== 'GERAL') {
+      let fechamentoField = '';
+      const upperTitle = event.title.toUpperCase();
+      if (upperTitle.includes('FGTS')) fechamentoField = 'fgts';
+      else if (upperTitle.includes('DCTF')) fechamentoField = 'dctf';
+      else if (upperTitle.includes('SINDICATO')) fechamentoField = 'guiaSindicato';
+      else if (upperTitle.includes('RECIBO')) fechamentoField = 'recibo';
+
+      if (fechamentoField) {
+        const fechamentoDocId = `${monthKey}_${entityId}`;
+        await setDoc(doc(db, 'fechamentoFolha', fechamentoDocId), {
+          [fechamentoField]: isCompleted ? 'PENDENTE' : 'OK',
+          monthKey,
+          empresaId: entityId,
+          updatedAt: Date.now()
+        }, { merge: true });
+      }
     }
   };
 

@@ -331,6 +331,17 @@ export default function ChatApp() {
           setActionFeedback(prev => (prev || '') + '✅ Preparando recibo... Redirecionando!\n');
         }
 
+        else if (action === 'CLEAN_BOLETO') {
+          if (msg.pdfBase64) {
+             localStorage.setItem('@app:ai_generated_boleto', JSON.stringify({
+               pdfBase64: msg.pdfBase64,
+               pdfName: msg.pdfName
+             }));
+          }
+          window.dispatchEvent(new CustomEvent('navigate-module', { detail: 'boletos' }));
+          setActionFeedback(prev => (prev || '') + '✅ Redirecionando para o Limpador de Boletos!\n');
+        }
+
         else if (action === 'GENERATE_TRCT') {
           localStorage.setItem('@app:ai_generated_trct', JSON.stringify({
             ...payload,

@@ -428,6 +428,10 @@ SUAS INTENÇÕES (AÇÕES QUE VOCÊ PODE EXECUTAR):
 
 Você pode propor UMA ou MAIS ações simultâneas. Use o campo "intents" (array) para isso.
 
+INTENT: CLEAN_BOLETO
+  Quando usar: O usuário pede para limpar, formatar, ou processar um boleto, guia, DARF, ou PDF de pagamento.
+  Payload: {}
+
 INTENT: GENERATE_TERMO
   Quando usar: O usuário pede para gerar/criar um termo, acordo, autorização ou documento.
   Campos a preencher no Payload (se souber, ou pergunte o que faltar):
@@ -576,7 +580,7 @@ Retorne SEMPRE e APENAS um JSON válido neste formato:
   "text": "Sua resposta amigável e conversacional (Markdown permitido). Se propondo ações ou questionando dados faltantes, faça isso aqui.",
   "intents": [
     {
-      "action": "GENERATE_TERMO | CREATE_KANBAN_TASK | UPDATE_KANBAN_TASK | CREATE_CALENDAR_EVENT | CREATE_CHECKLIST_RULE | GENERATE_RECIBO | GENERATE_TRCT",
+      "action": "CLEAN_BOLETO | GENERATE_TERMO | CREATE_KANBAN_TASK | UPDATE_KANBAN_TASK | CREATE_CALENDAR_EVENT | CREATE_CHECKLIST_RULE | GENERATE_RECIBO | GENERATE_TRCT",
       "payload": { ... }
     }
   ]
