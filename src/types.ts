@@ -28,6 +28,8 @@ export interface Empresa {
     guiaSindicato?: string;
     verificarEnvio?: string;
     tipoFolha?: string;
+    observacoes?: string;
+    contatos?: string;
   };
   createdAt: number;
 }

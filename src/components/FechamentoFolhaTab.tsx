@@ -165,10 +165,9 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
             th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
             th { background-color: #f4f4f5; font-weight: bold; text-transform: uppercase; font-size: 9px; }
-            .ok { color: #059669; font-weight: bold; }
-            .pendente { color: #d97706; font-weight: bold; }
-            .consultar { color: #2563eb; font-weight: bold; }
-            .nao-tem { color: #6b7280; }
+            .ok, .nao-tem { color: #2c5f34; background-color: #d5ebd1; font-weight: bold; }
+            .pendente, .consultar { color: #715423; background-color: #fde2ab; font-weight: bold; }
+            .pendente-especial { color: #325264; background-color: #dae8ea; font-weight: bold; }
           </style>
         </head>
         <body>
@@ -186,6 +185,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 <th>GUIA SINDICATO</th>
                 <th>VERIFICAR ENVIO</th>
                 <th>OBSERVAÇÕES</th>
+                <th>CONTATOS</th>
                 <th>PRO LABORE/FUNC</th>
               </tr>
             </thead>
@@ -202,14 +202,14 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                   guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
                   verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
                   observacoes: fDataRaw.observacoes ?? tpl.observacoes,
+                  contatos: fDataRaw.contatos ?? tpl.contatos,
                   tipoFolha: fDataRaw.tipoFolha ?? tpl.tipoFolha,
                 };
                 
                 const getStatusClass = (val: string) => {
-                  if (val === 'OK') return 'ok';
-                  if (val === 'PENDENTE' || val === 'PENDENTE (PONTO/COMISSÃO)') return 'pendente';
-                  if (val === 'A CONSULTAR' || val === 'AGUARDANDO RESPOSTA' || val === 'PENDENTE DE SOLICITAÇÃO') return 'consultar';
-                  if (val === 'NÃO TEM' || val === 'NÃO ENVIAMOS' || val === 'SEM LANÇAMENTO') return 'nao-tem';
+                  if (['OK', 'NÃO TEM', 'NÃO ENVIAMOS', 'SEM LANÇAMENTO', 'INFORMADO (VER COLUNA K)'].includes(val)) return 'ok';
+                  if (['PENDENTE', 'A CONSULTAR', 'AGUARDANDO RESPOSTA', 'PENDENTE DE SOLICITAÇÃO'].includes(val)) return 'pendente';
+                  if (val === 'PENDENTE (PONTO/COMISSÃO)') return 'pendente-especial';
                   return '';
                 };
 
@@ -228,6 +228,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                     <td class="${getStatusClass(fData.guiaSindicato)}">${fData.guiaSindicato || ''}</td>
                     <td class="${getStatusClass(fData.verificarEnvio)}">${fData.verificarEnvio || ''}</td>
                     <td>${fData.observacoes || ''}</td>
+                    <td>${fData.contatos || ''}</td>
                     <td>${fData.tipoFolha || ''}</td>
                   </tr>
                 `;
@@ -247,10 +248,15 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
   };
 
   const getSelectClass = (value: string) => {
-    if (value === 'OK') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-    if (value === 'PENDENTE' || value === 'PENDENTE (PONTO/COMISSÃO)') return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-    if (value === 'A CONSULTAR' || value === 'AGUARDANDO RESPOSTA' || value === 'PENDENTE DE SOLICITAÇÃO') return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
-    if (value === 'NÃO TEM' || value === 'NÃO ENVIAMOS' || value === 'SEM LANÇAMENTO') return 'bg-slate-800 text-slate-400 border-slate-700';
+    if (['OK', 'NÃO TEM', 'NÃO ENVIAMOS', 'SEM LANÇAMENTO', 'INFORMADO (VER COLUNA K)'].includes(value)) {
+      return 'bg-green-200/90 text-green-900 border-green-300/50';
+    }
+    if (['PENDENTE', 'A CONSULTAR', 'AGUARDANDO RESPOSTA', 'PENDENTE DE SOLICITAÇÃO'].includes(value)) {
+      return 'bg-amber-200/90 text-amber-900 border-amber-300/50';
+    }
+    if (['PENDENTE (PONTO/COMISSÃO)'].includes(value)) {
+      return 'bg-cyan-100/90 text-cyan-900 border-cyan-200/50';
+    }
     return 'bg-slate-900 border-slate-800 text-slate-300';
   };
 
@@ -359,6 +365,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Guia Sindicato</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Verificar Envio</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Observações</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Contatos</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Pro Labore/Func</th>
               <th className="px-4 py-3 font-medium border-b border-slate-800">Últ. Atualização</th>
             </tr>
@@ -377,6 +384,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
                 verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
                 observacoes: fDataRaw.observacoes ?? tpl.observacoes,
+                contatos: fDataRaw.contatos ?? tpl.contatos,
                 tipoFolha: fDataRaw.tipoFolha ?? tpl.tipoFolha,
                 updatedAt: fDataRaw.updatedAt
               };
@@ -418,6 +426,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                       <option value="PENDENTE (PONTO/COMISSÃO)">PENDENTE (PONTO/COMISSÃO)</option>
                       <option value="AGUARDANDO RESPOSTA">AGUARDANDO RESPOSTA</option>
                       <option value="SEM LANÇAMENTO">SEM LANÇAMENTO</option>
+                      <option value="INFORMADO (VER COLUNA K)">INFORMADO (VER COLUNA K)</option>
                       <option value="PENDENTE DE SOLICITAÇÃO">PENDENTE DE SOLICITAÇÃO</option>
                       <option value="OK">OK</option>
                     </select>
@@ -512,6 +521,16 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                   </td>
 
                   <td className="px-2 py-2 border-r border-slate-800/50">
+                    <input 
+                      type="text"
+                      value={fData.contatos || ''}
+                      onChange={(e) => updateFechamento(emp.id, 'contatos', e.target.value)}
+                      placeholder="Contatos..."
+                      className="w-48 bg-slate-900 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </td>
+
+                  <td className="px-2 py-2 border-r border-slate-800/50">
                     <select 
                       value={fData.tipoFolha || ''}
                       onChange={(e) => updateFechamento(emp.id, 'tipoFolha', e.target.value)}
@@ -548,6 +567,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
             guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
             verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
             observacoes: fDataRaw.observacoes ?? tpl.observacoes,
+            contatos: fDataRaw.contatos ?? tpl.contatos,
             tipoFolha: fDataRaw.tipoFolha ?? tpl.tipoFolha,
             updatedAt: fDataRaw.updatedAt
           };
@@ -593,7 +613,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {renderSelect('lancamento', 'Inf. Lançamento', ['PENDENTE (PONTO/COMISSÃO)', 'AGUARDANDO RESPOSTA', 'SEM LANÇAMENTO', 'PENDENTE DE SOLICITAÇÃO', 'OK'])}
+                {renderSelect('lancamento', 'Inf. Lançamento', ['PENDENTE (PONTO/COMISSÃO)', 'AGUARDANDO RESPOSTA', 'SEM LANÇAMENTO', 'INFORMADO (VER COLUNA K)', 'PENDENTE DE SOLICITAÇÃO', 'OK'])}
                 {renderSelect('consignado', 'Empréstimo', ['A CONSULTAR', 'NÃO TEM', 'OK'])}
                 {renderSelect('adiantamento', 'Adiantamento', ['A CONSULTAR', 'NÃO TEM', 'OK'])}
                 {renderSelect('fgts', 'FGTS', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
@@ -610,6 +630,17 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                   value={fData.observacoes || ''}
                   onChange={(e) => updateFechamento(emp.id, 'observacoes', e.target.value)}
                   placeholder="Obs..."
+                  className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Contatos</label>
+                <input 
+                  type="text"
+                  value={fData.contatos || ''}
+                  onChange={(e) => updateFechamento(emp.id, 'contatos', e.target.value)}
+                  placeholder="Contatos..."
                   className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
