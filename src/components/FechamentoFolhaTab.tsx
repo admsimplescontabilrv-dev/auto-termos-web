@@ -180,6 +180,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 <th>INF. LANÇAMENTO</th>
                 <th>EMPRÉSTIMO</th>
                 <th>ADIANTAMENTO</th>
+                <th>RECIBO</th>
                 <th>FGTS</th>
                 <th>DCTF</th>
                 <th>GUIA SINDICATO</th>
@@ -197,6 +198,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                   lancamento: fDataRaw.lancamento ?? tpl.lancamento,
                   consignado: fDataRaw.consignado ?? tpl.consignado,
                   adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
+                  recibo: fDataRaw.recibo ?? tpl.recibo,
                   fgts: fDataRaw.fgts ?? tpl.fgts,
                   dctf: fDataRaw.dctf ?? tpl.dctf,
                   guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
@@ -223,6 +225,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                     <td class="${getStatusClass(fData.lancamento)}">${fData.lancamento || ''}</td>
                     <td class="${getStatusClass(fData.consignado)}">${fData.consignado || ''}</td>
                     <td class="${getStatusClass(fData.adiantamento)}">${fData.adiantamento || ''}</td>
+                    <td class="${getStatusClass(fData.recibo)}">${fData.recibo || ''}</td>
                     <td class="${getStatusClass(fData.fgts)}">${fData.fgts || ''}</td>
                     <td class="${getStatusClass(fData.dctf)}">${fData.dctf || ''}</td>
                     <td class="${getStatusClass(fData.guiaSindicato)}">${fData.guiaSindicato || ''}</td>
@@ -360,6 +363,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Inf. Lançamento</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Empréstimo</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Adiantamento</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Recibo</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">FGTS</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">DCTF</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Guia Sindicato</th>
@@ -379,6 +383,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 lancamento: fDataRaw.lancamento ?? tpl.lancamento,
                 consignado: fDataRaw.consignado ?? tpl.consignado,
                 adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
+                recibo: fDataRaw.recibo ?? tpl.recibo,
                 fgts: fDataRaw.fgts ?? tpl.fgts,
                 dctf: fDataRaw.dctf ?? tpl.dctf,
                 guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
@@ -454,6 +459,19 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                       <option value=""></option>
                       <option value="A CONSULTAR">A CONSULTAR</option>
                       <option value="NÃO TEM">NÃO TEM</option>
+                      <option value="OK">OK</option>
+                    </select>
+                  </td>
+
+                  <td className="px-2 py-2 border-r border-slate-800/50">
+                    <select 
+                      value={fData.recibo || ''}
+                      onChange={(e) => updateFechamento(emp.id, 'recibo', e.target.value)}
+                      className={`w-full text-xs font-bold rounded px-2 py-1.5 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.recibo)}`}
+                    >
+                      <option value=""></option>
+                      <option value="PENDENTE">PENDENTE</option>
+                      <option value="NÃO ENVIAMOS">NÃO ENVIAMOS</option>
                       <option value="OK">OK</option>
                     </select>
                   </td>
@@ -543,7 +561,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                   </td>
 
                   <td className="px-3 py-2 text-xs text-slate-500 font-mono whitespace-nowrap">
-                    {fData.updatedAt ? format(fData.updatedAt, "dd/MM 'às' HH:mm") : '-'}
+                    {(fData as any).updatedAt ? format((fData as any).updatedAt, "dd/MM 'às' HH:mm") : '-'}
                   </td>
                 </tr>
               );
@@ -562,6 +580,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
             lancamento: fDataRaw.lancamento ?? tpl.lancamento,
             consignado: fDataRaw.consignado ?? tpl.consignado,
             adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
+            recibo: fDataRaw.recibo ?? tpl.recibo,
             fgts: fDataRaw.fgts ?? tpl.fgts,
             dctf: fDataRaw.dctf ?? tpl.dctf,
             guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
@@ -616,6 +635,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 {renderSelect('lancamento', 'Inf. Lançamento', ['PENDENTE (PONTO/COMISSÃO)', 'AGUARDANDO RESPOSTA', 'SEM LANÇAMENTO', 'INFORMADO (VER COLUNA K)', 'PENDENTE DE SOLICITAÇÃO', 'OK'])}
                 {renderSelect('consignado', 'Empréstimo', ['A CONSULTAR', 'NÃO TEM', 'OK'])}
                 {renderSelect('adiantamento', 'Adiantamento', ['A CONSULTAR', 'NÃO TEM', 'OK'])}
+                {renderSelect('recibo', 'Recibo', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
                 {renderSelect('fgts', 'FGTS', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
                 {renderSelect('dctf', 'DCTF', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
                 {renderSelect('guiaSindicato', 'Sindicato', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
@@ -645,9 +665,9 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 />
               </div>
 
-              {fData.updatedAt && (
+              {(fData as any).updatedAt && (
                 <div className="text-[10px] text-slate-500 font-mono text-right pt-2 border-t border-slate-700/50">
-                  Atualizado em: {format(fData.updatedAt, "dd/MM 'às' HH:mm")}
+                  Atualizado em: {format((fData as any).updatedAt, "dd/MM 'às' HH:mm")}
                 </div>
               )}
             </div>

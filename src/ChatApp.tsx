@@ -1,7 +1,7 @@
 import { auth } from './lib/firebase';
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Sparkles, Building2, Briefcase, CheckCircle2, Paperclip, X } from 'lucide-react';
-import { collection, getDocs, addDoc, getDoc, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, getDoc, doc, updateDoc, query, where, orderBy, setDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import ReactMarkdown from 'react-markdown';
 import { useFirestore } from './hooks/useFirestore';

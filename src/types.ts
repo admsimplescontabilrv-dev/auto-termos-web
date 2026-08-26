@@ -23,6 +23,7 @@ export interface Empresa {
     lancamento?: string;
     consignado?: string;
     adiantamento?: string;
+    recibo?: string;
     fgts?: string;
     dctf?: string;
     guiaSindicato?: string;
