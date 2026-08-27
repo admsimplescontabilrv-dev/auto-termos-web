@@ -172,6 +172,9 @@ export default function ChatApp() {
       );
       const fetchedKanbanTasks = kanbanSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
+      const calendarEventsSnapshot = await getDocs(collection(db, 'calendarEvents'));
+      const fetchedCalendarEvents = calendarEventsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 
@@ -183,6 +186,7 @@ export default function ChatApp() {
           context: contextData,
           cctText: cctTextToSend,
           kanbanTasks: fetchedKanbanTasks,
+          calendarEvents: fetchedCalendarEvents,
           pdfBase64: pdfBase64,
           pdfName: pdfFile?.name
         })

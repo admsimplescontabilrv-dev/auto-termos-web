@@ -95,6 +95,7 @@ const ChatSchema = z.object({
   }).optional().nullable(),
   cctText: z.string().optional().nullable(),
   kanbanTasks: z.array(z.any()).optional().nullable(),
+  calendarEvents: z.array(z.any()).optional().nullable(),
   pdfBase64: z.string().optional().nullable(),
   pdfName: z.string().optional().nullable()
 });
@@ -350,7 +351,7 @@ ${baseInstruction}`;
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { history, context, cctText, kanbanTasks, pdfBase64, pdfName } = parseResult.data;
+      const { history, context, cctText, kanbanTasks, calendarEvents, pdfBase64, pdfName } = parseResult.data;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
@@ -368,6 +369,7 @@ DADOS DO SISTEMA DO USUÁRIO (CONTEXTO INJETADO):
 EMPRESAS CADASTRADAS: ${JSON.stringify(context?.empresas || [])}
 SINDICATOS CADASTRADOS: ${JSON.stringify(context?.sindicatos || [])}
 CARTÕES DO KANBAN (TAREFAS ABERTAS): ${JSON.stringify(kanbanTasks || context?.kanbanTasks || [])}
+EVENTOS DO CALENDÁRIO: ${JSON.stringify(calendarEvents || [])}
 
 ═══════════════════════════════════════════════
 CATÁLOGO DE TERMOS DISPONÍVEIS NO SISTEMA:
@@ -1354,7 +1356,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
   });
 
   // --- Função Central de Envio de Lembretes Cron ---
-  const processCronReminders = async () => {
+  const processCronReminders = async (force: boolean = false) => {
     try {
       if (!process.env.RESEND_API_KEY || !process.env.USER_EMAIL) {
         console.error('Cron Error: Configurações de e-mail ausentes no servidor.');
@@ -1377,7 +1379,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       const configData = configDoc.data() || {};
       const targetHour = configData.cronHour !== undefined ? Number(configData.cronHour) : 7; // Default 07:00
       
-      if (today.getHours() !== targetHour) {
+      if (!force && today.getHours() !== targetHour) {
          console.log(`Cron check skipped. Current BRT hour (${today.getHours()}) !== targetHour (${targetHour}).`);
          return { success: true, count: 0, message: `Horário não corresponde. Atual: ${today.getHours()}, Esperado: ${targetHour}` };
       }
@@ -1548,7 +1550,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       return res.status(401).json({ error: 'Acesso não autorizado.' });
     }
 
-    const result = await processCronReminders();
+    const result = await processCronReminders(true); // Always force run when hit via API
     if (result.success) {
       return res.json(result);
     } else {
