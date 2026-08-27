@@ -155,15 +155,33 @@ export default function ChatApp() {
       }
 
       let cctTextToSend = undefined;
-      if (targetSindicatoId) {
-        try {
-          const cctDoc = await getDoc(doc(db, 'sindicatos', targetSindicatoId, 'cct_textos', 'vigente'));
-          if (cctDoc.exists()) {
-            cctTextToSend = cctDoc.data().texto_puro;
+      try {
+        let textParts = [];
+
+        // Buscar Regras Gerais Padrão
+        const padraoId = contextData.sindicatos.find(s => s.nome.toUpperCase().includes('PADRÃO'))?.id;
+        if (padraoId) {
+          const padraoDoc = await getDoc(doc(db, 'sindicatos', padraoId, 'cct_textos', 'vigente'));
+          if (padraoDoc.exists() && padraoDoc.data().texto_puro) {
+            textParts.push("--- REGRAS GERAIS PADRÃO ---");
+            textParts.push(padraoDoc.data().texto_puro);
           }
-        } catch (e) {
-          console.error("Erro ao buscar CCT no frontend:", e);
         }
+
+        // Buscar Sindicato Específico da Empresa
+        if (targetSindicatoId && targetSindicatoId !== padraoId) {
+          const cctDoc = await getDoc(doc(db, 'sindicatos', targetSindicatoId, 'cct_textos', 'vigente'));
+          if (cctDoc.exists() && cctDoc.data().texto_puro) {
+            textParts.push("--- REGRAS ESPECÍFICAS DO SINDICATO DA EMPRESA ---");
+            textParts.push(cctDoc.data().texto_puro);
+          }
+        }
+
+        if (textParts.length > 0) {
+          cctTextToSend = textParts.join('\n\n');
+        }
+      } catch (e) {
+        console.error("Erro ao buscar CCT no frontend:", e);
       }
       // --- FIM DA BUSCA ---
 

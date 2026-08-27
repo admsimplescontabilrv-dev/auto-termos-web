@@ -249,6 +249,9 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const padraoSindicato = sindicatos.find(s => s.nome.toUpperCase().includes('PADRÃO'));
+  const padraoId = padraoSindicato?.id;
+
   useEffect(() => {
     if (!selectedEntity) {
       setCalendarEvents([]);
@@ -260,14 +263,14 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     const unsubEvents = onSnapshot(qEvents, (snapshot) => {
       const allEvents = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as CalendarEvent));
       // If we selected a Sindicato, show events tied strictly to that sindicato id.
-      // If we selected an Empresa, show events tied to that empresa id OR tied to that empresa's sindicatoId.
+      // If we selected an Empresa, show events tied to that empresa id OR tied to that empresa's sindicatoId OR tied to the padraoId.
       let filteredEvents = allEvents;
       if (selectedEntity.type === 'SINDICATO') {
         filteredEvents = allEvents.filter(e => e.empresaId === selectedEntity.id);
       } else {
         const empresaData = empresas.find(e => e.id === selectedEntity.id);
         const sindicatoId = empresaData?.sindicatoId;
-        filteredEvents = allEvents.filter(e => e.empresaId === selectedEntity.id || (sindicatoId && e.empresaId === sindicatoId));
+        filteredEvents = allEvents.filter(e => e.empresaId === selectedEntity.id || (sindicatoId && e.empresaId === sindicatoId) || (padraoId && e.empresaId === padraoId));
       }
       setCalendarEvents(filteredEvents);
     });
@@ -281,7 +284,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
       } else {
         const empresaData = empresas.find(e => e.id === selectedEntity.id);
         const sindicatoId = empresaData?.sindicatoId;
-        filteredRules = allRules.filter(r => r.targetId === selectedEntity.id || (sindicatoId && r.targetId === sindicatoId));
+        filteredRules = allRules.filter(r => r.targetId === selectedEntity.id || (sindicatoId && r.targetId === sindicatoId) || (padraoId && r.targetId === padraoId));
       }
       setChecklistRules(filteredRules);
     });
@@ -290,7 +293,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
       unsubEvents();
       unsubRulesTarget();
     };
-  }, [selectedEntity]);
+  }, [selectedEntity, empresas, padraoId]);
 
   useEffect(() => {
     if (!selectedEntity) {
@@ -588,7 +591,8 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 {currentMonthEvents.map((event, i) => {
                   const isCompleted = !!recurrentCompletions[event.id];
                   const completedAt = recurrentCompletions[event.id];
-                  const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id;
+                  const isFromPadrao = selectedEntity?.type === 'EMPRESA' && event.empresaId === padraoId;
+                  const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id && event.empresaId !== padraoId;
 
                   return (
                     <div 
@@ -612,8 +616,12 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                             <p className={`text-sm font-medium flex items-center flex-wrap gap-2 ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
                               <span>{event.title}</span>
                               {isFromSindicato && (
-                                <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
-                              )}
+  <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
+)}
+{isFromPadrao && (
+  <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-500/20">Padrão</span>
+)}
+                              
                             </p>
                           </div>
                         </div>
@@ -628,7 +636,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                             `Dia ${format(new Date(event.date), 'dd/MM')}`
                           )}
                         </span>
-                        {!isFromSindicato && (
+                        {!isFromSindicato && !isFromPadrao && (
                           <div className="flex items-center space-x-1 ml-3">
                             <button onClick={() => setEditingEvent(event)} className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                               <Pencil className="w-4 h-4" />
@@ -662,16 +670,21 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                     <h4 className="text-xs font-bold text-slate-500 uppercase">{format(month, 'MMMM yyyy', { locale: ptBR })}</h4>
                     <div className="space-y-2 pl-2 border-l border-slate-700">
                        {calendarEvents.filter(e => !e.isRecurrent && new Date(e.date).getMonth() === month.getMonth() && new Date(e.date).getFullYear() === month.getFullYear()).map((event, j) => {
-                         const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id;
+                         const isFromPadrao = selectedEntity?.type === 'EMPRESA' && event.empresaId === padraoId;
+                  const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id && event.empresaId !== padraoId;
                          return (
                          <div key={event.id || `avulso-${i}-${j}`} className="group text-sm flex items-center">
                            <span className="text-slate-300 font-medium">{format(new Date(event.date), 'dd/MM')}</span>
                            <span className="text-slate-500 mx-2">-</span>
                            <span className="text-slate-400">{event.title}</span>
                            {isFromSindicato && (
-                             <span className="ml-2 text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
-                           )}
-                           {!isFromSindicato && (
+  <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
+)}
+{isFromPadrao && (
+  <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-500/20">Padrão</span>
+)}
+                              
+                           {!isFromSindicato && !isFromPadrao && (
                              <div className="flex space-x-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                                <button onClick={() => setEditingEvent(event)} className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded transition-opacity">
                                  <Pencil className="w-4 h-4" />
@@ -759,7 +772,8 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
                 {currentProcessRules.map((rule, i) => {
                   const isChecked = !!transientChecks[rule.id];
-                  const isFromSindicato = selectedEntity?.type === 'EMPRESA' && rule.targetId !== selectedEntity.id;
+                  const isFromPadrao = selectedEntity?.type === 'EMPRESA' && rule.targetId === padraoId;
+                  const isFromSindicato = selectedEntity?.type === 'EMPRESA' && rule.targetId !== selectedEntity.id && rule.targetId !== padraoId;
                   return (
                   <div 
                     key={rule.id || `rule-${i}`} 
@@ -781,12 +795,16 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                         <span className={`font-medium flex items-center flex-wrap gap-2 transition-colors ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
                           <span>{rule.taskName}</span>
                           {isFromSindicato && (
-                            <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
-                          )}
+  <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
+)}
+{isFromPadrao && (
+  <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-500/20">Padrão</span>
+)}
+                              
                         </span>
                       </div>
                     </div>
-                    {!isFromSindicato && (
+                    {!isFromSindicato && !isFromPadrao && (
                       <div className="flex items-center space-x-1">
                         <button 
                           onClick={() => setEditingRule(rule)}
