@@ -1447,45 +1447,47 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       uniqueReminders.sort((a, b) => a.targetDay.getTime() - b.targetDay.getTime() || (a.title || '').localeCompare(b.title || ''));
 
       let html = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-          <h2 style="color: #4338ca; margin-top: 0; margin-bottom: 16px; font-size: 24px; border-bottom: 2px solid #e0e7ff; padding-bottom: 12px;">Lembretes Diários</h2>
-          <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px;">Bom dia! Aqui estão as tarefas programadas para <strong>${isFriday ? 'este fim de semana' : 'hoje'}</strong>:</p>
-          <ul style="list-style: none; padding: 0; margin: 0;">
+        <div style="font-family: Arial, sans-serif; color: #333333; max-width: 600px; line-height: 1.6;">
+          <h2 style="color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-top: 0;">Lembretes Diários</h2>
+          <p>Bom dia! Aqui estão as tarefas programadas para <strong>${isFriday ? 'este fim de semana' : 'hoje'}</strong>:</p>
+          <ul style="padding-left: 20px;">
       `;
       
       uniqueReminders.forEach(r => {
          const dateStr = format(r.targetDay, "dd 'de' MMMM", { locale: ptBR });
          html += `
-            <li style="margin-bottom: 16px; padding: 16px; background-color: #f8fafc; border-left: 4px solid #6366f1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-              <strong style="display: block; font-size: 16px; color: #1e293b; margin-bottom: 4px;">${r.title}</strong>
-              ${r.empresaNome ? `<span style="display: block; color: #64748b; font-size: 14px; margin-bottom: 4px;">🏢 ${r.empresaNome}</span>` : ''}
-              <span style="display: block; color: #94a3b8; font-size: 12px; text-transform: uppercase; font-weight: 600;">📅 ${dateStr}</span>
+            <li style="margin-bottom: 12px;">
+              <strong>${r.title}</strong><br>
+              ${r.empresaNome ? `<span style="color: #4b5563;">Empresa: ${r.empresaNome}</span><br>` : ''}
+              <span style="color: #6b7280; font-size: 0.9em;">📅 Data: ${dateStr}</span>
             </li>
          `;
       });
-
+      
       html += `
-          </ul>`;
+        </ul>
+      `;
 
       // --- INJETAR TAREFAS URGENTES NO HTML ---
       if (urgentTasks.length > 0) {
-        html += `<h2 style="color: #ef4444; margin-top: 32px; margin-bottom: 16px; font-size: 24px; border-bottom: 2px solid #fee2e2; padding-bottom: 12px;">Demandas Urgentes (Kanban)</h2>
-        <ul style="list-style: none; padding: 0; margin: 0;">`;
+        html += `
+          <h2 style="color: #dc2626; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-top: 32px;">Demandas Urgentes (Kanban)</h2>
+          <ul style="padding-left: 20px;">
+        `;
         
         urgentTasks.forEach(t => {
           html += `
-            <li style="margin-bottom: 16px; padding: 16px; background-color: #fef2f2; border-left: 4px solid #ef4444; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-              <strong style="display: block; font-size: 16px; color: #7f1d1d; margin-bottom: 4px;">${t.title}</strong>
-            </li>
+            <li style="margin-bottom: 8px;"><strong>${t.title}</strong></li>
           `;
         });
+
         html += `</ul>`;
       }
 
       html += `
-          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; text-align: center;">
-            <p style="font-size: 14px; color: #64748b; margin: 0;">Para mais detalhes, acesse o painel do sistema.</p>
-          </div>
+          <p style="margin-top: 32px; font-size: 0.9em; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+            Para mais detalhes, acesse o painel do sistema.
+          </p>
         </div>
       `;
 
