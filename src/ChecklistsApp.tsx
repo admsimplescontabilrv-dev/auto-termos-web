@@ -29,7 +29,10 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   const [checklistRules, setChecklistRules] = useState<ChecklistRule[]>([]);
   
   const [activeProcessType, setActiveProcessType] = useState<string>('RESCISAO');
-  const [currentRecurrentMonth, setCurrentRecurrentMonth] = useState(new Date());
+  const [currentRecurrentMonth, setCurrentRecurrentMonth] = useState(() => {
+    const today = new Date();
+    return today.getDate() > 22 ? addMonths(today, 1) : today;
+  });
   const [recurrentCompletions, setRecurrentCompletions] = useState<{ [eventId: string]: number }>({});
   
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
@@ -270,7 +273,9 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
       } else {
         const empresaData = empresas.find(e => e.id === selectedEntity.id);
         const sindicatoId = empresaData?.sindicatoId;
-        filteredEvents = allEvents.filter(e => e.empresaId === selectedEntity.id || (sindicatoId && e.empresaId === sindicatoId) || (padraoId && e.empresaId === padraoId));
+        const sindicatoNome = sindicatos.find(s => s.id === sindicatoId)?.nome?.toUpperCase() || '';
+        const isProLabore = sindicatoNome.includes('PRO LABORE') || sindicatoNome.includes('PRÓ LABORE') || sindicatoNome.includes('PRÓ-LABORE');
+        filteredEvents = allEvents.filter(e => e.empresaId === selectedEntity.id || (sindicatoId && e.empresaId === sindicatoId) || (padraoId && !isProLabore && e.empresaId === padraoId));
       }
       setCalendarEvents(filteredEvents);
     });
@@ -284,7 +289,9 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
       } else {
         const empresaData = empresas.find(e => e.id === selectedEntity.id);
         const sindicatoId = empresaData?.sindicatoId;
-        filteredRules = allRules.filter(r => r.targetId === selectedEntity.id || (sindicatoId && r.targetId === sindicatoId) || (padraoId && r.targetId === padraoId));
+        const sindicatoNome = sindicatos.find(s => s.id === sindicatoId)?.nome?.toUpperCase() || '';
+        const isProLabore = sindicatoNome.includes('PRO LABORE') || sindicatoNome.includes('PRÓ LABORE') || sindicatoNome.includes('PRÓ-LABORE');
+        filteredRules = allRules.filter(r => r.targetId === selectedEntity.id || (sindicatoId && r.targetId === sindicatoId) || (padraoId && !isProLabore && r.targetId === padraoId));
       }
       setChecklistRules(filteredRules);
     });

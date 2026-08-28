@@ -47,63 +47,6 @@ export default function DashboardApp() {
     };
   }, []);
 
-  useEffect(() => {
-    const migrate = async () => {
-      if (!localStorage.getItem('migratedFixedRules_v3')) {
-        const snap = await getDocs(collection(db, 'empresas'));
-        const empresas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const itemsFixos = [
-          { nome: "ENVIAR RECIBO", tipo: "FOLHA" },
-          { nome: "ENVIAR GUIA FGTS", tipo: "FOLHA" },
-          { nome: "ENVIAR GUIA DCTF", tipo: "FOLHA" },
-          { nome: "VERIFICAR ENVIO", tipo: "FOLHA" }
-        ];
-
-        // Deduplication Phase
-        const evSnap = await getDocs(query(collection(db, 'calendarEvents')));
-        const existingEvents = evSnap.docs.map(d => ({ id: d.id, ...d.data() } as CalendarEvent));
-        
-        for (const emp of empresas) {
-          for (const item of itemsFixos) {
-            // Check if this exact event already exists for this company
-            const exists = existingEvents.filter(e => 
-               e.empresaId === emp.id && 
-               e.title === item.nome && 
-               e.isRecurrent === true &&
-               e.type === 'RECORRENTE'
-            );
-
-            // If it exists more than once, keep one and delete the rest
-            if (exists.length > 1) {
-               for (let i = 1; i < exists.length; i++) {
-                 // Note: requires importing deleteDoc from firebase/firestore, which we'll add to imports
-                 await import('firebase/firestore').then(m => m.deleteDoc(m.doc(db, 'calendarEvents', exists[i].id)));
-               }
-            } else if (exists.length === 0) {
-              // Only create if it doesn't exist at all
-              await addDoc(collection(db, "calendarEvents"), {
-                title: item.nome,
-                date: Date.now(),
-                empresaId: emp.id,
-                empresaNome: (emp as any).nome,
-                type: 'RECORRENTE',
-                isRecurrent: true,
-                recurrentDay: 5,
-                recurrentMonth: 0,
-                recurrentRule: 'MONTHLY_EXACT',
-                status: 'ATIVO',
-                createdAt: Date.now()
-              });
-            }
-          }
-        }
-        localStorage.setItem('migratedFixedRules_v3', 'true');
-        console.log('Migração de obrigações fixas v3 (com deduplicação) concluída!');
-      }
-    };
-    migrate();
-  }, []);
-
   const hojeLembretes = lembretes.filter(l => isToday(new Date(l.date)));
   
   const termoFiltro = filtroLembretes.toLowerCase();

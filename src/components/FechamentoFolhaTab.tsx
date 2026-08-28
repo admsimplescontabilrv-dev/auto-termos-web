@@ -11,7 +11,10 @@ interface FechamentoFolhaTabProps {
 }
 
 export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const today = new Date();
+    return today.getDate() > 22 ? addMonths(today, 1) : today;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [fechamentos, setFechamentos] = useState<Record<string, any>>({});
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
