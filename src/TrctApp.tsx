@@ -784,8 +784,11 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
                   <input type="text" id="bairroEmpresa" name="bairroEmpresa" value={formData.bairroEmpresa} onChange={handleChange} placeholder="Bairro" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                   <input type="text" id="cepEmpresa" name="cepEmpresa" value={formData.cepEmpresa} onChange={handleChange} placeholder="CEP" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
-                <input type="text" id="municipioEmpresa" name="municipioEmpresa" value={formData.municipioEmpresa} onChange={handleChange} placeholder="Município" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
-                <input type="text" id="ufEmpresa" name="ufEmpresa" value={formData.ufEmpresa} onChange={handleChange} placeholder="UF" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="text" id="municipioEmpresa" name="municipioEmpresa" value={formData.municipioEmpresa} onChange={handleChange} placeholder="Município" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                  <input type="text" id="ufEmpresa" name="ufEmpresa" value={formData.ufEmpresa} onChange={handleChange} placeholder="UF" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <input type="text" id="cnae" name="cnae" value={formData.cnae} onChange={handleChange} placeholder="CNAE" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
 
@@ -817,11 +820,19 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
         {activeTab === 2 && (
           <div className="space-y-8 animate-in fade-in duration-300">
             <div>
-              <h3 className="text-indigo-400 text-sm font-bold tracking-widest mb-4 border-b border-slate-700/50 pb-2">DADOS DO CONTRATO</h3>
+              <h3 className="text-indigo-400 text-sm font-bold tracking-widest mb-4 border-b border-slate-700/50 pb-2">DADOS DO CONTRATO E SINDICATO</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Tipo de Contrato</label>
+                  <input type="text" id="tipoContrato" name="tipoContrato" value={formData.tipoContrato} onChange={handleChange} placeholder="Ex: Contrato por prazo indeterminado" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
                 <div className="flex flex-col">
                   <label className="text-slate-500 text-xs font-bold mb-1">Admissão</label>
                   <input type="date" id="dataAdmissao" name="dataAdmissao" value={formData.dataAdmissao} onChange={handleChange} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Data do Aviso Prévio</label>
+                  <input type="date" id="dataAvisoPrevio" name="dataAvisoPrevio" value={formData.dataAvisoPrevio} onChange={handleChange} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-slate-500 text-xs font-bold mb-1">Afastamento</label>
@@ -832,8 +843,28 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
                   <input type="text" id="causaAfastamento" name="causaAfastamento" value={formData.causaAfastamento} onChange={handleChange} placeholder="Ex: Dispensa sem justa causa" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
                 <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Cód. Afastamento</label>
+                  <input type="text" id="codigoAfastamento" name="codigoAfastamento" value={formData.codigoAfastamento} onChange={handleChange} placeholder="Ex: SJ2" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div className="flex flex-col">
                   <label className="text-slate-500 text-xs font-bold mb-1">Remuneração Base Mês Anterior (R$)</label>
                   <CurrencyInput id="remuneracaoMesAnterior" name="remuneracaoMesAnterior" value={formData.remuneracaoMesAnterior} onChangeValue={(val) => setFormData(prev => ({...prev, remuneracaoMesAnterior: val}))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Pensão Alim. (%) (TRCT)</label>
+                  <input type="number" id="pensaoAlimenticia" name="pensaoAlimenticia" value={formData.pensaoAlimenticia} onChange={handleChange} placeholder="0" step="0.01" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Pensão Alim. (%) (FGTS)</label>
+                  <input type="number" id="pensaoAlimenticiaFGTS" name="pensaoAlimenticiaFGTS" value={formData.pensaoAlimenticiaFGTS} onChange={handleChange} placeholder="0" step="0.01" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Sindicato</label>
+                  <input type="text" id="sindicato" name="sindicato" value={formData.sindicato} onChange={handleChange} placeholder="Nome do Sindicato" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">CNPJ Sindicato</label>
+                  <input type="text" id="cnpjSindicato" name="cnpjSindicato" value={formData.cnpjSindicato} onChange={handleChange} placeholder="CNPJ do Sindicato" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
               </div>
             </div>
