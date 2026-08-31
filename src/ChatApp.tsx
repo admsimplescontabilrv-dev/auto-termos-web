@@ -82,12 +82,6 @@ export default function ChatApp() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -396,7 +390,29 @@ export default function ChatApp() {
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div 
+      className="flex flex-col h-full min-h-0 relative"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+    >
+      {isDragging && (
+        <div 
+          className="absolute inset-0 z-[100] bg-indigo-900/20 border-2 border-indigo-500 border-dashed rounded-xl flex items-center justify-center backdrop-blur-[2px]"
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+          }}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
+          <div className="text-indigo-300 font-medium flex items-center gap-3 bg-slate-900 px-6 py-4 rounded-xl text-lg shadow-2xl pointer-events-none">
+            <Paperclip className="w-6 h-6" />
+            Solte o PDF aqui
+          </div>
+        </div>
+      )}
       <div className="shrink-0 mb-6 flex items-center justify-between z-10 relative">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-indigo-500/20 rounded-xl">
@@ -499,19 +515,8 @@ export default function ChatApp() {
           </div>
         )}
         <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
           className="relative"
         >
-          {isDragging && (
-            <div className="absolute inset-0 z-50 bg-indigo-500/20 border-2 border-indigo-500 border-dashed rounded-xl flex items-center justify-center">
-              <span className="text-indigo-300 font-medium flex items-center gap-2">
-                <Paperclip className="w-5 h-5" />
-                Solte o PDF aqui
-              </span>
-            </div>
-          )}
           <form onSubmit={handleSend} className="relative flex items-end gap-2">
             <input 
               type="file" 

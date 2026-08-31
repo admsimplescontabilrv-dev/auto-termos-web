@@ -30,6 +30,8 @@ export default function KanbanApp() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskTitle, setEditingTaskTitle] = useState('');
 
+  const isAddingRef = React.useRef(false);
+
   const [showArchivedModal, setShowArchivedModal] = useState(false);
   const archivedTasks = tasksData.filter(t => t.archived);
 
@@ -115,11 +117,15 @@ export default function KanbanApp() {
     }
   };
 
-  const handleAddTask = async (columnId: string) => {
-    if (!newTaskTitle.trim()) {
+  const handleAddTask = async (columnId: string, titleText: string = newTaskTitle.trim()) => {
+    if (!titleText || isAddingRef.current) {
       setAddingInColumn(null);
       return;
     }
+
+    isAddingRef.current = true;
+    setNewTaskTitle('');
+    setAddingInColumn(null);
 
     const columnTasks = tasks
       .filter(t => t.status === columnId)
@@ -131,16 +137,16 @@ export default function KanbanApp() {
 
     try {
       await addTask({
-        title: newTaskTitle.trim(),
+        title: titleText,
         status: columnId,
         order: newOrder,
         createdAt: Date.now(),
         archived: false
       });
-      setNewTaskTitle('');
-      setAddingInColumn(null);
     } catch (err) {
       console.error('Error adding task:', err);
+    } finally {
+      isAddingRef.current = false;
     }
   };
   
@@ -406,15 +412,16 @@ export default function KanbanApp() {
                                         onKeyDown={e => {
                                           if (e.key === 'Enter' && !e.shiftKey) {
                                             e.preventDefault();
-                                            handleAddTask(column.id);
+                                            handleAddTask(column.id, newTaskTitle.trim());
                                           } else if (e.key === 'Escape') {
                                             setAddingInColumn(null);
                                             setNewTaskTitle('');
                                           }
                                         }}
-                                        onBlur={() => {
-                                          if (newTaskTitle.trim()) {
-                                            handleAddTask(column.id);
+                                        onBlur={(e) => {
+                                          const val = e.target.value.trim();
+                                          if (val) {
+                                            handleAddTask(column.id, val);
                                           } else {
                                             setAddingInColumn(null);
                                           }

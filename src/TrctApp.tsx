@@ -780,7 +780,12 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
                 <input type="text" id="cnpj" name="cnpj" value={formData.cnpj} onChange={handleChange} placeholder="CNPJ" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 <input type="text" id="razaoSocial" name="razaoSocial" value={formData.razaoSocial} onChange={handleChange} placeholder="Razão Social" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 <input type="text" id="enderecoEmpresa" name="enderecoEmpresa" value={formData.enderecoEmpresa} onChange={handleChange} placeholder="Endereço" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="text" id="bairroEmpresa" name="bairroEmpresa" value={formData.bairroEmpresa} onChange={handleChange} placeholder="Bairro" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                  <input type="text" id="cepEmpresa" name="cepEmpresa" value={formData.cepEmpresa} onChange={handleChange} placeholder="CEP" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
                 <input type="text" id="municipioEmpresa" name="municipioEmpresa" value={formData.municipioEmpresa} onChange={handleChange} placeholder="Município" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="ufEmpresa" name="ufEmpresa" value={formData.ufEmpresa} onChange={handleChange} placeholder="UF" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
 
@@ -791,6 +796,18 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
                 <input type="text" id="nome" name="nome" value={formData.nome} onChange={handleChange} placeholder="Nome Completo" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 <input type="text" id="pis" name="pis" value={formData.pis} onChange={handleChange} placeholder="PIS" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 <input type="text" id="ctps" name="ctps" value={formData.ctps} onChange={handleChange} placeholder="CTPS" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="nomeMae" name="nomeMae" value={formData.nomeMae} onChange={handleChange} placeholder="Nome da Mãe" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <div className="flex flex-col">
+                  <label htmlFor="dataNascimento" className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Data de Nascimento</label>
+                  <input type="date" id="dataNascimento" name="dataNascimento" value={formData.dataNascimento} onChange={handleChange} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <input type="text" id="enderecoTrabalhador" name="enderecoTrabalhador" value={formData.enderecoTrabalhador} onChange={handleChange} placeholder="Endereço" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="text" id="bairroTrabalhador" name="bairroTrabalhador" value={formData.bairroTrabalhador} onChange={handleChange} placeholder="Bairro" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                  <input type="text" id="cepTrabalhador" name="cepTrabalhador" value={formData.cepTrabalhador} onChange={handleChange} placeholder="CEP" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+                <input type="text" id="municipioTrabalhador" name="municipioTrabalhador" value={formData.municipioTrabalhador} onChange={handleChange} placeholder="Município" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                <input type="text" id="ufTrabalhador" name="ufTrabalhador" value={formData.ufTrabalhador} onChange={handleChange} placeholder="UF" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
           </div>

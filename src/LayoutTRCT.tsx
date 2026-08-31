@@ -113,6 +113,15 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
     );
   }
 
+  const formatDateBR = (dateStr: string | undefined | null) => {
+    if (!dateStr) return ' ';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   return (
     <div id="document-print-area" className="w-full flex flex-col items-center">
       <div className="page-container relative overflow-hidden bg-white text-black font-sans flex flex-col mx-auto shrink-0 print:m-0 print:w-full print:h-auto" style={{ maxWidth: '202mm', width: '100%', padding: '3mm', boxSizing: 'border-box' }}>
@@ -172,7 +181,7 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
               <td className="border border-black py-[2px] px-[4px] w-1/4">18 CPF<br/><span className="font-bold">{data.cpf || ' '}</span></td>
             </tr>
             <tr>
-              <td colSpan={2} className="border border-black py-[2px] px-[4px] w-1/3">19 Data de Nascimento<br/><span className="font-bold">{data.dataNascimento || ' '}</span></td>
+              <td colSpan={2} className="border border-black py-[2px] px-[4px] w-1/3">19 Data de Nascimento<br/><span className="font-bold">{formatDateBR(data.dataNascimento)}</span></td>
               <td colSpan={4} className="border border-black py-[2px] px-[4px] w-2/3">20 Nome da Mãe<br/><span className="font-bold">{data.nomeMae || ' '}</span></td>
             </tr>
           </tbody>
@@ -194,9 +203,9 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
             </tr>
             <tr>
               <td className="border border-black py-[2px] px-[4px] w-1/5">23 Remuneração Mês Ant.<br/><span className="font-bold">{formatCurrency(data.remuneracaoMesAnterior)}</span></td>
-              <td className="border border-black py-[2px] px-[4px] w-1/5">24 Data de Admissão<br/><span className="font-bold">{data.dataAdmissao || ' '}</span></td>
-              <td className="border border-black py-[2px] px-[4px] w-1/5">25 Data do Aviso Prévio<br/><span className="font-bold">{data.dataAvisoPrevio || ' '}</span></td>
-              <td className="border border-black py-[2px] px-[4px] w-1/5">26 Data de Afastamento<br/><span className="font-bold">{data.dataAfastamento || ' '}</span></td>
+              <td className="border border-black py-[2px] px-[4px] w-1/5">24 Data de Admissão<br/><span className="font-bold">{formatDateBR(data.dataAdmissao)}</span></td>
+              <td className="border border-black py-[2px] px-[4px] w-1/5">25 Data do Aviso Prévio<br/><span className="font-bold">{formatDateBR(data.dataAvisoPrevio)}</span></td>
+              <td className="border border-black py-[2px] px-[4px] w-1/5">26 Data de Afastamento<br/><span className="font-bold">{formatDateBR(data.dataAfastamento)}</span></td>
               <td className="border border-black py-[2px] px-[4px] w-1/5">27 Cód. Afastamento<br/><span className="font-bold">{data.codigoAfastamento || ' '}</span></td>
             </tr>
             <tr>
@@ -224,12 +233,12 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
               <td colSpan={6} className="bg-gray-200 font-bold border border-black py-[2px] px-[4px]">VERBAS RESCISÓRIAS</td>
             </tr>
             <tr className="font-bold bg-gray-100">
-              <td className="border border-black py-[2px] px-[4px] w-[25%]">Rubrica</td>
-              <td className="border border-black py-[2px] px-[4px] w-[8%] text-center">Valor</td>
-              <td className="border border-black py-[2px] px-[4px] w-[25%]">Rubrica</td>
-              <td className="border border-black py-[2px] px-[4px] w-[8%] text-center">Valor</td>
-              <td className="border border-black py-[2px] px-[4px] w-[25%]">Rubrica</td>
-              <td className="border border-black py-[2px] px-[4px] w-[8%] text-center">Valor</td>
+              <td className="border border-black py-[2px] px-[4px] w-[24%]">Rubrica</td>
+              <td className="border border-black py-[2px] px-[4px] w-[10%] text-center">Valor</td>
+              <td className="border border-black py-[2px] px-[4px] w-[24%]">Rubrica</td>
+              <td className="border border-black py-[2px] px-[4px] w-[10%] text-center">Valor</td>
+              <td className="border border-black py-[2px] px-[4px] w-[22%]">Rubrica</td>
+              <td className="border border-black py-[2px] px-[4px] w-[10%] text-center">Valor</td>
             </tr>
             
             {/* LINHA 1 */}
@@ -315,12 +324,12 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
               <td colSpan={6} className="bg-gray-200 font-bold border border-black py-[2px] px-[4px]">DEDUÇÕES</td>
             </tr>
             <tr className="font-bold bg-gray-100">
-              <td className="border border-black py-[2px] px-[4px]">Desconto</td>
-              <td className="border border-black py-[2px] px-[4px] text-center">Valor</td>
-              <td className="border border-black py-[2px] px-[4px]">Desconto</td>
-              <td className="border border-black py-[2px] px-[4px] text-center">Valor</td>
-              <td className="border border-black py-[2px] px-[4px]">Desconto</td>
-              <td className="border border-black py-[2px] px-[4px] text-center">Valor</td>
+              <td className="border border-black py-[2px] px-[4px] w-[24%]">Desconto</td>
+              <td className="border border-black py-[2px] px-[4px] w-[10%] text-center">Valor</td>
+              <td className="border border-black py-[2px] px-[4px] w-[24%]">Desconto</td>
+              <td className="border border-black py-[2px] px-[4px] w-[10%] text-center">Valor</td>
+              <td className="border border-black py-[2px] px-[4px] w-[22%]">Desconto</td>
+              <td className="border border-black py-[2px] px-[4px] w-[10%] text-center">Valor</td>
             </tr>
             {/* LINHA 1 DESC */}
             <tr>
