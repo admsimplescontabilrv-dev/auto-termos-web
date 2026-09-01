@@ -62,6 +62,9 @@ export default function TrctApp() {
   const [descontarINSS, setDescontarINSS] = useState(false);
   const [rescisaoAntecipada, setRescisaoAntecipada] = useState(false);
   const [modoFimContrato, setModoFimContrato] = useState<'data' | 'dias'>('data');
+  const [tipoAviso, setTipoAviso] = useState<'trabalhado' | 'indenizado' | 'nenhum'>('nenhum');
+  const [diasAviso, setDiasAviso] = useState<number>(30);
+  const [feriasVencidasPagas, setFeriasVencidasPagas] = useState(false);
   const [diasExperiencia, setDiasExperiencia] = useState<number>(30);
   const [parteQuebra, setParteQuebra] = useState<'empregador' | 'empregado'>('empregador');
 
@@ -437,87 +440,120 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
 
     if (afastamento < admissao) return;
 
-    let newProventos = [...formData.proventos.filter(p => !['50', '63', '65', '68'].includes(p.codigo))];
+    let newProventos = [...formData.proventos.filter(p => !['50', '63', '65', '68', '69', '70', '71'].includes(p.codigo))];
     let newDescontos = [...formData.descontos.filter(d => !['112.1', '112.2'].includes(d.codigo))];
     const baseCalc = formData.remuneracaoMesAnterior;
 
     // Saldo de Salário (dias trabalhados no mês da rescisão)
-    const diasTrabalhadosMesAfastamento = afastamento.getDate();
+    let diasTrabalhadosMesAfastamento = afastamento.getDate();
+    if (tipoAviso === 'nenhum' || tipoAviso === 'indenizado') {
+       // O saldo de salário usa a data exata do afastamento
+    }
     const valorSaldoSalario = (baseCalc / 30) * diasTrabalhadosMesAfastamento;
     newProventos.push({ id: Date.now() + '-50', codigo: '50', descricao: `Saldo de Salário (${diasTrabalhadosMesAfastamento} dias)`, valor: parseFloat(valorSaldoSalario.toFixed(2)) });
 
-    // 13º Proporcional (Ano Civil - 01/01 a Data Afastamento)
-    const inicioAnoAfastamento = new Date(afastamento.getFullYear(), 0, 1);
-    let dataInicio13 = admissao > inicioAnoAfastamento ? admissao : inicioAnoAfastamento;
-    let meses13 = 0;
-    
-    let current = new Date(dataInicio13);
-    while (current.getFullYear() === afastamento.getFullYear() && current <= afastamento) {
-      const isUltimoMes = (current.getFullYear() === afastamento.getFullYear() && current.getMonth() === afastamento.getMonth());
-      let diasNoMesTrabalhados = 0;
-
-      if (isUltimoMes && current.getMonth() === admissao.getMonth() && current.getFullYear() === admissao.getFullYear()) {
-         diasNoMesTrabalhados = afastamento.getDate() - admissao.getDate() + 1;
-      } else if (isUltimoMes) {
-        diasNoMesTrabalhados = afastamento.getDate();
-      } else if (current.getFullYear() === admissao.getFullYear() && current.getMonth() === admissao.getMonth()) {
-        const diasNoMes = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-        diasNoMesTrabalhados = diasNoMes - admissao.getDate() + 1;
-      } else {
-        diasNoMesTrabalhados = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate(); // Considerando dias do mês
-      }
-
-      if (diasNoMesTrabalhados >= 15) {
-        meses13++;
-      }
-      current.setMonth(current.getMonth() + 1);
-      current.setDate(1); // Set to 1st of next month to prevent skipping on 31st
-    }
-    
-    const valor13 = (baseCalc / 12) * meses13;
-    if (valor13 > 0) {
-      newProventos.push({ id: Date.now() + '-13', codigo: '63', descricao: `13º Salário Proporcional (${meses13}/12 avos)`, valor: parseFloat(valor13.toFixed(2)) });
+    // Projetar Data para Aviso Indenizado
+    let dataProjetada = new Date(afastamento);
+    if (tipoAviso === 'indenizado' && diasAviso > 0) {
+      dataProjetada.setDate(dataProjetada.getDate() + diasAviso);
+      const valorAviso = (baseCalc / 30) * diasAviso;
+      newProventos.push({ id: Date.now() + '-69', codigo: '69', descricao: `Aviso Prévio Indenizado (${diasAviso} dias)`, valor: parseFloat(valorAviso.toFixed(2)) });
     }
 
-    // Férias Proporcionais (Ano Aquisitivo)
-    let anosCompletos = 0;
-    let temp = new Date(admissao);
-    while (true) {
-        let nextYear = new Date(temp);
-        nextYear.setFullYear(nextYear.getFullYear() + 1);
-        if (nextYear <= afastamento) {
-            anosCompletos++;
-            temp = nextYear;
+    // Função auxiliar para calcular avos de 13º por ano
+    const calcAvos13PorAno = (start: Date, dateToCheck: Date, yearToCalc: number) => {
+      const inicioAno = new Date(yearToCalc, 0, 1);
+      const fimAno = new Date(yearToCalc, 11, 31);
+      const actualStart = start > inicioAno ? start : inicioAno;
+      const actualEnd = dateToCheck < fimAno ? dateToCheck : fimAno;
+      
+      if (actualStart > actualEnd) return 0;
+
+      let meses = 0;
+      let current = new Date(actualStart);
+      while (current.getFullYear() === actualEnd.getFullYear() && current <= actualEnd) {
+        const isUltimoMes = (current.getFullYear() === actualEnd.getFullYear() && current.getMonth() === actualEnd.getMonth());
+        let diasNoMesTrabalhados = 0;
+        if (isUltimoMes && current.getMonth() === actualStart.getMonth() && current.getFullYear() === actualStart.getFullYear()) {
+           diasNoMesTrabalhados = actualEnd.getDate() - actualStart.getDate() + 1;
+        } else if (isUltimoMes) {
+          diasNoMesTrabalhados = actualEnd.getDate();
+        } else if (current.getFullYear() === actualStart.getFullYear() && current.getMonth() === actualStart.getMonth()) {
+          const diasNoMes = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+          diasNoMesTrabalhados = diasNoMes - actualStart.getDate() + 1;
         } else {
-            break;
+          diasNoMesTrabalhados = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
         }
+        if (diasNoMesTrabalhados >= 15) meses++;
+        current.setMonth(current.getMonth() + 1);
+        current.setDate(1);
+      }
+      return meses;
+    };
+
+    // Função auxiliar para calcular avos absolutos de Férias desde a admissão
+    const calcAvosFeriasAbsoluto = (start: Date, end: Date) => {
+      let temp = new Date(start);
+      let meses = 0;
+      while (temp < end) {
+          let proximoMes = new Date(temp);
+          proximoMes.setMonth(proximoMes.getMonth() + 1);
+          if (proximoMes <= end) {
+              meses++;
+              temp = proximoMes;
+          } else {
+              let remainingMs = end.getTime() - temp.getTime();
+              let remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24)) + 1; 
+              if (remainingDays >= 15) meses++;
+              break;
+          }
+      }
+      return meses;
+    };
+
+    const meses13Base = calcAvos13PorAno(admissao, afastamento, afastamento.getFullYear());
+    
+    if (meses13Base > 0) {
+      const valor13 = (baseCalc / 12) * meses13Base;
+      newProventos.push({ id: Date.now() + '-13', codigo: '63', descricao: `13º Salário Proporcional (${meses13Base}/12 avos)`, valor: parseFloat(valor13.toFixed(2)) });
     }
     
-    let dataInicioFerias = new Date(temp);
-    let mesesFerias = 0;
+    const diff13 = tipoAviso === 'indenizado' ? Math.floor(diasAviso / 30) + (diasAviso % 30 >= 15 ? 1 : 0) : 0;
     
-    while (dataInicioFerias < afastamento) {
-        let proximoMes = new Date(dataInicioFerias);
-        proximoMes.setMonth(proximoMes.getMonth() + 1);
-        
-        if (proximoMes <= afastamento) {
-            mesesFerias++;
-            dataInicioFerias = proximoMes;
-        } else {
-            let remainingMs = afastamento.getTime() - dataInicioFerias.getTime();
-            let remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24)) + 1; 
-            if (remainingDays >= 15) {
-                mesesFerias++;
-            }
-            break;
-        }
+    if (diff13 > 0) {
+      const valor13Indenizado = (baseCalc / 12) * diff13;
+      newProventos.push({ id: Date.now() + '-70', codigo: '70', descricao: `13º Salário (Aviso Prévio Indenizado) (${diff13}/12 avos)`, valor: parseFloat(valor13Indenizado.toFixed(2)) });
     }
 
-    const valorFerias = (baseCalc / 12) * mesesFerias;
-    const valorTerco = valorFerias / 3;
+    const avosFeriasAbsolutoBase = calcAvosFeriasAbsoluto(admissao, afastamento);
+    
+    const mesesFeriasBaseDisplay = avosFeriasAbsolutoBase % 12;
+    const periodosVencidos = Math.floor(avosFeriasAbsolutoBase / 12);
+    
+    let valorFeriasTotal = 0;
 
-    if (valorFerias > 0) {
-      newProventos.push({ id: Date.now() + '-ferias', codigo: '65', descricao: `Férias Proporc (${mesesFerias}/12 avos)`, valor: parseFloat(valorFerias.toFixed(2)) });
+    if (periodosVencidos > 0 && !feriasVencidasPagas) {
+      const valorFeriasVencidas = baseCalc * periodosVencidos;
+      valorFeriasTotal += valorFeriasVencidas;
+      newProventos.push({ id: Date.now() + '-66.1', codigo: '66.1', descricao: `Férias Vencidas (${periodosVencidos} per.)`, valor: parseFloat(valorFeriasVencidas.toFixed(2)) });
+    }
+
+    if (mesesFeriasBaseDisplay > 0) {
+      const valorFerias = (baseCalc / 12) * mesesFeriasBaseDisplay;
+      valorFeriasTotal += valorFerias;
+      newProventos.push({ id: Date.now() + '-ferias', codigo: '65', descricao: `Férias Proporc (${mesesFeriasBaseDisplay}/12 avos)`, valor: parseFloat(valorFerias.toFixed(2)) });
+    }
+
+    const diffFerias = tipoAviso === 'indenizado' ? Math.floor(diasAviso / 30) + (diasAviso % 30 >= 15 ? 1 : 0) : 0;
+
+    if (diffFerias > 0) {
+      const valorFeriasIndenizado = (baseCalc / 12) * diffFerias;
+      valorFeriasTotal += valorFeriasIndenizado;
+      newProventos.push({ id: Date.now() + '-71', codigo: '71', descricao: `Férias (Aviso Prévio Indenizado) (${diffFerias}/12 avos)`, valor: parseFloat(valorFeriasIndenizado.toFixed(2)) });
+    }
+
+    if (valorFeriasTotal > 0) {
+      const valorTerco = valorFeriasTotal / 3;
       newProventos.push({ id: Date.now() + '-terco', codigo: '68', descricao: 'Terço Constitucional de Férias', valor: parseFloat(valorTerco.toFixed(2)) });
     }
 
@@ -866,6 +902,40 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
                   <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">CNPJ Sindicato</label>
                   <input type="text" id="cnpjSindicato" name="cnpjSindicato" value={formData.cnpjSindicato} onChange={handleChange} placeholder="CNPJ do Sindicato" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 border border-slate-700/50 rounded-xl p-4">
+              <h4 className="text-slate-200 font-bold mb-4">Aviso Prévio</h4>
+              <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" id="tipoAviso_nenhum" name="tipoAviso" checked={tipoAviso === 'nenhum'} onChange={() => setTipoAviso('nenhum')} className="text-indigo-400 bg-slate-950" />
+                  <span className="text-slate-400 text-sm">Nenhum</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" id="tipoAviso_trabalhado" name="tipoAviso" checked={tipoAviso === 'trabalhado'} onChange={() => setTipoAviso('trabalhado')} className="text-indigo-400 bg-slate-950" />
+                  <span className="text-slate-400 text-sm">Trabalhado</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" id="tipoAviso_indenizado" name="tipoAviso" checked={tipoAviso === 'indenizado'} onChange={() => setTipoAviso('indenizado')} className="text-indigo-400 bg-slate-950" />
+                  <span className="text-slate-400 text-sm">Indenizado</span>
+                </label>
+              </div>
+
+              {tipoAviso === 'indenizado' && (
+                <div className="mt-4 flex flex-col w-full md:w-1/3">
+                  <label className="text-slate-500 text-xs font-bold mb-1">Dias de Aviso Prévio Indenizado</label>
+                  <input type="number" id="diasAviso" name="diasAviso" value={diasAviso} onChange={(e) => setDiasAviso(Number(e.target.value))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
+                </div>
+              )}
+
+              <div className="mt-6 pt-4 border-t border-slate-700/50">
+                <label className="flex items-center space-x-3 cursor-pointer w-max">
+                  <div onClick={() => setFeriasVencidasPagas(!feriasVencidasPagas)} className="w-5 h-5 rounded border border-indigo-500 flex items-center justify-center bg-slate-950">
+                    {feriasVencidasPagas && <CheckSquare className="w-4 h-4 text-slate-200" />}
+                  </div>
+                  <span className="text-slate-300 font-medium select-none text-sm">Férias vencidas (se houver) já foram pagas?</span>
+                </label>
               </div>
             </div>
 

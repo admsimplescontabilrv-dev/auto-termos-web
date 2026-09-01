@@ -122,6 +122,13 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
     return dateStr;
   };
 
+  const getAvos = (codigo: string) => {
+    const p = getProvento(codigo);
+    if (!p) return '  ';
+    const match = p.descricao.match(/\((\d+)\/12 avos\)/);
+    return match ? match[1].padStart(2, ' ') : '  ';
+  };
+
   return (
     <div id="document-print-area" className="w-full flex flex-col items-center">
       <div className="page-container relative overflow-hidden bg-white text-black font-sans flex flex-col mx-auto shrink-0 print:m-0 print:w-full print:h-auto" style={{ maxWidth: '202mm', width: '100%', padding: '3mm', boxSizing: 'border-box' }}>
@@ -279,11 +286,11 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
             </tr>
             {/* LINHA 5 */}
             <tr>
-              <td className="border border-black py-[2px] px-[4px] align-top">63 13º Salário Proporcional<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/12 avos</td>
+              <td className="border border-black py-[2px] px-[4px] align-top">63 13º Salário Proporcional<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{getAvos('63')}/12 avos</td>
               <td className="border border-black py-[2px] px-[4px] text-right align-top">{formatCurrency(getProvento('63')?.valor)}</td>
-              <td className="border border-black py-[2px] px-[4px] align-top">64.1 13º Salário–Exerc.<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- /12 avos</td>
+              <td className="border border-black py-[2px] px-[4px] align-top">64.1 13º Salário–Exerc.<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- {getAvos('64.1')}/12 avos</td>
               <td className="border border-black py-[2px] px-[4px] text-right align-top">{formatCurrency(getProvento('64.1')?.valor)}</td>
-              <td className="border border-black py-[2px] px-[4px] align-top">65 Férias Proporc<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/12 avos</td>
+              <td className="border border-black py-[2px] px-[4px] align-top">65 Férias Proporc<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{getAvos('65')}/12 avos</td>
               <td className="border border-black py-[2px] px-[4px] text-right align-top">{formatCurrency(getProvento('65')?.valor)}</td>
             </tr>
             {/* LINHA 6 */}
@@ -297,9 +304,9 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
             </tr>
             {/* LINHA 7 */}
             <tr>
-              <td className="border border-black py-[2px] px-[4px] align-top">70 13º Salário (Aviso Prévio<br/>Indenizado)</td>
+              <td className="border border-black py-[2px] px-[4px] align-top">70 13º Salário (Aviso Prévio<br/>Indenizado) {getAvos('70') !== '  ' ? `${getAvos('70')}/12 avos` : ''}</td>
               <td className="border border-black py-[2px] px-[4px] text-right align-top">{formatCurrency(getProvento('70')?.valor)}</td>
-              <td className="border border-black py-[2px] px-[4px] align-top">71 Férias (Aviso Prévio<br/>Indenizado)</td>
+              <td className="border border-black py-[2px] px-[4px] align-top">71 Férias (Aviso Prévio<br/>Indenizado) {getAvos('71') !== '  ' ? `${getAvos('71')}/12 avos` : ''}</td>
               <td className="border border-black py-[2px] px-[4px] text-right align-top">{formatCurrency(getProvento('71')?.valor)}</td>
               {renderEmptyProventos(0, 1)}
             </tr>
