@@ -1413,7 +1413,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
   }
 
   return (
-    <div className="flex h-[100dvh] bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500 selection:text-white overflow-hidden print:overflow-visible print:h-auto">
+    <div className="flex h-[100dvh] bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500 selection:text-white overflow-hidden print:overflow-visible print:h-auto print:bg-white print:text-black">
       {/* Toast Notification */}
       {notification.visible && (
         <div
