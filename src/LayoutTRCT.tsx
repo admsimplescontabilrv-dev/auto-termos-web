@@ -41,7 +41,9 @@ export interface TrctData {
   descontos: { id: string; codigo: string; descricao: string; valor: number; }[];
   
   diasSaldoSalario?: number;
-  faltasDsr?: number;
+  faltasMesRescisao?: number;
+  dsrMesRescisao?: number;
+  faltasPeriodoAquisitivo?: number;
 
   totalBruto: number;
   totalDeducoes: number;
@@ -250,7 +252,7 @@ export default function LayoutTRCT({ data }: LayoutTRCTProps) {
             
             {/* LINHA 1 */}
             <tr>
-              <td className="border border-black py-[2px] px-[4px]">50 Saldo de {data.diasSaldoSalario || '___'}/dias Salário<br/>(líquido de {data.faltasDsr || '0'}/faltas e DSR)</td>
+              <td className="border border-black py-[2px] px-[4px]">50 Saldo de {data.diasSaldoSalario || '___'}/dias Salário<br/>(líquido de {(data.faltasMesRescisao || 0) + (data.dsrMesRescisao || 0)}/faltas e DSR)</td>
               <td className="border border-black py-[2px] px-[4px] text-right align-top">{formatCurrency(getProvento('50')?.valor)}</td>
               <td className="border border-black py-[2px] px-[4px] align-top">51 Comissões</td>
               <td className="border border-black py-[2px] px-[4px] text-right align-top">{formatCurrency(getProvento('51')?.valor)}</td>

@@ -122,10 +122,16 @@ export default function ChatApp() {
       let targetSindicatoId = null;
       const normQuery = normalizeSearchStr(userMessage.parts[0]?.text || '');
       
+      const corporateStopWords = ['ltda', 'eireli', 'me', 'epp', 's/a', 'comercio', 'servicos', 'maquinas', 'agricolas', 'industria', 'comercial'];
+      
       // Busca na empresa
       for (const emp of contextData.empresas) {
         const empNomeNorm = normalizeSearchStr(emp.nome);
-        const words = empNomeNorm.split(/\s+/).filter(w => w.length >= 4 && !['ltda', 'eireli', 'me', 'epp', 's/a', 'comercio', 'servicos'].includes(w));
+        
+        // Separa o nome da empresa em palavras e filtra stopwords
+        const words = empNomeNorm.split(/\s+/).filter(w => w.length >= 2 && !corporateStopWords.includes(w));
+        
+        // Verifica se a query do usuário contém o nome inteiro OU alguma das palavras-chave principais do nome (como a sigla principal)
         if (normQuery.includes(empNomeNorm) || (words.length > 0 && words.some(w => normQuery.includes(w)))) {
           if (emp.sindicatoId) {
             targetSindicatoId = emp.sindicatoId;
@@ -136,11 +142,14 @@ export default function ChatApp() {
       
       // Busca no sindicato se não achou na empresa
       if (!targetSindicatoId) {
+        const unionStopWords = ['sindicato', 'trabalhadores', 'empregados', 'estado', 'goias', 'regiao', 'dos', 'das', 'de'];
         for (const sind of contextData.sindicatos) {
           const sindNomeNorm = normalizeSearchStr(sind.nome);
           const acronymMatch = sindNomeNorm.match(/\(([a-z0-9\-]+)\)/);
           const acronym = acronymMatch ? acronymMatch[1] : '';
-          const words = sindNomeNorm.split(/\s+/).filter(w => w.length >= 5 && !['sindicato', 'trabalhadores', 'empregados', 'estado', 'goias', 'regiao'].includes(w));
+          
+          const words = sindNomeNorm.split(/\s+/).filter(w => w.length >= 3 && !unionStopWords.includes(w));
+          
           if (normQuery.includes(sindNomeNorm) || (acronym && normQuery.includes(acronym)) || (words.length > 0 && words.some(w => normQuery.includes(w)))) {
             targetSindicatoId = sind.id;
             break;

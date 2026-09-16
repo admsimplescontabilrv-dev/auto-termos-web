@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { collection, onSnapshot, query, setDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { Empresa, CalendarEvent } from '../types';
 import { format, addMonths, subMonths } from 'date-fns';
@@ -22,6 +22,8 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
 
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isMesesModalOpen, setIsMesesModalOpen] = useState(false);
+  const [mesesModalData, setMesesModalData] = useState<{empresaId: string, tipo: 'LABORAL' | 'PATRONAL', selected: number[]}>({empresaId: '', tipo: 'LABORAL', selected: []});
 
   useEffect(() => {
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -108,6 +110,44 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
         }
       }
     }
+
+    // Sync to Google Sheets in background
+    if (!isEditMode) {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (token) {
+          const columnMap: Record<string, string> = {
+            lancamento: "Inf. Lançamento",
+            consignado: "Empréstimo",
+            adiantamento: "Adiantamento",
+            recibo: "Recibo",
+            fgts: "FGTS",
+            dctf: "DCTF",
+            guiaSindicato: "Guia Sindicato",
+            verificarEnvio: "Verificar Envio",
+            observacoes: "Observações",
+            contatos: "Contatos",
+            tipoFolha: "Pro Labore/Func"
+          };
+          const coluna = columnMap[field] || field;
+
+          fetch('/api/sheets/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              empresaId,
+              coluna,
+              novoStatus: value
+            })
+          }).catch(err => console.error("Error syncing to sheets", err));
+        }
+      } catch (err) {
+        console.error("Auth error", err);
+      }
+    }
   };
 
   const sortedEmpresas = [...empresas].sort((a, b) => {
@@ -187,7 +227,8 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 <th>RECIBO</th>
                 <th>FGTS</th>
                 <th>DCTF</th>
-                <th>GUIA SINDICATO</th>
+                <th>GUIA SINDICATO LAB.</th>
+                <th>GUIA SINDICATO PATR.</th>
                 <th>VERIFICAR ENVIO</th>
                 <th>OBSERVAÇÕES</th>
                 <th>CONTATOS</th>
@@ -198,14 +239,25 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
               ${filteredEmpresas.map((emp, i) => {
                 const fDataRaw = fechamentos[emp.id] || {};
                 const tpl = emp.fechamentoTemplate || {};
-                const fData = isEditMode ? tpl : {
+                
+    const mesAtualIdx = currentMonth.getMonth();
+    const labMeses = tpl.guiaSindicatoLaboralMeses ? tpl.guiaSindicatoLaboralMeses.split(',').map(Number) : [];
+    const isLabMes = labMeses.includes(mesAtualIdx);
+    const defaultLabStatus = isLabMes ? 'PENDENTE' : 'OK';
+
+    const patMeses = tpl.guiaSindicatoPatronalMeses ? tpl.guiaSindicatoPatronalMeses.split(',').map(Number) : [];
+    const isPatMes = patMeses.includes(mesAtualIdx);
+    const defaultPatStatus = isPatMes ? 'PENDENTE' : 'OK';
+
+const fData = isEditMode ? tpl : {
                   lancamento: fDataRaw.lancamento ?? tpl.lancamento,
                   consignado: fDataRaw.consignado ?? tpl.consignado,
                   adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
                   recibo: fDataRaw.recibo ?? tpl.recibo,
                   fgts: fDataRaw.fgts ?? tpl.fgts,
                   dctf: fDataRaw.dctf ?? tpl.dctf,
-                  guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
+                  guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? defaultLabStatus,
+                  guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
                   verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
                   observacoes: fDataRaw.observacoes ?? tpl.observacoes,
                   contatos: fDataRaw.contatos ?? tpl.contatos,
@@ -232,7 +284,8 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                     <td class="${getStatusClass(fData.recibo)}">${fData.recibo || ''}</td>
                     <td class="${getStatusClass(fData.fgts)}">${fData.fgts || ''}</td>
                     <td class="${getStatusClass(fData.dctf)}">${fData.dctf || ''}</td>
-                    <td class="${getStatusClass(fData.guiaSindicato)}">${fData.guiaSindicato || ''}</td>
+                    <td class="${getStatusClass(fData.guiaSindicatoLaboral)}">${fData.guiaSindicatoLaboral || ''}</td>
+                    <td class="${getStatusClass(fData.guiaSindicatoPatronal)}">${fData.guiaSindicatoPatronal || ''}</td>
                     <td class="${getStatusClass(fData.verificarEnvio)}">${fData.verificarEnvio || ''}</td>
                     <td>${fData.observacoes || ''}</td>
                     <td>${fData.contatos || ''}</td>
@@ -262,9 +315,49 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
       return 'bg-amber-200/90 text-amber-900 border-amber-300/50';
     }
     if (['PENDENTE (PONTO/COMISSÃO)'].includes(value)) {
-      return 'bg-cyan-100/90 text-cyan-900 border-cyan-200/50';
+      return 'bg-fuchsia-200/90 text-fuchsia-900 border-fuchsia-300/50';
     }
     return 'bg-slate-900 border-slate-800 text-slate-300';
+  };
+
+  const saveMeses = async () => {
+    const { empresaId, tipo, selected } = mesesModalData;
+    const emp = empresas.find(e => e.id === empresaId);
+    if (!emp) return;
+
+    const fieldName = tipo === 'LABORAL' ? 'guiaSindicatoLaboralMeses' : 'guiaSindicatoPatronalMeses';
+    const valueToSave = selected.join(',');
+    
+    const newTemplate = { ...(emp.fechamentoTemplate || {}), [fieldName]: valueToSave };
+    await updateDoc(doc(db, 'empresas', empresaId), { fechamentoTemplate: newTemplate });
+
+    for (let i = 0; i < 12; i++) {
+      const eventTitle = `Guia Sindicato ${tipo === 'LABORAL' ? 'Laboral' : 'Patronal'}`;
+      const exists = calendarEvents.find(e => e.empresaId === empresaId && e.isRecurrent && e.recurrentMonth === i && e.title === eventTitle);
+      
+      if (selected.includes(i)) {
+        if (!exists) {
+          await setDoc(doc(collection(db, 'calendarEvents')), {
+            title: eventTitle,
+            date: new Date(2024, i, 10).toISOString(),
+            empresaId,
+            empresaNome: emp.nome,
+            type: 'RECORRENTE',
+            isRecurrent: true,
+            recurrentRule: 'YEARLY',
+            recurrentDay: 10,
+            recurrentMonth: i,
+            createdAt: Date.now()
+          });
+        }
+      } else {
+        if (exists) {
+          await deleteDoc(doc(db, 'calendarEvents', exists.id));
+        }
+      }
+    }
+
+    setIsMesesModalOpen(false);
   };
 
   return (
@@ -370,7 +463,8 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Recibo</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">FGTS</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">DCTF</th>
-              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Guia Sindicato</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Guia Sindicato Laboral</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Guia Sindicato Patronal</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Verificar Envio</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Observações</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Contatos</th>
@@ -383,14 +477,25 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
               const fDataRaw = fechamentos[emp.id] || {};
               const tpl = emp.fechamentoTemplate || {};
               
-              const fData = isEditMode ? tpl : {
+              
+    const mesAtualIdx = currentMonth.getMonth();
+    const labMeses = tpl.guiaSindicatoLaboralMeses ? tpl.guiaSindicatoLaboralMeses.split(',').map(Number) : [];
+    const isLabMes = labMeses.includes(mesAtualIdx);
+    const defaultLabStatus = isLabMes ? 'PENDENTE' : 'OK';
+
+    const patMeses = tpl.guiaSindicatoPatronalMeses ? tpl.guiaSindicatoPatronalMeses.split(',').map(Number) : [];
+    const isPatMes = patMeses.includes(mesAtualIdx);
+    const defaultPatStatus = isPatMes ? 'PENDENTE' : 'OK';
+
+const fData = isEditMode ? tpl : {
                 lancamento: fDataRaw.lancamento ?? tpl.lancamento,
                 consignado: fDataRaw.consignado ?? tpl.consignado,
                 adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
                 recibo: fDataRaw.recibo ?? tpl.recibo,
                 fgts: fDataRaw.fgts ?? tpl.fgts,
                 dctf: fDataRaw.dctf ?? tpl.dctf,
-                guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
+                guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? defaultLabStatus,
+                guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
                 verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
                 observacoes: fDataRaw.observacoes ?? tpl.observacoes,
                 contatos: fDataRaw.contatos ?? tpl.contatos,
@@ -475,7 +580,6 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                     >
                       <option value=""></option>
                       <option value="PENDENTE">PENDENTE</option>
-                      <option value="NÃO ENVIAMOS">NÃO ENVIAMOS</option>
                       <option value="OK">OK</option>
                     </select>
                   </td>
@@ -488,7 +592,6 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                     >
                       <option value=""></option>
                       <option value="PENDENTE">PENDENTE</option>
-                      <option value="NÃO ENVIAMOS">NÃO ENVIAMOS</option>
                       <option value="OK">OK</option>
                     </select>
                   </td>
@@ -501,22 +604,60 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                     >
                       <option value=""></option>
                       <option value="PENDENTE">PENDENTE</option>
-                      <option value="NÃO ENVIAMOS">NÃO ENVIAMOS</option>
                       <option value="OK">OK</option>
                     </select>
                   </td>
 
                   <td className="px-2 py-2 border-r border-slate-800/50">
-                    <select 
-                      value={fData.guiaSindicato || ''}
-                      onChange={(e) => updateFechamento(emp.id, 'guiaSindicato', e.target.value)}
-                      className={`w-full text-xs font-bold rounded px-2 py-1.5 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicato)}`}
-                    >
-                      <option value=""></option>
-                      <option value="PENDENTE">PENDENTE</option>
-                      <option value="NÃO ENVIAMOS">NÃO ENVIAMOS</option>
-                      <option value="OK">OK</option>
-                    </select>
+                    <div className="flex items-center gap-1">
+                      <select 
+                        value={fData.guiaSindicatoLaboral || ''}
+                        onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoLaboral', e.target.value)}
+                        className={`w-full text-xs font-bold rounded px-2 py-1.5 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoLaboral)}`}
+                      >
+                        <option value=""></option>
+                        <option value="PENDENTE">PENDENTE</option>
+                        <option value="OK">OK</option>
+                      </select>
+                      <button
+                        onClick={() => {
+                          const selStr = tpl.guiaSindicatoLaboralMeses || '';
+                          const selArr = selStr ? selStr.split(',').map(Number) : [];
+                          setMesesModalData({ empresaId: emp.id, tipo: 'LABORAL', selected: selArr });
+                          setIsMesesModalOpen(true);
+                        }}
+                        className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors"
+                        title="Configurar Meses"
+                      >
+                        ⚙️
+                      </button>
+                    </div>
+                  </td>
+
+                  <td className="px-2 py-2 border-r border-slate-800/50">
+                    <div className="flex items-center gap-1">
+                      <select 
+                        value={fData.guiaSindicatoPatronal || ''}
+                        onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoPatronal', e.target.value)}
+                        className={`w-full text-xs font-bold rounded px-2 py-1.5 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoPatronal)}`}
+                      >
+                        <option value=""></option>
+                        <option value="PENDENTE">PENDENTE</option>
+                        <option value="OK">OK</option>
+                      </select>
+                      <button
+                        onClick={() => {
+                          const selStr = tpl.guiaSindicatoPatronalMeses || '';
+                          const selArr = selStr ? selStr.split(',').map(Number) : [];
+                          setMesesModalData({ empresaId: emp.id, tipo: 'PATRONAL', selected: selArr });
+                          setIsMesesModalOpen(true);
+                        }}
+                        className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors"
+                        title="Configurar Meses"
+                      >
+                        ⚙️
+                      </button>
+                    </div>
                   </td>
 
                   <td className="px-2 py-2 border-r border-slate-800/50">
@@ -580,14 +721,25 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
           const fDataRaw = fechamentos[emp.id] || {};
           const tpl = emp.fechamentoTemplate || {};
           
-          const fData = isEditMode ? tpl : {
+          
+    const mesAtualIdx = currentMonth.getMonth();
+    const labMeses = tpl.guiaSindicatoLaboralMeses ? tpl.guiaSindicatoLaboralMeses.split(',').map(Number) : [];
+    const isLabMes = labMeses.includes(mesAtualIdx);
+    const defaultLabStatus = isLabMes ? 'PENDENTE' : 'OK';
+
+    const patMeses = tpl.guiaSindicatoPatronalMeses ? tpl.guiaSindicatoPatronalMeses.split(',').map(Number) : [];
+    const isPatMes = patMeses.includes(mesAtualIdx);
+    const defaultPatStatus = isPatMes ? 'PENDENTE' : 'OK';
+
+const fData = isEditMode ? tpl : {
             lancamento: fDataRaw.lancamento ?? tpl.lancamento,
             consignado: fDataRaw.consignado ?? tpl.consignado,
             adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
             recibo: fDataRaw.recibo ?? tpl.recibo,
             fgts: fDataRaw.fgts ?? tpl.fgts,
             dctf: fDataRaw.dctf ?? tpl.dctf,
-            guiaSindicato: fDataRaw.guiaSindicato ?? tpl.guiaSindicato,
+            guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? defaultLabStatus,
+            guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
             verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
             observacoes: fDataRaw.observacoes ?? tpl.observacoes,
             contatos: fDataRaw.contatos ?? tpl.contatos,
@@ -639,10 +791,62 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 {renderSelect('lancamento', 'Inf. Lançamento', ['PENDENTE (PONTO/COMISSÃO)', 'AGUARDANDO RESPOSTA', 'SEM LANÇAMENTO', 'INFORMADO (VER COLUNA K)', 'PENDENTE DE SOLICITAÇÃO', 'OK'])}
                 {renderSelect('consignado', 'Empréstimo', ['A CONSULTAR', 'NÃO TEM', 'OK'])}
                 {renderSelect('adiantamento', 'Adiantamento', ['A CONSULTAR', 'NÃO TEM', 'OK'])}
-                {renderSelect('recibo', 'Recibo', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
-                {renderSelect('fgts', 'FGTS', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
-                {renderSelect('dctf', 'DCTF', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
-                {renderSelect('guiaSindicato', 'Sindicato', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
+                {renderSelect('recibo', 'Recibo', ['PENDENTE', 'OK'])}
+                {renderSelect('fgts', 'FGTS', ['PENDENTE', 'OK'])}
+                {renderSelect('dctf', 'DCTF', ['PENDENTE', 'OK'])}
+                
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Sind. Laboral</label>
+                  <div className="flex items-center gap-1">
+                    <select 
+                      value={fData.guiaSindicatoLaboral || ''}
+                      onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoLaboral', e.target.value)}
+                      className={`w-full text-xs font-bold rounded px-2 py-2 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoLaboral)}`}
+                    >
+                      <option value=""></option>
+                      <option value="PENDENTE">PENDENTE</option>
+                      <option value="OK">OK</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        const selStr = tpl.guiaSindicatoLaboralMeses || '';
+                        const selArr = selStr ? selStr.split(',').map(Number) : [];
+                        setMesesModalData({ empresaId: emp.id, tipo: 'LABORAL', selected: selArr });
+                        setIsMesesModalOpen(true);
+                      }}
+                      className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                      ⚙️
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Sind. Patronal</label>
+                  <div className="flex items-center gap-1">
+                    <select 
+                      value={fData.guiaSindicatoPatronal || ''}
+                      onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoPatronal', e.target.value)}
+                      className={`w-full text-xs font-bold rounded px-2 py-2 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoPatronal)}`}
+                    >
+                      <option value=""></option>
+                      <option value="PENDENTE">PENDENTE</option>
+                      <option value="OK">OK</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        const selStr = tpl.guiaSindicatoPatronalMeses || '';
+                        const selArr = selStr ? selStr.split(',').map(Number) : [];
+                        setMesesModalData({ empresaId: emp.id, tipo: 'PATRONAL', selected: selArr });
+                        setIsMesesModalOpen(true);
+                      }}
+                      className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                      ⚙️
+                    </button>
+                  </div>
+                </div>
+
                 {renderSelect('verificarEnvio', 'Verificar Envio', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
                 {renderSelect('tipoFolha', 'Tipo', ['FUNCIONÁRIOS', 'PRO LABORE'])}
               </div>
@@ -678,6 +882,56 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
           );
         })}
       </div>
+      {isMesesModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 p-6 rounded-xl w-full max-w-sm">
+            <h3 className="text-lg font-bold text-slate-200 mb-4">
+              Configurar Meses - Guia Sindicato {mesesModalData.tipo === 'LABORAL' ? 'Laboral' : 'Patronal'}
+            </h3>
+            
+            <div className="flex flex-wrap gap-2 mb-6">
+              <button
+                onClick={() => setMesesModalData(prev => ({ ...prev, selected: prev.selected.length === 12 ? [] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }))}
+                className="w-full py-1 text-xs font-bold text-slate-400 border border-slate-700 rounded hover:bg-slate-800 transition-colors mb-2"
+              >
+                {mesesModalData.selected.length === 12 ? 'Desmarcar Todos' : 'Marcar Todos'}
+              </button>
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(m => (
+                <label key={m} className="flex items-center space-x-2 text-sm text-slate-300 bg-slate-800/50 px-3 py-2 rounded-lg cursor-pointer border border-slate-700/50 flex-1 min-w-[30%]">
+                  <input
+                    type="checkbox"
+                    checked={mesesModalData.selected.includes(m)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setMesesModalData(prev => ({ ...prev, selected: [...prev.selected, m] }));
+                      } else {
+                        setMesesModalData(prev => ({ ...prev, selected: prev.selected.filter(x => x !== m) }));
+                      }
+                    }}
+                    className="rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                  />
+                  <span className="capitalize">{format(new Date(2024, m, 1), 'MMM', { locale: ptBR })}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setIsMesesModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-300 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveMeses}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-lg transition-colors"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

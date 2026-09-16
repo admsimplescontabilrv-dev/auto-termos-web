@@ -25,6 +25,7 @@
     "file-saver": "^2.0.5",
     "firebase": "^12.16.0",
     "firebase-admin": "^14.2.0",
+    "googleapis": "^181.0.0",
     "helmet": "^8.3.0",
     "html2pdf.js": "^0.14.0",
     "jsdom": "^30.0.1",

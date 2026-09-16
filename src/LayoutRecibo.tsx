@@ -17,11 +17,14 @@ export const LayoutRecibo = ({
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatMesAno = (val: string) => {
     if (!val) return '';
-    const [year, month] = val.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    const mStr = date.toLocaleString('pt-BR', { month: 'long' });
-    const yStr = year.slice(2);
-    return `${mStr}-${yStr}`;
+    if (val.includes('-') && val.split('-').length === 2 && val.split('-')[0].length === 4) {
+      const [year, month] = val.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1);
+      const mStr = date.toLocaleString('pt-BR', { month: 'long' });
+      const yStr = year.slice(2);
+      return `${mStr}-${yStr}`;
+    }
+    return val;
   };
   
   const formattedMesAno = formatMesAno(mesAnoRef);

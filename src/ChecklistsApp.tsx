@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from './lib/firebase';
+import { db, auth } from './lib/firebase';
 import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Empresa, Sindicato, ChecklistRule, CalendarEvent, ScheduleFrequency } from './types';
 import { CheckSquare, Plus, Trash2, Calendar, FileText, Briefcase, Building2, AlertCircle, Search, Clock, CheckCircle2, X, ChevronLeft, ChevronRight, Pencil, Upload, Loader2, GripVertical } from 'lucide-react';
@@ -356,6 +356,35 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
           empresaId: selectedEntity.id,
           updatedAt: Date.now()
         }, { merge: true });
+
+        // Sync to Google Sheets
+        try {
+          const token = await auth.currentUser?.getIdToken();
+          if (token) {
+            const columnMap: Record<string, string> = {
+              fgts: "FGTS",
+              dctf: "DCTF",
+              guiaSindicato: "Guia Sindicato",
+              recibo: "Recibo"
+            };
+            const coluna = columnMap[fechamentoField] || fechamentoField;
+
+            fetch('/api/sheets/update', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                empresaId: selectedEntity.id,
+                coluna,
+                novoStatus: isCompleted ? 'PENDENTE' : 'OK'
+              })
+            }).catch(err => console.error("Error syncing to sheets", err));
+          }
+        } catch (err) {
+          console.error("Auth error", err);
+        }
       }
     }
   };

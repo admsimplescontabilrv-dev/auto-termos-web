@@ -27,6 +27,8 @@ export interface Empresa {
     fgts?: string;
     dctf?: string;
     guiaSindicato?: string;
+    guiaSindicatoLaboralMeses?: string;
+    guiaSindicatoPatronalMeses?: string;
     verificarEnvio?: string;
     tipoFolha?: string;
     observacoes?: string;

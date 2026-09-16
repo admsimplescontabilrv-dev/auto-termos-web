@@ -464,15 +464,45 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
 
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
+  
+  const applyDateMask = (val: string) => {
+    const digits = val.replace(/\D/g, '');
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+  };
+
   const getMesesLote = () => {
     if (!dadosEmpresa.geracaoEmLote || !dadosEmpresa.mesAnoFinal) return [dadosEmpresa.mesAno];
-    const start = new Date(dadosEmpresa.mesAno + '-01T00:00:00');
-    const end = new Date(dadosEmpresa.mesAnoFinal + '-01T00:00:00');
+    
+    const parseMesAnoInput = (val: string) => {
+      if (!val) return null;
+      if (val.includes('-') && val.split('-').length === 2 && val.split('-')[0].length === 4) return val; // YYYY-MM
+      if (val.includes('/')) {
+        const parts = val.split('/');
+        if (parts.length === 2) {
+          const [m, y] = parts;
+          if (m && y) return `${y}-${m.padStart(2, '0')}`;
+        } else if (parts.length === 3) {
+          const [d, m, y] = parts;
+          if (m && y) return `${y}-${m.padStart(2, '0')}`;
+        }
+      }
+      return null;
+    };
+
+    const sVal = parseMesAnoInput(dadosEmpresa.mesAno);
+    const eVal = parseMesAnoInput(dadosEmpresa.mesAnoFinal);
+
+    if (!sVal || !eVal) return [dadosEmpresa.mesAno];
+
+    const start = new Date(sVal + '-01T00:00:00');
+    const end = new Date(eVal + '-01T00:00:00');
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [dadosEmpresa.mesAno];
     const months = [];
     let cur = new Date(start);
     while (cur <= end) {
-      months.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`);
+      months.push(`${String(cur.getMonth() + 1).padStart(2, '0')}/${cur.getFullYear()}`);
       cur.setMonth(cur.getMonth() + 1);
     }
     return months;
@@ -628,13 +658,13 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
 
                 <div>
                   <label className="block text-sm text-slate-200 mb-1">{dadosEmpresa.geracaoEmLote ? 'Mês/Ano Inicial' : 'Mês/Ano de Referência'}</label>
-                  <input id="recibo_empresa_mesAno" name="recibo_empresa_mesAno" type="month" value={dadosEmpresa.mesAno} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAno: e.target.value})} className="w-full bg-slate-950 border border-slate-700/50 rounded-lg p-3 text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                  <input id="recibo_empresa_mesAno" name="recibo_empresa_mesAno" type="text" placeholder="Ex: 05/10/2024" value={dadosEmpresa.mesAno} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAno: applyDateMask(e.target.value)})} className="w-full bg-slate-950 border border-slate-700/50 rounded-lg p-3 text-slate-200 focus:border-indigo-500 focus:outline-none" />
                 </div>
 
                 {dadosEmpresa.geracaoEmLote && (
                   <div>
                     <label className="block text-sm text-slate-200 mb-1">Mês/Ano Final</label>
-                    <input id="recibo_empresa_mesAnoFinal" name="recibo_empresa_mesAnoFinal" type="month" value={dadosEmpresa.mesAnoFinal || ''} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAnoFinal: e.target.value})} className="w-full bg-slate-950 border border-slate-700/50 rounded-lg p-3 text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                    <input id="recibo_empresa_mesAnoFinal" name="recibo_empresa_mesAnoFinal" type="text" placeholder="Ex: 20/12/2024" value={dadosEmpresa.mesAnoFinal || ''} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAnoFinal: applyDateMask(e.target.value)})} className="w-full bg-slate-950 border border-slate-700/50 rounded-lg p-3 text-slate-200 focus:border-indigo-500 focus:outline-none" />
                   </div>
                 )}
 

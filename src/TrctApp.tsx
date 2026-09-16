@@ -56,7 +56,10 @@ export default function TrctApp() {
     tipoContrato: '', causaAfastamento: '', remuneracaoMesAnterior: 0, dataAdmissao: '', dataAvisoPrevio: '', dataAfastamento: '', codigoAfastamento: '', pensaoAlimenticia: 0, pensaoAlimenticiaFGTS: 0, sindicato: '', cnpjSindicato: '',
     proventos: [{ id: 'prov-1', codigo: '50', descricao: 'Saldo de Salário', valor: 0 }],
     descontos: [{ id: 'desc-1', codigo: '112.1', descricao: 'Previdência Social', valor: 0 }],
-    dataFimContrato: ''
+    dataFimContrato: '',
+    faltasPeriodoAquisitivo: 0,
+    faltasMesRescisao: 0,
+    dsrMesRescisao: 0
   });
 
   const [descontarINSS, setDescontarINSS] = useState(false);
@@ -81,7 +84,10 @@ useEffect(() => {
           tipoContrato: '', causaAfastamento: '', remuneracaoMesAnterior: 0, dataAdmissao: '', dataAvisoPrevio: '', dataAfastamento: '', codigoAfastamento: '', pensaoAlimenticia: 0, pensaoAlimenticiaFGTS: 0, sindicato: '', cnpjSindicato: '',
           proventos: [{ id: 'prov-1', codigo: '50', descricao: 'Saldo de Salário', valor: 0 }],
           descontos: [{ id: 'desc-1', codigo: '112.1', descricao: 'Previdência Social', valor: 0 }],
-          dataFimContrato: ''
+          dataFimContrato: '',
+          faltasPeriodoAquisitivo: 0,
+          faltasMesRescisao: 0,
+          dsrMesRescisao: 0
         });
         setDescontarINSS(false);
         setRescisaoAntecipada(false);
@@ -254,18 +260,19 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
     }
   };
 
-  // Lógica de cálculo reativa do Campo 50 e INSS
+  // Lógica de cálculo reativa do Campo 50, Férias, Faltas e INSS
   useEffect(() => {
     setFormData(prev => {
       let newProventos = [...prev.proventos];
       let newDescontos = [...prev.descontos];
       let hasChanges = false;
+      const baseFerias = prev.remuneracaoMesAnterior;
 
       // Reatividade do Campo 50
       const idx50 = newProventos.findIndex(p => p.codigo === '50');
-      if (idx50 >= 0 && prev.remuneracaoMesAnterior > 0) {
-        const diasLiquidos = Math.max(0, (prev.diasSaldoSalario || 0) - (prev.faltasDsr || 0));
-        const valorCalculado = parseFloat(((prev.remuneracaoMesAnterior / 30) * diasLiquidos).toFixed(2));
+      if (idx50 >= 0 && baseFerias > 0) {
+        const diasLiquidos = Math.max(0, (prev.diasSaldoSalario || 0) - ((prev.faltasMesRescisao || 0) + (prev.dsrMesRescisao || 0)));
+        const valorCalculado = parseFloat(((baseFerias / 30) * diasLiquidos).toFixed(2));
         
         // Apenas atualiza se não tiver sido modificado manualmente ou se for diferente do calculado
         // Mas como a instrução pede que alteração nessas duas variáveis recalcule o campo 50:
@@ -273,6 +280,107 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
            newProventos[idx50] = { ...newProventos[idx50], valor: valorCalculado, descricao: `Saldo de Salário (${prev.diasSaldoSalario} dias)` };
            hasChanges = true;
         }
+      }
+
+      // Reatividade das Férias (Art 130 CLT)
+      const getTetoFerias = (faltas: number) => {
+        if (faltas <= 5) return 30;
+        if (faltas <= 14) return 24;
+        if (faltas <= 23) return 18;
+        if (faltas <= 32) return 12;
+        return 0;
+      };
+      
+      const tetoFerias = getTetoFerias(prev.faltasPeriodoAquisitivo || 0);
+      let valorFeriasTotal = 0;
+
+      const idx65 = newProventos.findIndex(p => p.codigo === '65');
+      if (idx65 >= 0 && baseFerias > 0) {
+         const match = newProventos[idx65].descricao.match(/(\d+)\/12/);
+         if (match) {
+            const meses = parseInt(match[1]);
+            const diasProporcionais = (tetoFerias / 12) * meses;
+            const valorCalculado = parseFloat(((baseFerias / 30) * diasProporcionais).toFixed(2));
+            if (newProventos[idx65].valor !== valorCalculado) {
+               newProventos[idx65] = { ...newProventos[idx65], valor: valorCalculado };
+               hasChanges = true;
+            }
+            valorFeriasTotal += valorCalculado;
+         }
+      }
+
+      const idx66_1 = newProventos.findIndex(p => p.codigo === '66.1');
+      if (idx66_1 >= 0 && baseFerias > 0) {
+         const match = newProventos[idx66_1].descricao.match(/(\d+) per/);
+         if (match) {
+            const periodos = parseInt(match[1]);
+            const diasVencidos = tetoFerias * periodos;
+            const valorCalculado = parseFloat(((baseFerias / 30) * diasVencidos).toFixed(2));
+            if (newProventos[idx66_1].valor !== valorCalculado) {
+               newProventos[idx66_1] = { ...newProventos[idx66_1], valor: valorCalculado };
+               hasChanges = true;
+            }
+            valorFeriasTotal += valorCalculado;
+         }
+      }
+
+      const idx71 = newProventos.findIndex(p => p.codigo === '71');
+      if (idx71 >= 0 && baseFerias > 0) {
+         const match = newProventos[idx71].descricao.match(/(\d+)\/12/);
+         if (match) {
+            const meses = parseInt(match[1]);
+            const diasProporcionais = (tetoFerias / 12) * meses;
+            const valorCalculado = parseFloat(((baseFerias / 30) * diasProporcionais).toFixed(2));
+            if (newProventos[idx71].valor !== valorCalculado) {
+               newProventos[idx71] = { ...newProventos[idx71], valor: valorCalculado };
+               hasChanges = true;
+            }
+            valorFeriasTotal += valorCalculado;
+         }
+      }
+      
+      const idx68 = newProventos.findIndex(p => p.codigo === '68');
+      if (idx68 >= 0 && valorFeriasTotal > 0) {
+          const valorCalculado = parseFloat((valorFeriasTotal / 3).toFixed(2));
+          if (newProventos[idx68].valor !== valorCalculado) {
+             newProventos[idx68] = { ...newProventos[idx68], valor: valorCalculado };
+             hasChanges = true;
+          }
+      }
+
+      // Reatividade dos Descontos de Faltas e DSR no Mês da Rescisão
+      const idxFaltas = newDescontos.findIndex(d => d.codigo === '115' && d.descricao.includes('Faltas Injustificadas'));
+      if (prev.faltasMesRescisao && prev.faltasMesRescisao > 0) {
+         const valorCalculado = parseFloat(((baseFerias / 30) * prev.faltasMesRescisao).toFixed(2));
+         if (idxFaltas >= 0) {
+             if (newDescontos[idxFaltas].valor !== valorCalculado || newDescontos[idxFaltas].descricao !== `Faltas Injustificadas (${prev.faltasMesRescisao} dias)`) {
+                 newDescontos[idxFaltas] = { ...newDescontos[idxFaltas], valor: valorCalculado, descricao: `Faltas Injustificadas (${prev.faltasMesRescisao} dias)` };
+                 hasChanges = true;
+             }
+         } else {
+             newDescontos.push({ id: Date.now() + '-faltas', codigo: '115', descricao: `Faltas Injustificadas (${prev.faltasMesRescisao} dias)`, valor: valorCalculado });
+             hasChanges = true;
+         }
+      } else if (idxFaltas >= 0) {
+         newDescontos.splice(idxFaltas, 1);
+         hasChanges = true;
+      }
+
+      const idxDsr = newDescontos.findIndex(d => d.codigo === '115' && d.descricao.includes('DSR s/ Faltas'));
+      if (prev.dsrMesRescisao && prev.dsrMesRescisao > 0) {
+         const valorCalculado = parseFloat(((baseFerias / 30) * prev.dsrMesRescisao).toFixed(2));
+         if (idxDsr >= 0) {
+             if (newDescontos[idxDsr].valor !== valorCalculado || newDescontos[idxDsr].descricao !== `DSR s/ Faltas (${prev.dsrMesRescisao} dias)`) {
+                 newDescontos[idxDsr] = { ...newDescontos[idxDsr], valor: valorCalculado, descricao: `DSR s/ Faltas (${prev.dsrMesRescisao} dias)` };
+                 hasChanges = true;
+             }
+         } else {
+             newDescontos.push({ id: Date.now() + '-dsr', codigo: '115', descricao: `DSR s/ Faltas (${prev.dsrMesRescisao} dias)`, valor: valorCalculado });
+             hasChanges = true;
+         }
+      } else if (idxDsr >= 0) {
+         newDescontos.splice(idxDsr, 1);
+         hasChanges = true;
       }
 
       // Reatividade do INSS
@@ -335,7 +443,7 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
 
       return hasChanges ? { ...prev, proventos: newProventos, descontos: newDescontos } : prev;
     });
-  }, [formData.diasSaldoSalario, formData.faltasDsr, descontarINSS, formData.remuneracaoMesAnterior]);
+  }, [formData.diasSaldoSalario, formData.faltasMesRescisao, formData.dsrMesRescisao, formData.faltasPeriodoAquisitivo, descontarINSS, formData.remuneracaoMesAnterior]);
 
   // Lógica de cálculo reativa de totais e Art 479/480
   const calculatedData = useMemo(() => {
@@ -532,14 +640,26 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
     
     let valorFeriasTotal = 0;
 
+    const getTetoFerias = (faltas: number) => {
+      if (faltas <= 5) return 30;
+      if (faltas <= 14) return 24;
+      if (faltas <= 23) return 18;
+      if (faltas <= 32) return 12;
+      return 0;
+    };
+
+    const tetoFerias = getTetoFerias(formData.faltasPeriodoAquisitivo || 0);
+
     if (periodosVencidos > 0 && !feriasVencidasPagas) {
-      const valorFeriasVencidas = baseCalc * periodosVencidos;
+      const diasVencidos = tetoFerias * periodosVencidos;
+      const valorFeriasVencidas = (baseCalc / 30) * diasVencidos;
       valorFeriasTotal += valorFeriasVencidas;
       newProventos.push({ id: Date.now() + '-66.1', codigo: '66.1', descricao: `Férias Vencidas (${periodosVencidos} per.)`, valor: parseFloat(valorFeriasVencidas.toFixed(2)) });
     }
 
     if (mesesFeriasBaseDisplay > 0) {
-      const valorFerias = (baseCalc / 12) * mesesFeriasBaseDisplay;
+      const diasProporcionais = (tetoFerias / 12) * mesesFeriasBaseDisplay;
+      const valorFerias = (baseCalc / 30) * diasProporcionais;
       valorFeriasTotal += valorFerias;
       newProventos.push({ id: Date.now() + '-ferias', codigo: '65', descricao: `Férias Proporc (${mesesFeriasBaseDisplay}/12 avos)`, valor: parseFloat(valorFerias.toFixed(2)) });
     }
@@ -547,7 +667,8 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
     const diffFerias = tipoAviso === 'indenizado' ? Math.floor(diasAviso / 30) + (diasAviso % 30 >= 15 ? 1 : 0) : 0;
 
     if (diffFerias > 0) {
-      const valorFeriasIndenizado = (baseCalc / 12) * diffFerias;
+      const diasProporcionaisIndenizado = (tetoFerias / 12) * diffFerias;
+      const valorFeriasIndenizado = (baseCalc / 30) * diasProporcionaisIndenizado;
       valorFeriasTotal += valorFeriasIndenizado;
       newProventos.push({ id: Date.now() + '-71', codigo: '71', descricao: `Férias (Aviso Prévio Indenizado) (${diffFerias}/12 avos)`, valor: parseFloat(valorFeriasIndenizado.toFixed(2)) });
     }
@@ -561,8 +682,7 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
       ...prev, 
       proventos: newProventos, 
       descontos: newDescontos,
-      diasSaldoSalario: diasTrabalhadosMesAfastamento,
-      faltasDsr: 0
+      diasSaldoSalario: diasTrabalhadosMesAfastamento
     }));
     showNotification('Verbas (Saldo, Avos, Férias e INSS) calculadas com sucesso!');
   };
@@ -887,6 +1007,18 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
                   <CurrencyInput id="remuneracaoMesAnterior" name="remuneracaoMesAnterior" value={formData.remuneracaoMesAnterior} onChangeValue={(val) => setFormData(prev => ({...prev, remuneracaoMesAnterior: val}))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
                 <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Faltas Período Aquisitivo (Férias)</label>
+                  <input type="number" id="faltasPeriodoAquisitivo" name="faltasPeriodoAquisitivo" value={formData.faltasPeriodoAquisitivo === 0 ? '' : formData.faltasPeriodoAquisitivo} onChange={(e) => setFormData(prev => ({...prev, faltasPeriodoAquisitivo: parseInt(e.target.value) || 0}))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" placeholder="0" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Faltas no Mês da Rescisão</label>
+                  <input type="number" id="faltasMesRescisao" name="faltasMesRescisao" value={formData.faltasMesRescisao === 0 ? '' : formData.faltasMesRescisao} onChange={(e) => setFormData(prev => ({...prev, faltasMesRescisao: parseInt(e.target.value) || 0}))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" placeholder="0" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">DSR s/ Faltas (Mês Rescisão)</label>
+                  <input type="number" id="dsrMesRescisao" name="dsrMesRescisao" value={formData.dsrMesRescisao === 0 ? '' : formData.dsrMesRescisao} onChange={(e) => setFormData(prev => ({...prev, dsrMesRescisao: parseInt(e.target.value) || 0}))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" placeholder="0" />
+                </div>
+                <div className="flex flex-col">
                   <label className="text-slate-500 text-[10px] uppercase font-bold mb-1 ml-1">Pensão Alim. (%) (TRCT)</label>
                   <input type="number" id="pensaoAlimenticia" name="pensaoAlimenticia" value={formData.pensaoAlimenticia} onChange={handleChange} placeholder="0" step="0.01" className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-3 focus:outline-none focus:border-indigo-500" />
                 </div>
@@ -1021,11 +1153,7 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
             <div className="bg-slate-800 border border-slate-700/50 p-4 rounded-xl flex flex-wrap gap-4 items-center">
               <div className="flex flex-col">
                 <label className="text-slate-500 text-xs font-bold mb-1">Dias Saldo de Salário (Mês Rescisão)</label>
-                <input type="number" id="diasSaldoSalario" name="diasSaldoSalario" value={formData.diasSaldoSalario || ''} onChange={(e) => setFormData({...formData, diasSaldoSalario: parseInt(e.target.value) || 0})} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-2 focus:outline-none focus:border-indigo-500 w-32" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-slate-500 text-xs font-bold mb-1">Faltas e DSR a Descontar</label>
-                <input type="number" id="faltasDsr" name="faltasDsr" value={formData.faltasDsr || ''} onChange={(e) => setFormData({...formData, faltasDsr: parseInt(e.target.value) || 0})} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-2 focus:outline-none focus:border-indigo-500 w-32" />
+                <input type="number" id="diasSaldoSalario" name="diasSaldoSalario" value={formData.diasSaldoSalario === 0 ? '' : formData.diasSaldoSalario} onChange={(e) => setFormData(prev => ({...prev, diasSaldoSalario: parseInt(e.target.value) || 0}))} className="bg-slate-900 border border-slate-700/50 text-slate-200 rounded-lg p-2 focus:outline-none focus:border-indigo-500 w-32" />
               </div>
             </div>
             

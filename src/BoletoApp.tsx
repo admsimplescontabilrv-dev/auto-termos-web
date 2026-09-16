@@ -41,7 +41,14 @@ export default function BoletoApp() {
   const [processedPdfUrl, setProcessedPdfUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCalibration, setShowCalibration] = useState(false);
+  
+  const [profiles, setProfiles] = useState<{id: string, name: string, areas: RedactionArea[]}[]>([
+    { id: 'default', name: 'Padrão (JUCEC)', areas: DEFAULT_REDACTION_AREAS }
+  ]);
+  const [activeProfileId, setActiveProfileId] = useState<string>('default');
+
   const [redactionAreas, setRedactionAreas] = useState<RedactionArea[]>(DEFAULT_REDACTION_AREAS);
+
   const [showOriginal, setShowOriginal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState<string>('');
@@ -52,20 +59,96 @@ export default function BoletoApp() {
   const [pageRenderWidth, setPageRenderWidth] = useState(800);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
-  // Carregar configurações salvas no localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('boleto-redaction-areas');
+    const saved = localStorage.getItem('boleto-redaction-profiles');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setRedactionAreas(parsed);
+        if (parsed.profiles && Array.isArray(parsed.profiles)) {
+          setProfiles(parsed.profiles);
+          if (parsed.activeProfileId) setActiveProfileId(parsed.activeProfileId);
+          const active = parsed.profiles.find((p: any) => p.id === parsed.activeProfileId);
+          if (active) setRedactionAreas(active.areas);
         }
       } catch (e) {
         console.error('Erro ao ler localStorage', e);
       }
     }
   }, []);
+
+  const saveProfilesToStorage = (newProfiles: any[], newActiveId: string) => {
+    localStorage.setItem('boleto-redaction-profiles', JSON.stringify({ profiles: newProfiles, activeProfileId: newActiveId }));
+  };
+
+  const updateCurrentProfileAreas = (action: React.SetStateAction<RedactionArea[]>) => {
+    setRedactionAreas((prev) => {
+      const newAreas = typeof action === 'function' ? action(prev) : action;
+      setProfiles((prevProfiles) => {
+        const newProfiles = prevProfiles.map(p => p.id === activeProfileId ? { ...p, areas: newAreas } : p);
+        saveProfilesToStorage(newProfiles, activeProfileId);
+        return newProfiles;
+      });
+      return newAreas;
+    });
+  };
+
+  const createNewProfile = () => {
+    const name = prompt('Nome do novo padrão:');
+    if (!name) return;
+    const newId = Date.now().toString();
+    const newProfile = { id: newId, name, areas: [...redactionAreas] };
+    const newProfiles = [...profiles, newProfile];
+    setProfiles(newProfiles);
+    setActiveProfileId(newId);
+    saveProfilesToStorage(newProfiles, newId);
+  };
+
+  const renameCurrentProfile = () => {
+    const current = profiles.find(p => p.id === activeProfileId);
+    if (!current) return;
+    const newName = prompt('Novo nome para o padrão:', current.name);
+    if (!newName || newName === current.name) return;
+    const newProfiles = profiles.map(p => p.id === activeProfileId ? { ...p, name: newName } : p);
+    setProfiles(newProfiles);
+    saveProfilesToStorage(newProfiles, activeProfileId);
+  };
+
+  const duplicateCurrentProfile = () => {
+    const current = profiles.find(p => p.id === activeProfileId);
+    if (!current) return;
+    const newName = prompt('Nome do novo padrão (cópia):', current.name + ' (Cópia)');
+    if (!newName) return;
+    const newId = Date.now().toString();
+    const newProfile = { id: newId, name: newName, areas: JSON.parse(JSON.stringify(current.areas)) };
+    const newProfiles = [...profiles, newProfile];
+    setProfiles(newProfiles);
+    setActiveProfileId(newId);
+    saveProfilesToStorage(newProfiles, newId);
+  };
+
+  const deleteCurrentProfile = () => {
+    if (profiles.length <= 1) {
+      alert('Você precisa ter pelo menos um padrão.');
+      return;
+    }
+    if (confirm('Tem certeza que deseja excluir este padrão?')) {
+      const newProfiles = profiles.filter(p => p.id !== activeProfileId);
+      setProfiles(newProfiles);
+      setActiveProfileId(newProfiles[0].id);
+      setRedactionAreas(newProfiles[0].areas);
+      saveProfilesToStorage(newProfiles, newProfiles[0].id);
+    }
+  };
+
+  const switchProfile = (id: string) => {
+    setActiveProfileId(id);
+    const active = profiles.find(p => p.id === id);
+    if (active) {
+      setRedactionAreas(active.areas);
+      saveProfilesToStorage(profiles, id);
+    }
+  };
+
 
   // Monitorar redimensionamento para ajustar o width da Page do react-pdf
   useEffect(() => {
@@ -81,8 +164,8 @@ export default function BoletoApp() {
 
   // Salvar no localStorage
   const saveToLocalStorage = () => {
-    localStorage.setItem('boleto-redaction-areas', JSON.stringify(redactionAreas));
-    alert('Padrão de calibração salvo com sucesso! Os próximos boletos usarão estas áreas automaticamente.');
+    updateCurrentProfileAreas(redactionAreas);
+    alert('Padrão de calibração atualizado com sucesso! Os próximos boletos usarão estas áreas automaticamente.');
   };
 
   const processSelectedFile = async (file: File) => {
@@ -229,7 +312,7 @@ export default function BoletoApp() {
     // Reverter o Y
     const pdfY = pdfDim.height - toPdf(screenY) - pdfH;
 
-    setRedactionAreas(prev => prev.map(a => {
+    updateCurrentProfileAreas(prev => prev.map(a => {
       if (a.id === id) {
         return {
           ...a,
@@ -319,13 +402,13 @@ export default function BoletoApp() {
 
   // ---- Atualizar coordenada manualmente ----
   const updateArea = (id: string, field: keyof RedactionArea, value: string | number | boolean) => {
-    setRedactionAreas(prev =>
+    updateCurrentProfileAreas(prev =>
       prev.map(a => (a.id === id ? { ...a, [field]: value } : a))
     );
   };
 
   const addNewArea = () => {
-    setRedactionAreas(prev => [
+    updateCurrentProfileAreas(prev => [
       ...prev,
       {
         id: `area_${Date.now()}`,
@@ -340,7 +423,7 @@ export default function BoletoApp() {
   };
 
   const removeArea = (id: string) => {
-    setRedactionAreas(prev => prev.filter(a => a.id !== id));
+    updateCurrentProfileAreas(prev => prev.filter(a => a.id !== id));
   };
 
   // Escala para a altura baseada na largura renderizada (para o container relative)
@@ -358,6 +441,34 @@ export default function BoletoApp() {
         <p className="text-sm text-slate-400 font-light tracking-wide">
           Remova informações de juros, endereço e CNPJ automaticamente
         </p>
+      </div>
+
+      {/* Seletor de Padrões */}
+      <div className="flex flex-col md:flex-row items-center justify-center gap-4 bg-slate-900 border border-slate-700 p-4 rounded-xl">
+        <span className="text-xs font-bold text-slate-400 tracking-widest uppercase">Padrão Ativo:</span>
+        <select 
+          value={activeProfileId}
+          onChange={(e) => switchProfile(e.target.value)}
+          className="bg-slate-950 border border-slate-700 rounded-lg text-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-500"
+        >
+          {profiles.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={createNewProfile} className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold uppercase transition-colors" title="Criar Novo">
+            + Novo
+          </button>
+          <button onClick={duplicateCurrentProfile} className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-bold uppercase border border-slate-700 transition-colors" title="Duplicar Padrão Atual">
+            Duplicar
+          </button>
+          <button onClick={renameCurrentProfile} className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-bold uppercase border border-slate-700 transition-colors" title="Renomear Padrão Atual">
+            Renomear
+          </button>
+          <button onClick={deleteCurrentProfile} className="text-xs px-3 py-1.5 bg-red-900/50 hover:bg-red-800 text-red-300 rounded font-bold uppercase border border-red-800 transition-colors" title="Excluir Padrão Atual">
+            Excluir
+          </button>
+        </div>
       </div>
 
       {/* Área de Upload */}

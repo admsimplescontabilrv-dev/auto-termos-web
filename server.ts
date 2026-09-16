@@ -1,3 +1,4 @@
+import { google } from 'googleapis';
 import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
@@ -165,6 +166,201 @@ app.set('trust proxy', 1);
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  const getSheetsAuth = () => {
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS) return null;
+    try {
+      const credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS, 'base64').toString('utf8'));
+      return new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets']
+      });
+    } catch (e) {
+      console.error("Error parsing GOOGLE_SERVICE_ACCOUNT_CREDENTIALS:", e);
+      return null;
+    }
+  };
+
+  app.post('/api/sheets/update', requireApiKey, async (req, res) => {
+    try {
+      const { empresaId, coluna, novoStatus } = req.body;
+      const spreadsheetId = process.env.SPREADSHEET_ID;
+      
+      if (!spreadsheetId) {
+         return res.status(400).json({ error: 'SPREADSHEET_ID não configurado.' });
+      }
+
+      const auth = getSheetsAuth();
+      if (!auth) {
+         return res.status(400).json({ error: 'Credenciais do Google Sheets não configuradas.' });
+      }
+
+      const sheets = google.sheets({ version: 'v4', auth });
+      
+      // Obter o nome da empresa do Firestore para buscar na planilha
+      const db = getFirestore();
+      const empresaDoc = await db.collection('empresas').doc(empresaId).get();
+      if (!empresaDoc.exists) {
+         return res.status(404).json({ error: 'Empresa não encontrada no Firestore.' });
+      }
+      
+      const empresaData = empresaDoc.data();
+      // O script assume que o nome da empresa está na planilha, usaremos razaoSocial ou nomeFantasia ou nome
+      const empresaNome = empresaData?.nomeFantasia || empresaData?.razaoSocial || empresaData?.nome;
+
+      // 1. Ler cabeçalho e dados da aba "Fechamento"
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Fechamento!A:Z', // Supondo colunas de A até Z
+      });
+
+      const rows = response.data.values;
+      if (!rows || rows.length === 0) {
+        return res.status(404).json({ error: 'Planilha "Fechamento" vazia.' });
+      }
+
+      const headers = rows[0];
+      const colIndex = headers.indexOf(coluna);
+      if (colIndex === -1) {
+        return res.status(404).json({ error: `Coluna "${coluna}" não encontrada na planilha.` });
+      }
+
+      // 2. Encontrar a linha da empresa (coluna A, índice 0)
+      let rowIndex = -1;
+      for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0] && String(rows[i][0]).toLowerCase().trim() === String(empresaNome).toLowerCase().trim()) {
+           rowIndex = i;
+           break;
+        }
+      }
+
+      if (rowIndex === -1) {
+        return res.status(404).json({ error: `Empresa "${empresaNome}" não encontrada na planilha.` });
+      }
+
+      // O índice da API sheets é 1-based. A linha no array rowIndex é a linha rowIndex+1 do sheets
+      // A coluna colIndex no array é colIndex+1 no letters (ex: A, B, C)
+      const colLetter = String.fromCharCode(65 + colIndex); // Só funciona até Z, o que deve ser suficiente
+      const cellRange = `Fechamento!${colLetter}${rowIndex + 1}`;
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: cellRange,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[novoStatus]]
+        }
+      });
+
+      res.json({ success: true, message: 'Planilha atualizada com sucesso.' });
+    } catch (error: any) {
+      console.error('Erro em /api/sheets/update:', error);
+      res.status(500).json({ error: error.message || 'Erro interno.' });
+    }
+  });
+
+  app.post('/api/webhook/sheets', async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const expectedSecret = process.env.WEBHOOK_SECRET_KEY || process.env.GEMINI_API_KEY; // Fallback to some secret if needed, ideally WEBHOOK_SECRET_KEY
+      
+      if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+         return res.status(401).json({ error: 'Acesso negado. Secret inválido.' });
+      }
+
+      const { linha, colunaNome, novoValor, empresaNome } = req.body;
+      if (!colunaNome || !empresaNome) {
+         return res.status(400).json({ error: 'Payload inválido.' });
+      }
+
+      const db = getFirestore();
+      
+      // Buscar empresa por nome
+      const empresasSnap = await db.collection('empresas').get();
+      let empresaId = null;
+      for (const doc of empresasSnap.docs) {
+         const data = doc.data();
+         const nome = data.nomeFantasia || data.razaoSocial || data.nome;
+         if (nome && String(nome).toLowerCase().trim() === String(empresaNome).toLowerCase().trim()) {
+            empresaId = doc.id;
+            break;
+         }
+      }
+
+      if (!empresaId) {
+         return res.status(404).json({ error: 'Empresa não encontrada no sistema.' });
+      }
+
+      // Atualizar fechamentoFolha
+      const monthKey = new Date().toISOString().slice(0, 7); // Mês atual
+      const docId = `${monthKey}_${empresaId}`;
+      
+      // Mapeamento de colunas do Sheets para campos do fechamentoFolha
+      // A planilha pode ter nomes como "FGTS", "Lançamentos", etc.
+      let fieldToUpdate = '';
+      const colNorm = colunaNome.toLowerCase().trim();
+      if (colNorm.includes('fgts')) fieldToUpdate = 'fgts';
+      else if (colNorm.includes('lançamento') || colNorm.includes('lancamento')) fieldToUpdate = 'lancamento';
+      else if (colNorm.includes('consignado')) fieldToUpdate = 'consignado';
+      else if (colNorm.includes('adiantamento')) fieldToUpdate = 'adiantamento';
+      else if (colNorm.includes('dctf')) fieldToUpdate = 'dctf';
+      else if (colNorm.includes('guia sind') || colNorm.includes('sindicato')) fieldToUpdate = 'guiaSindicato';
+      else if (colNorm.includes('verificar')) fieldToUpdate = 'verificarEnvio';
+      else if (colNorm.includes('tipo')) fieldToUpdate = 'tipoFolha';
+      else if (colNorm.includes('obs')) fieldToUpdate = 'observacoes';
+      
+      if (fieldToUpdate) {
+         await db.collection('fechamentoFolha').doc(docId).set({
+           [fieldToUpdate]: novoValor,
+           monthKey,
+           empresaId,
+           updatedAt: Date.now()
+         }, { merge: true });
+      }
+
+      // Se quiser atualizar checklists relacionados
+      // Para manter simples, a atualização do fechamentoFolha deve ser suficiente por agora, 
+      // ou podemos atualizar checklists (tarefas recorrentes) baseado na lógica do sistema.
+      // Vou buscar a checklist e completá-la se for OK
+      if (novoValor === 'OK') {
+         const rulesSnap = await db.collection('checklistRules')
+            .where('type', '==', 'FOLHA')
+            .where('targetId', '==', empresaId).get();
+            
+         for (const ruleDoc of rulesSnap.docs) {
+            const rule = ruleDoc.data();
+            // Tenta match pelo nome da task e nome da coluna
+            if (rule.taskName.toLowerCase().includes(colNorm)) {
+               const completionId = `${ruleDoc.id}_${monthKey}`;
+               await db.collection('recurrentCompletions').doc(completionId).set({
+                 ruleId: ruleDoc.id,
+                 monthKey,
+                 completedAt: Date.now(),
+                 completedBy: 'Webhook Google Sheets'
+               });
+            }
+         }
+      } else if (novoValor === 'PENDENTE' || novoValor === '') {
+         // Remover completions se voltou para pendente
+         const rulesSnap = await db.collection('checklistRules')
+            .where('type', '==', 'FOLHA')
+            .where('targetId', '==', empresaId).get();
+            
+         for (const ruleDoc of rulesSnap.docs) {
+            const rule = ruleDoc.data();
+            if (rule.taskName.toLowerCase().includes(colNorm)) {
+               const completionId = `${ruleDoc.id}_${monthKey}`;
+               await db.collection('recurrentCompletions').doc(completionId).delete().catch(() => {});
+            }
+         }
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Erro em /api/webhook/sheets:', error);
+      res.status(500).json({ error: error.message || 'Erro interno.' });
+    }
   });
 
   app.post('/api/ai-command', requireApiKey, async (req, res) => {
