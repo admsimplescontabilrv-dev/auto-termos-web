@@ -26,7 +26,7 @@ export interface Empresa {
     recibo?: string;
     fgts?: string;
     dctf?: string;
-    guiaSindicato?: string;
+    guiaSindicato?: string; guiaSindicatoLaboral?: string; guiaSindicatoPatronal?: string;
     guiaSindicatoLaboralMeses?: string;
     guiaSindicatoPatronalMeses?: string;
     verificarEnvio?: string;

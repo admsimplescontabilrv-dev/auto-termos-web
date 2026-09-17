@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db, auth } from './lib/firebase';
 import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Empresa, Sindicato, ChecklistRule, CalendarEvent, ScheduleFrequency } from './types';
-import { CheckSquare, Plus, Trash2, Calendar, FileText, Briefcase, Building2, AlertCircle, Search, Clock, CheckCircle2, X, ChevronLeft, ChevronRight, Pencil, Upload, Loader2, GripVertical } from 'lucide-react';
+import { CheckSquare, Plus, Trash2, Calendar, FileText, Briefcase, Building2, AlertCircle, Search, Clock, CheckCircle2, X, ChevronLeft, ChevronRight, Pencil, Upload, Loader2, GripVertical, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
@@ -28,7 +29,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [checklistRules, setChecklistRules] = useState<ChecklistRule[]>([]);
   
-  const [activeProcessType, setActiveProcessType] = useState<string>('RESCISAO');
+  const [activeProcessType, setActiveProcessType] = useState<string>('ADMISSÃO');
   const [currentRecurrentMonth, setCurrentRecurrentMonth] = useState(() => {
     const today = new Date();
     return today.getDate() > 22 ? addMonths(today, 1) : today;
@@ -50,82 +51,44 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
 
   const [dragEventEnabled, setDragEventEnabled] = useState<string | null>(null);
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, ruleId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', `rule:${ruleId}`);
-    const target = e.currentTarget;
-    setTimeout(() => {
-      if (target) target.classList.add('opacity-50');
-    }, 0);
-  };
+    const handleDragEndDnd = async (result: DropResult) => {
+    const { source, destination, type } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
-  const handleEventDragStart = (e: React.DragEvent<HTMLDivElement>, eventId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', `event:${eventId}`);
-    const target = e.currentTarget;
-    setTimeout(() => {
-      if (target) target.classList.add('opacity-50');
-    }, 0);
-  };
+    if (type === 'RULE') {
+      const newRules = [...currentProcessRules];
+      const [moved] = newRules.splice(source.index, 1);
+      newRules.splice(destination.index, 0, moved);
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
+      setChecklistRules(prev => {
+        const updated = [...prev];
+        newRules.forEach((r, idx) => {
+          const i = updated.findIndex(u => u.id === r.id);
+          if (i !== -1) {
+            updated[i] = { ...updated[i], order: idx };
+            setDoc(doc(db, 'checklistRules', r.id), { order: idx }, { merge: true }).catch(console.error);
+          }
+        });
+        return updated;
+      });
+    } else if (type === 'EVENT') {
+      const newEvents = [...currentMonthEvents];
+      const [moved] = newEvents.splice(source.index, 1);
+      newEvents.splice(destination.index, 0, moved);
 
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetRuleId: string) => {
-    e.preventDefault();
-    const draggedData = e.dataTransfer.getData('text/plain');
-    if (!draggedData.startsWith('rule:')) return;
-    const draggedRuleId = draggedData.replace('rule:', '');
-    
-    if (!draggedRuleId || draggedRuleId === targetRuleId) {
-       return;
+      setCalendarEvents(prev => {
+        const updated = [...prev];
+        newEvents.forEach((ev, idx) => {
+          const i = updated.findIndex(u => u.id === ev.id);
+          if (i !== -1) {
+            updated[i] = { ...updated[i], order: idx };
+            setDoc(doc(db, 'calendarEvents', ev.id), { order: idx }, { merge: true }).catch(console.error);
+          }
+        });
+        return updated;
+      });
     }
-
-    const newRules = [...currentProcessRules];
-    const draggedIndex = newRules.findIndex(r => r.id === draggedRuleId);
-    const targetIndex = newRules.findIndex(r => r.id === targetRuleId);
-    
-    if (draggedIndex === -1 || targetIndex === -1) return;
-
-    const [draggedItem] = newRules.splice(draggedIndex, 1);
-    newRules.splice(targetIndex, 0, draggedItem);
-
-    // Update the order for all affected items
-    const updates = newRules.map((rule, idx) => {
-      return setDoc(doc(db, 'checklistRules', rule.id), { order: idx }, { merge: true });
-    });
-
-    await Promise.all(updates);
-  };
-
-  const handleEventDrop = async (e: React.DragEvent<HTMLDivElement>, targetEventId: string) => {
-    e.preventDefault();
-    const draggedData = e.dataTransfer.getData('text/plain');
-    if (!draggedData.startsWith('event:')) return;
-    const draggedEventId = draggedData.replace('event:', '');
-    
-    if (!draggedEventId || draggedEventId === targetEventId) return;
-
-    const newEvents = [...currentMonthEvents];
-    const draggedIndex = newEvents.findIndex(ev => ev.id === draggedEventId);
-    const targetIndex = newEvents.findIndex(ev => ev.id === targetEventId);
-    
-    if (draggedIndex === -1 || targetIndex === -1) return;
-
-    const [draggedItem] = newEvents.splice(draggedIndex, 1);
-    newEvents.splice(targetIndex, 0, draggedItem);
-
-    const updates = newEvents.map((ev, idx) => {
-      return setDoc(doc(db, 'calendarEvents', ev.id), { order: idx }, { merge: true });
-    });
-
-    await Promise.all(updates);
-  };
-
-  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-    if (e.currentTarget) e.currentTarget.classList.remove('opacity-50');
   };
 
   const handleSaveProcess = async (data: any) => {
@@ -431,13 +394,19 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
 
   // Determine dynamic tabs
   const allTabs = Array.from(new Set([
+    'ADMISSÃO', 'RESCISÃO', 'FÉRIAS',
     ...checklistRules.filter(r => r.targetId === selectedEntity?.id).map(r => r.type || ''),
     ...(selectedEntity?.type === 'EMPRESA' ? checklistRules.filter(r => r.targetType === 'SPECIFIC_SINDICATO').map(r => r.type || '') : []),
-    ...(activeProcessType && !checklistRules.some(r => r.type === activeProcessType && (r.targetId === selectedEntity?.id || r.targetType === 'SPECIFIC_SINDICATO')) ? [activeProcessType] : [])
   ])).filter(Boolean).map(type => ({
     id: type,
     label: type
   }));
+
+  useEffect(() => {
+    if (allTabs.length > 0 && !allTabs.some(t => t.id === activeProcessType)) {
+      setActiveProcessType(allTabs[0].id);
+    }
+  }, [allTabs, activeProcessType]);
 
   const toggleTransientCheck = (ruleId: string) => {
     setTransientChecks(prev => ({
@@ -450,6 +419,8 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     .filter(r => r.type === activeProcessType && r.taskName !== '___CATEGORY_PLACEHOLDER___' && r.frequency === 'CONSULTA')
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
+  const [sortOrder, setSortOrder] = useState<'manual' | 'asc' | 'desc'>('manual');
+
   const filteredEmpresas = empresas.filter(e => e.nome.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredSindicatos = sindicatos.filter(s => s.nome.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -457,15 +428,42 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     if (e.isRecurrent) return true;
     const eDate = new Date(e.date);
     return eDate.getMonth() === currentRecurrentMonth.getMonth() && eDate.getFullYear() === currentRecurrentMonth.getFullYear();
-  }).sort((a, b) => (a.order || 0) - (b.order || 0));
+  }).sort((a, b) => {
+    if (sortOrder === 'manual') {
+      return (
+    a.order || 0) - (b.order || 0);
+    }
+    
+    const getDay = (e: CalendarEvent) => {
+      if (e.isRecurrent) {
+        if (e.recurrentRule === 'NEAR_5') return 5;
+        if (e.recurrentRule === 'NEAR_20') return 20;
+        if (e.recurrentRule === 'NEAR_30') return 30;
+        if (e.recurrentRule === 'WEEKLY' || e.recurrentRule === 'DAILY') return 0;
+        return e.recurrentDay || 0;
+      }
+      return new Date(e.date).getDate();
+    };
 
-  return (
-    <div className="flex-1 w-full max-w-7xl mx-auto p-6 md:p-8 flex flex-col h-full animate-in fade-in zoom-in-95 duration-200 print:p-0 print:m-0 print:max-w-none">
+    const dayA = getDay(a);
+    const dayB = getDay(b);
+    
+    if (sortOrder === 'asc') {
+      return dayA - dayB;
+    } else {
+      return dayB - dayA;
+    }
+  });
+
+  return ( <DragDropContext onDragEnd={handleDragEndDnd}>
+    
+    <div className="flex-1 w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col h-full animate-in fade-in zoom-in-95 duration-200 print:p-0 print:m-0 print:max-w-none">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 print:hidden">
         <div className="flex items-center space-x-3 mb-4 sm:mb-0">
           <CheckSquare className="w-8 h-8 text-indigo-400" />
           <h1 className="text-3xl font-medium text-indigo-400 tracking-wider uppercase">Programação e Processos</h1>
         </div>
+    
         
         <div className="flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
           <button
@@ -493,7 +491,9 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
             Fechamento de Folha
           </button>
         </div>
+    
       </div>
+    
 
       {mainTab === 'fechamento' ? (
         <FechamentoFolhaTab empresas={empresas} />
@@ -520,6 +520,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               className="w-full bg-slate-950 border border-slate-700 text-slate-200 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:border-indigo-500 text-lg transition-colors"
             />
           </div>
+    
 
           {isDropdownOpen && (
             <div className="absolute top-full mt-2 left-0 w-full bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 max-h-80 overflow-y-auto custom-scrollbar">
@@ -541,6 +542,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                     </button>
                   ))}
                 </div>
+    
               )}
               {filteredSindicatos.length > 0 && (
                 <div className="p-2 border-t border-slate-700/50">
@@ -560,13 +562,16 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                     </button>
                   ))}
                 </div>
+    
               )}
               {filteredEmpresas.length === 0 && filteredSindicatos.length === 0 && (
                 <div className="p-6 text-center text-slate-500">Nenhum resultado encontrado.</div>
               )}
             </div>
+    
           )}
         </div>
+    
         
         {selectedEntity && (
           <div className="flex items-center space-x-3 bg-indigo-500/10 text-indigo-400 px-6 py-4 rounded-xl border border-indigo-500/20 shrink-0">
@@ -575,6 +580,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               <p className="text-xs uppercase tracking-wider opacity-80">Selecionado</p>
               <p className="font-bold text-lg">{selectedEntity.nome}</p>
             </div>
+    
             <div className="flex items-center space-x-1 ml-4 border-l border-indigo-500/20 pl-4">
               {onEditEntity && (
                 <button onClick={() => onEditEntity(selectedEntity.id, selectedEntity.type)} title="Editar Cadastro" className="p-1.5 hover:bg-indigo-500/20 rounded-lg transition-colors">
@@ -585,20 +591,24 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 <X className="w-4 h-4" />
               </button>
             </div>
+    
           </div>
+    
         )}
       </div>
+    
 
       {!selectedEntity ? (
         <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 border border-slate-700/50 rounded-2xl p-10 opacity-60">
           <CheckSquare className="w-16 h-16 text-slate-700 mb-4" />
           <p className="text-slate-400 text-lg">Busque e selecione uma empresa ou sindicato acima para visualizar a programação.</p>
         </div>
+    
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-0">
+        <div className="flex gap-6 lg:gap-8 flex-1 min-h-0 overflow-x-auto custom-scrollbar pb-4">
           
           {/* Left Column: Schedule & Fixed */}
-          <div className="lg:col-span-4 flex flex-col space-y-6">
+          <div className="w-[380px] lg:w-[420px] shrink-0 flex flex-col space-y-6">
             <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-indigo-400" />
               <span>Programação & Fixos</span>
@@ -608,8 +618,21 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               <div className="p-4 border-b border-slate-800 bg-slate-950/50 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Obrigações do Mês</h3>
-                  <span className="bg-indigo-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{currentMonthEvents.length}</span>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => setSortOrder(prev => prev === 'manual' ? 'asc' : prev === 'asc' ? 'desc' : 'manual')}
+                      className={`flex items-center space-x-1.5 px-2 py-1 rounded transition-colors text-[10px] font-bold uppercase tracking-wider ${sortOrder !== 'manual' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400 hover:text-indigo-400'}`}
+                      title="Alternar Ordenação de Data"
+                    >
+                      {sortOrder === 'asc' && <><ArrowUp className="w-3.5 h-3.5" /> <span>Crescente</span></>}
+                      {sortOrder === 'desc' && <><ArrowDown className="w-3.5 h-3.5" /> <span>Decrescente</span></>}
+                      {sortOrder === 'manual' && <><ArrowUpDown className="w-3.5 h-3.5" /> <span>Manual</span></>}
+                    </button>
+                    <span className="bg-indigo-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{currentMonthEvents.length}</span>
+                  </div>
+    
                 </div>
+    
                 <div className="flex items-center justify-between bg-slate-900 border border-slate-700/50 rounded-lg p-1">
                   <button onClick={() => setCurrentRecurrentMonth(subMonths(currentRecurrentMonth, 1))} className="p-1 text-slate-400 hover:text-slate-200 transition-colors">
                     <ChevronLeft className="w-4 h-4" />
@@ -619,96 +642,116 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
+    
               </div>
+    
               <div className="p-4 space-y-3 overflow-y-auto max-h-[350px] custom-scrollbar">
                 {currentMonthEvents.length === 0 && (
                   <p className="text-slate-500 text-sm italic">Nenhum evento programado.</p>
                 )}
-                {currentMonthEvents.map((event, i) => {
-                  const isCompleted = !!recurrentCompletions[event.id];
-                  const completedAt = recurrentCompletions[event.id];
-                  const isFromPadrao = selectedEntity?.type === 'EMPRESA' && event.empresaId === padraoId;
-                  const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id && event.empresaId !== padraoId;
-
-                  return (
-                    <div 
-                      key={event.id || `recurrent-${i}`} 
-                      draggable={true}
-                      onDragStart={(e) => handleEventDragStart(e, event.id)}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleEventDrop(e, event.id)}
-                      onDragEnd={handleDragEnd}
-                      className={`bg-slate-800/50 border border-slate-700 rounded-lg p-3 flex flex-col group transition-colors ${isCompleted ? 'border-emerald-500/50 bg-emerald-500/5' : ''}`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-start space-x-3">
-                          <button 
-                            onClick={() => toggleRecurrentCompletion(event.id, isCompleted)}
-                            className={`mt-0.5 w-5 h-5 shrink-0 rounded flex items-center justify-center border transition-colors ${isCompleted ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500 hover:border-indigo-400'}`}
-                          >
-                            {isCompleted && <CheckSquare className="w-3 h-3 text-white" />}
-                          </button>
-                          <div>
-                            <p className={`text-sm font-medium flex items-center flex-wrap gap-2 ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
-                              <span>{event.title}</span>
-                              {isFromSindicato && (
-  <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
-)}
-{isFromPadrao && (
-  <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-500/20">Padrão</span>
-)}
-                              
-                            </p>
-                          </div>
-                        </div>
-                        <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap ml-2">
-                          {event.isRecurrent ? (
-                            event.recurrentRule === 'NEAR_5' ? 'Prox. Dia 05' : 
-                            event.recurrentRule === 'NEAR_30' ? 'Prox. Dia 30' : 
-                            event.recurrentRule === 'WEEKLY' ? 'Semanal' :
-                            event.recurrentRule === 'DAILY' ? 'Diário' :
-                            `Todo dia ${event.recurrentDay}`
-                          ) : (
-                            `Dia ${format(new Date(event.date), 'dd/MM')}`
-                          )}
-                        </span>
-                        {!isFromSindicato && !isFromPadrao && (
-                          <div className="flex items-center space-x-1 ml-3">
-                            <button onClick={() => setEditingEvent(event)} className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Pencil className="w-4 h-4" />
-                            </button>
+                              <Droppable droppableId="eventsList" type="EVENT" isDropDisabled={sortOrder !== 'manual'}>
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="space-y-3"
+                  >
+                    {currentMonthEvents.map((event, i) => {
+                      const isCompleted = !!recurrentCompletions[event.id];
+                      const completedAt = recurrentCompletions[event.id];
+                      const isFromPadrao = selectedEntity?.type === 'EMPRESA' && event.empresaId === padraoId && selectedEntity.id !== padraoId;
+                      const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id && event.empresaId !== padraoId;
+                      const isDragDisabled = sortOrder !== 'manual' || isFromSindicato || isFromPadrao;
+                      
+                      return (
+    
+                        <Draggable key={event.id || `recurrent-${i}`} draggableId={event.id || `recurrent-${i}`} index={i} isDragDisabled={isDragDisabled}>
+                          {(provided, snapshot) => (
                             <div 
-                              className={`p-2 text-slate-500 hover:text-indigo-400 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity`}
-                              title="Arrastar para Reordenar"
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`bg-slate-800/50 border rounded-lg p-3 flex flex-col group transition-colors ${snapshot.isDragging ? 'border-indigo-500 shadow-lg shadow-indigo-500/20' : 'border-slate-700'} ${isCompleted ? 'border-emerald-500/50 bg-emerald-500/5' : ''} ${isDragDisabled ? 'opacity-90' : ''}`}
                             >
-                              <GripVertical className="w-4 h-4" />
+                              <div className="flex justify-between items-start">
+                                <div className="flex items-start space-x-3">
+                                  <button 
+                                    onClick={() => toggleRecurrentCompletion(event.id, isCompleted)}
+                                    className={`mt-0.5 w-5 h-5 shrink-0 rounded flex items-center justify-center border transition-colors ${isCompleted ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500 hover:border-indigo-400'}`}
+                                  >
+                                    {isCompleted && <CheckSquare className="w-3 h-3 text-white" />}
+                                  </button>
+                                  <div>
+                                    <p className={`text-sm font-medium flex items-center flex-wrap gap-2 ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
+                                      <span>{event.title}</span>
+                                      {isFromSindicato && (  <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>)}
+                                      {isFromPadrao && (  <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-500/20">Padrão</span>)}
+                                    </p>
+                                  </div>
+    
+                                </div>
+    
+                                <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap ml-2">
+                                  {event.isRecurrent ? (
+                                    event.recurrentRule === 'NEAR_5' ? 'Prox. Dia 05' : 
+                                    event.recurrentRule === 'NEAR_20' ? 'Prox. Dia 20' : 
+                                    event.recurrentRule === 'NEAR_30' ? 'Prox. Dia 30' : 
+                                    event.recurrentRule === 'WEEKLY' ? 'Semanal' :
+                                    event.recurrentRule === 'DAILY' ? 'Diário' :
+                                    `Todo dia ${event.recurrentDay}`
+                                  ) : (
+                                    `Dia ${format(new Date(event.date), 'dd/MM')}`
+                                  )}
+                                </span>
+                                {!isFromSindicato && !isFromPadrao && (
+                                  <div className="flex items-center space-x-1 ml-3">
+                                    <button onClick={() => setEditingEvent(event)} className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <div 
+                                      className={`p-2 text-slate-500 hover:text-indigo-400 ${isDragDisabled ? 'cursor-default' : 'cursor-grab'} opacity-0 group-hover:opacity-100 transition-opacity`}
+                                      title={isDragDisabled ? "" : "Arrastar para Reordenar"}
+                                    >
+                                      <GripVertical className="w-4 h-4" />
+                                    </div>
+    
+                                  </div>
+    
+                                )}
+                              </div>
+    
+                              {isCompleted && completedAt && (
+                                <div className="mt-2 pl-8 flex items-center space-x-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                  <span className="text-[10px] text-emerald-500 font-medium">Marcado em {format(new Date(completedAt), "dd/MM/yyyy 'às' HH:mm")}</span>
+                                </div>
+    
+                              )}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                      {isCompleted && completedAt && (
-                        <div className="mt-2 pl-8 flex items-center space-x-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                          <span className="text-[10px] text-emerald-500 font-medium">Marcado em {format(new Date(completedAt), "dd/MM/yyyy 'às' HH:mm")}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
+    
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
+                  </div>
+    
+                )}
+              </Droppable>
               <div className="p-4 border-y border-slate-800 bg-slate-950/50 mt-auto">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Próximos Meses (Avulsos)</h3>
               </div>
+    
               <div className="p-4 space-y-4 overflow-y-auto max-h-[300px] custom-scrollbar">
                 {nextMonths.map((month, i) => (
                   <div key={`month-${i}-${month.toISOString()}`} className="space-y-2">
                     <h4 className="text-xs font-bold text-slate-500 uppercase">{format(month, 'MMMM yyyy', { locale: ptBR })}</h4>
                     <div className="space-y-2 pl-2 border-l border-slate-700">
                        {calendarEvents.filter(e => !e.isRecurrent && new Date(e.date).getMonth() === month.getMonth() && new Date(e.date).getFullYear() === month.getFullYear()).map((event, j) => {
-                         const isFromPadrao = selectedEntity?.type === 'EMPRESA' && event.empresaId === padraoId;
+                         const isFromPadrao = selectedEntity?.type === 'EMPRESA' && event.empresaId === padraoId && selectedEntity.id !== padraoId;
                   const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id && event.empresaId !== padraoId;
                          return (
+    
                          <div key={event.id || `avulso-${i}-${j}`} className="group text-sm flex items-center">
                            <span className="text-slate-300 font-medium">{format(new Date(event.date), 'dd/MM')}</span>
                            <span className="text-slate-500 mx-2">-</span>
@@ -726,22 +769,28 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                                  <Pencil className="w-4 h-4" />
                                </button>
                              </div>
+    
                            )}
                          </div>
+    
                          );
                        })}
                        {calendarEvents.filter(e => !e.isRecurrent && new Date(e.date).getMonth() === month.getMonth() && new Date(e.date).getFullYear() === month.getFullYear()).length === 0 && (
                          <p className="text-slate-600 text-xs italic">Sem eventos específicos.</p>
                        )}
                     </div>
+    
                   </div>
+    
                 ))}
               </div>
+    
             </div>
+    
           </div>
-
+    
           {/* Right Column: Process Checklists */}
-          <div className="lg:col-span-8 flex flex-col min-h-0">
+          <div className="flex-1 min-w-[500px] flex flex-col min-h-0">
             <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-2 mb-6">
               <FileText className="w-5 h-5 text-emerald-400" />
               <span>Checklists de Processo</span>
@@ -752,6 +801,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               {allTabs.map((tab, i) => {
                 const isSindicatoOnlyTab = selectedEntity?.type === 'EMPRESA' && checklistRules.some(r => r.type === tab.id && r.targetType === 'SPECIFIC_SINDICATO') && !checklistRules.some(r => r.type === tab.id && r.targetId === selectedEntity?.id);
                 return (
+    
                 <div key={tab.id || `tab-${i}`} className="relative group flex items-center shrink-0">
                   <button
                     onClick={() => setActiveProcessType(tab.id)}
@@ -773,6 +823,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                     </button>
                   )}
                 </div>
+    
                 );
               })}
               <button
@@ -783,6 +834,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 <span className="text-sm font-bold">Novo</span>
               </button>
             </div>
+    
 
             <div className="flex-1 bg-slate-900 border border-slate-700/50 rounded-2xl p-6 shadow-xl flex flex-col">
               
@@ -794,6 +846,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                     Configure os itens de checklist (consultas/conferências) e obrigações programadas para a categoria selecionada na entidade <strong>{selectedEntity.nome}</strong>.
                   </p>
                 </div>
+    
                 <div className="flex flex-col space-y-2">
                   <button
                     onClick={() => setIsAddModalOpen(true)}
@@ -803,73 +856,95 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                     <span>Adicionar Item</span>
                   </button>
                 </div>
+    
               </div>
+    
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-                {currentProcessRules.map((rule, i) => {
-                  const isChecked = !!transientChecks[rule.id];
-                  const isFromPadrao = selectedEntity?.type === 'EMPRESA' && rule.targetId === padraoId;
-                  const isFromSindicato = selectedEntity?.type === 'EMPRESA' && rule.targetId !== selectedEntity.id && rule.targetId !== padraoId;
-                  return (
+                                  <Droppable droppableId="rulesList" type="RULE">
+                {(provided) => (
                   <div 
-                    key={rule.id || `rule-${i}`} 
-                    draggable={true}
-                    onDragStart={(e) => handleDragStart(e, rule.id)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, rule.id)}
-                    onDragEnd={handleDragEnd}
-                    className={`flex items-center justify-between bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl group transition-all ${isChecked ? 'border-emerald-500/50 bg-emerald-500/5' : 'hover:border-emerald-500/30'}`}
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="space-y-3"
                   >
-                    <div className="flex items-start space-x-4">
-                      <button 
-                        onClick={() => toggleTransientCheck(rule.id)}
-                        className={`mt-0.5 w-5 h-5 shrink-0 rounded flex items-center justify-center border transition-colors ${isChecked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500 hover:border-indigo-400'}`}
-                      >
-                        {isChecked && <CheckSquare className="w-3 h-3 text-white" />}
-                      </button>
-                      <div>
-                        <span className={`font-medium flex items-center flex-wrap gap-2 transition-colors ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                          <span>{rule.taskName}</span>
-                          {isFromSindicato && (
-  <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>
-)}
-{isFromPadrao && (
-  <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-500/20">Padrão</span>
-)}
-                              
-                        </span>
-                      </div>
-                    </div>
-                    {!isFromSindicato && !isFromPadrao && (
-                      <div className="flex items-center space-x-1">
-                        <button 
-                          onClick={() => setEditingRule(rule)}
-                          className="text-slate-500 hover:text-indigo-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Editar Item"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <div 
-                          className={`p-2 text-slate-500 hover:text-indigo-400 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity`}
-                          title="Arrastar para Reordenar"
-                        >
-                          <GripVertical className="w-5 h-5" />
-                        </div>
-                      </div>
-                    )}
+                    {currentProcessRules.map((rule, i) => {
+                      const isChecked = !!transientChecks[rule.id];
+                      const isFromPadrao = selectedEntity?.type === 'EMPRESA' && rule.targetId === padraoId && selectedEntity.id !== padraoId;
+                      const isFromSindicato = selectedEntity?.type === 'EMPRESA' && rule.targetId !== selectedEntity.id && rule.targetId !== padraoId;
+                      const isDragDisabled = isFromSindicato || isFromPadrao;
+                      
+                      return (
+    
+                        <Draggable key={rule.id || `rule-${i}`} draggableId={rule.id || `rule-${i}`} index={i} isDragDisabled={isDragDisabled}>
+                          {(provided, snapshot) => (
+                            <div 
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`flex items-center justify-between bg-slate-800/50 border p-4 rounded-xl group transition-all ${snapshot.isDragging ? 'border-indigo-500 shadow-lg shadow-indigo-500/20' : 'border-slate-700/50'} ${isChecked ? 'border-emerald-500/50 bg-emerald-500/5' : 'hover:border-emerald-500/30'}`}
+                            >
+                              <div className="flex items-start space-x-4">
+                                <button 
+                                  onClick={() => toggleTransientCheck(rule.id)}
+                                  className={`mt-0.5 w-5 h-5 shrink-0 rounded flex items-center justify-center border transition-colors ${isChecked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500 hover:border-indigo-400'}`}
+                                >
+                                  {isChecked && <CheckSquare className="w-3 h-3 text-white" />}
+                                </button>
+                                <div>
+                                  <span className={`font-medium flex items-center flex-wrap gap-2 transition-colors ${isChecked ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                    <span>{rule.taskName}</span>
+                                    {isFromSindicato && (  <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-500/20">Via Sindicato</span>)}
+                                    {isFromPadrao && (  <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-500/20">Padrão</span>)}
+                                  </span>
+                                </div>
+    
+                              </div>
+    
+                              {!isFromSindicato && !isFromPadrao && (
+                                <div className="flex items-center space-x-1">
+                                  <button 
+                                    onClick={() => setEditingRule(rule)}
+                                    className="text-slate-500 hover:text-indigo-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Editar Item"
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </button>
+                                  <div 
+                                    className="text-slate-500 hover:text-indigo-400 p-2 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Arrastar para Reordenar"
+                                  >
+                                    <GripVertical className="w-5 h-5" />
+                                  </div>
+    
+                                </div>
+    
+                              )}
+                            </div>
+    
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
                   </div>
-                  );
-                })}
+    
+                )}
+              </Droppable>
                 {currentProcessRules.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-16 text-slate-500">
                     <FileText className="w-12 h-12 mb-4 opacity-50" />
                     <p>Nenhum item configurado para este processo.</p>
                   </div>
+    
                 )}
               </div>
+    
             </div>
+    
           </div>
+    
         </div>
+    
       )}
       </>
       )}
@@ -884,20 +959,27 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 <X className="w-5 h-5" />
               </button>
             </div>
+    
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Nome da Categoria *</label>
                 <input type="text" autoFocus required placeholder="Ex: Admissão, Afastamento..." value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors" />
               </div>
+    
               <div className="pt-4 flex justify-end space-x-3">
                 <button onClick={() => setIsNewCategoryModalOpen(false)} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
                 <button onClick={handleAddCategory} disabled={!newCategoryName.trim()} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">Criar</button>
               </div>
+    
             </div>
+    
           </div>
+    
         </div>
+    
       )}
 
+      
       <UnifiedAddModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -964,9 +1046,13 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                   className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
                 >Salvar</button>
               </div>
+    
             </div>
+    
           </div>
+    
         </div>
+    
       )}
 
       {/* Edit Category Modal */}
@@ -1021,9 +1107,13 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                   className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
                 >Salvar</button>
               </div>
+    
             </div>
+    
           </div>
+    
         </div>
+    
       )}
 
       {/* Edit Rule Modal */}
@@ -1065,9 +1155,13 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                   className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
                 >Salvar</button>
               </div>
+    
             </div>
+    
           </div>
+    
         </div>
+    
       )}
 
       {/* Edit Event Modal */}
@@ -1075,12 +1169,86 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md shadow-2xl p-6">
             <h2 className="text-lg font-medium text-slate-200 mb-4">Editar Evento</h2>
-            <input 
-              type="text" 
-              value={editingEvent.title} 
-              onChange={e => setEditingEvent({...editingEvent, title: e.target.value})} 
-              className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors mb-6"
-            />
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Descrição</label>
+                <input 
+                  type="text" 
+                  value={editingEvent.title} 
+                  onChange={e => setEditingEvent({...editingEvent, title: e.target.value})} 
+                  className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+    
+              
+              {editingEvent.isRecurrent && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Frequência</label>
+                  <select 
+                    value={editingEvent.recurrentRule || 'MONTHLY_EXACT'}
+                    onChange={e => {
+                      const rule = e.target.value as ScheduleFrequency;
+                      setEditingEvent({
+                        ...editingEvent, 
+                        recurrentRule: rule,
+                        recurrentDay: (rule === 'NEAR_5' ? 5 : rule === 'NEAR_20' ? 20 : rule === 'NEAR_30' ? 30 : editingEvent.recurrentDay)
+                      });
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="MONTHLY_EXACT">Todo dia X do Mês</option>
+                    <option value="YEARLY">Anual (Uma vez ao ano)</option>
+                    <option value="NEAR_5">Sempre próximo ao Dia 05</option>
+                    <option value="NEAR_20">Sempre próximo ao Dia 20</option>
+                    <option value="NEAR_30">Sempre próximo ao Dia 30</option>
+                    <option value="WEEKLY">Semanal (Toda semana)</option>
+                    <option value="DAILY">Diário</option>
+                  </select>
+                </div>
+    
+              )}
+
+              {editingEvent.isRecurrent && (editingEvent.recurrentRule === 'MONTHLY_EXACT' || editingEvent.recurrentRule === 'YEARLY') && (
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Dia do Mês</label>
+                    <input 
+                      type="number" min="1" max="31" required 
+                      value={editingEvent.recurrentDay || 1} 
+                      onChange={e => setEditingEvent({...editingEvent, recurrentDay: parseInt(e.target.value) || 1})}
+                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+    
+                  {editingEvent.recurrentRule === 'YEARLY' && (
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Mês</label>
+                      <select 
+                        value={editingEvent.recurrentMonth || 0} 
+                        onChange={e => setEditingEvent({...editingEvent, recurrentMonth: parseInt(e.target.value)})}
+                        className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value={0}>Janeiro</option>
+                        <option value={1}>Fevereiro</option>
+                        <option value={2}>Março</option>
+                        <option value={3}>Abril</option>
+                        <option value={4}>Maio</option>
+                        <option value={5}>Junho</option>
+                        <option value={6}>Julho</option>
+                        <option value={7}>Agosto</option>
+                        <option value={8}>Setembro</option>
+                        <option value={9}>Outubro</option>
+                        <option value={10}>Novembro</option>
+                        <option value={11}>Dezembro</option>
+                      </select>
+                    </div>
+    
+                  )}
+                </div>
+    
+              )}
+            </div>
+    
             <div className="flex justify-between items-center">
               <button 
                 onClick={() => {
@@ -1103,15 +1271,27 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 <button onClick={() => setEditingEvent(null)} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
                 <button 
                   onClick={async () => {
-                    await setDoc(doc(db, 'calendarEvents', editingEvent.id), { title: editingEvent.title }, { merge: true });
+                    const updateData: any = { title: editingEvent.title };
+                    if (editingEvent.isRecurrent) {
+                      updateData.recurrentRule = editingEvent.recurrentRule;
+                      updateData.recurrentDay = editingEvent.recurrentDay;
+                      if (editingEvent.recurrentRule === 'YEARLY') {
+                        updateData.recurrentMonth = editingEvent.recurrentMonth;
+                      }
+                    }
+                    await setDoc(doc(db, 'calendarEvents', editingEvent.id), updateData, { merge: true });
                     setEditingEvent(null);
                   }}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
                 >Salvar</button>
               </div>
+    
             </div>
+    
           </div>
+    
         </div>
+    
       )}
 
       {/* Confirm Modal */}
@@ -1122,6 +1302,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               <AlertCircle className="w-6 h-6" />
               <h2 className="text-lg font-medium">Confirmar Exclusão</h2>
             </div>
+    
             <p className="text-slate-300 mb-6 whitespace-pre-line leading-relaxed">{confirmModal.message}</p>
             <div className="flex justify-end space-x-3">
               <button 
@@ -1137,9 +1318,14 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 Confirmar
               </button>
             </div>
+    
           </div>
+    
         </div>
+    
       )}
     </div>
+    
+    </DragDropContext>
   );
 }

@@ -2064,12 +2064,32 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                       </div>
                       
                       <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-3 mt-8">
-                        OUTROS DOCUMENTOS (PDF)
+                        OUTROS DOCUMENTOS (PDF/DOCX)
                       </h3>
                       <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
                         <a 
                           href="/CHECKLIST VEICULOS.pdf" 
-                          download="CHECKLIST VEICULOS.pdf"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const res = await fetch("/CHECKLIST VEICULOS.pdf");
+                              const blob = await res.blob();
+                              if (blob.type.includes("text/html")) {
+                                window.open("/CHECKLIST VEICULOS.pdf", "_blank");
+                                return;
+                              }
+                              const blobUrl = window.URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = blobUrl;
+                              a.download = "CHECKLIST VEICULOS.pdf";
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              window.URL.revokeObjectURL(blobUrl);
+                            } catch (err) {
+                              window.open("/CHECKLIST VEICULOS.pdf", "_blank");
+                            }
+                          }}
                           className="flex-1 flex items-center justify-between text-left p-3"
                           title="Baixar Checklist Veículos"
                         >
@@ -2079,6 +2099,45 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                             </p>
                             <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
                               PDF ESTÁTICO
+                            </span>
+                          </div>
+                          <Download className="w-4 h-4 text-indigo-400" />
+                        </a>
+                      </div>
+                      
+                      <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
+                        <a 
+                          href="/Modelo_Aviso_de_Advertencia.docx" 
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const res = await fetch("/Modelo_Aviso_de_Advertencia.docx");
+                              const blob = await res.blob();
+                              if (blob.type.includes("text/html")) {
+                                window.open("/Modelo_Aviso_de_Advertencia.docx", "_blank");
+                                return;
+                              }
+                              const blobUrl = window.URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = blobUrl;
+                              a.download = "Modelo_Aviso_de_Advertencia.docx";
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              window.URL.revokeObjectURL(blobUrl);
+                            } catch (err) {
+                              window.open("/Modelo_Aviso_de_Advertencia.docx", "_blank");
+                            }
+                          }}
+                          className="flex-1 flex items-center justify-between text-left p-3"
+                          title="Baixar Modelo de Aviso de Advertência"
+                        >
+                          <div>
+                            <p className="text-sm font-medium">
+                              MODELO AVISO DE ADVERTÊNCIA
+                            </p>
+                            <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
+                              DOCX ESTÁTICO
                             </span>
                           </div>
                           <Download className="w-4 h-4 text-indigo-400" />

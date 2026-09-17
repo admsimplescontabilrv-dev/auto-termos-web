@@ -333,7 +333,13 @@ export default function UnifiedAddModal({
                   <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">Frequência (Recorrente)</label>
                   <select 
                     value={frequency}
-                    onChange={e => setFrequency(e.target.value as ScheduleFrequency)}
+                    onChange={e => {
+                      const val = e.target.value as ScheduleFrequency;
+                      setFrequency(val);
+                      if (val === 'NEAR_5') setDayValue(5);
+                      if (val === 'NEAR_20') setDayValue(20);
+                      if (val === 'NEAR_30') setDayValue(30);
+                    }}
                     className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500"
                   >
                     <option value="MONTHLY_EXACT">Todo dia X do Mês</option>
