@@ -699,7 +699,7 @@ export default function App() {
     content: string;
   }) => {
     const printTitle = `${doc.termName} - ${doc.collabName}`.toUpperCase();
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open("about:blank", "_blank");
     if (!printWindow) {
       alert("Por favor, permita pop-ups no seu navegador para gerar o PDF.");
       return;
@@ -804,7 +804,7 @@ export default function App() {
                 window.print();
               }, 500);
             };
-          </script>
+          <\/script>
         </body>
       </html>
     `;
@@ -826,7 +826,7 @@ export default function App() {
         printTitle = `${numTerms} TERMO${numTerms > 1 ? 'S' : ''} - ${numCollabs} COLABORADOR${numCollabs > 1 ? 'ES' : ''}`.toUpperCase();
       }
 
-      const printWindow = window.open("", "_blank");
+      const printWindow = window.open("about:blank", "_blank");
       if (!printWindow) {
         alert("Por favor, permita pop-ups no seu navegador para gerar o PDF.");
         setIsGeneratingPdf(false);
@@ -923,6 +923,11 @@ export default function App() {
           </head>
           <body>
             ${clonedElement.outerHTML}
+            <script>
+              window.onload = function() {
+                setTimeout(function() { window.print(); }, 600);
+              };
+            <\/script>
           </body>
         </html>
       `;
@@ -930,13 +935,6 @@ export default function App() {
       printWindow.document.open();
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-
-      // 5. Aguardar os estilos e imagens do timbrado carregarem para disparar a impressão
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.print();
-        }, 600);
-      };
     } catch (e) {
       console.error(e);
       alert("Ocorreu um erro ao preparar a impressão.");

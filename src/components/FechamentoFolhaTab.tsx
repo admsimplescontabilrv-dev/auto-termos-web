@@ -80,21 +80,56 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
     await setDoc(doc(db, 'fechamentoFolha', docId), newData, { merge: true });
 
     // Sync with Calendar Completions if applicable
-    const syncFields = ['fgts', 'dctf', 'guiaSindicato', 'recibo'];
+    const syncFields = ['fgts', 'dctf', 'guiaSindicato', 'guiaSindicatoLaboral', 'guiaSindicatoPatronal', 'recibo', 'adiantamento', 'consignado', 'lancamento', 'verificarEnvio'];
     if (syncFields.includes(field)) {
       let eventTitleMatch = '';
       if (field === 'fgts') eventTitleMatch = 'FGTS';
-      if (field === 'dctf') eventTitleMatch = 'DCTF';
-      if (field === 'guiaSindicato') eventTitleMatch = 'SINDICATO';
-      if (field === 'recibo') eventTitleMatch = 'RECIBO';
+      else if (field === 'dctf') eventTitleMatch = 'DCTF';
+      else if (field === 'guiaSindicato' || field === 'guiaSindicatoLaboral' || field === 'guiaSindicatoPatronal') eventTitleMatch = 'SINDICATO';
+      else if (field === 'recibo') eventTitleMatch = 'RECIBO';
+      else if (field === 'adiantamento') eventTitleMatch = 'ADIANTAMENTO';
+      else if (field === 'consignado') eventTitleMatch = 'EMPRÉSTIMO';
+      else if (field === 'lancamento') eventTitleMatch = 'LANÇAMENTO';
+      else if (field === 'verificarEnvio') eventTitleMatch = 'VERIFICAR';
 
       if (eventTitleMatch) {
-        const relatedEvents = calendarEvents.filter(e => 
-          e.empresaId === empresaId && 
-          e.title.toUpperCase().includes(eventTitleMatch)
-        );
+        const emp = empresas.find(e => e.id === empresaId);
+        const sindicatoId = emp?.sindicatoId;
 
-        for (const event of relatedEvents) {
+        let matchingEvents = calendarEvents.filter(e => {
+          const isEntityMatch = e.empresaId === empresaId || (sindicatoId && e.empresaId === sindicatoId) || !e.empresaId || e.empresaId === 'GERAL' || e.empresaId === 'PADRAO';
+          if (!isEntityMatch) return false;
+          const upper = e.title.toUpperCase();
+          if (field === 'consignado') {
+            return upper.includes('EMPRÉSTIMO') || upper.includes('EMPRESTIMO') || upper.includes('CONSIGNADO');
+          }
+          if (field === 'lancamento') {
+            return upper.includes('LANÇAMENTO') || upper.includes('LANCAMENTO') || upper.includes('PONTO') || upper.includes('COMISSÃO') || upper.includes('COMISSAO');
+          }
+          if (field === 'verificarEnvio') {
+            return upper.includes('VERIFICAR ENVIO') || upper.includes('VERIFICAR');
+          }
+          return upper.includes(eventTitleMatch);
+        });
+
+        // Fallback: se não encontrar restrito à empresa/sindicato, busca por título global
+        if (matchingEvents.length === 0) {
+          matchingEvents = calendarEvents.filter(e => {
+            const upper = e.title.toUpperCase();
+            if (field === 'consignado') {
+              return upper.includes('EMPRÉSTIMO') || upper.includes('EMPRESTIMO') || upper.includes('CONSIGNADO');
+            }
+            if (field === 'lancamento') {
+              return upper.includes('LANÇAMENTO') || upper.includes('LANCAMENTO') || upper.includes('PONTO') || upper.includes('COMISSÃO') || upper.includes('COMISSAO');
+            }
+            if (field === 'verificarEnvio') {
+              return upper.includes('VERIFICAR ENVIO') || upper.includes('VERIFICAR');
+            }
+            return upper.includes(eventTitleMatch);
+          });
+        }
+
+        for (const event of matchingEvents) {
           const compDocId = `${event.id}_${empresaId}_${monthKey}`;
           if (value === 'OK') {
             await setDoc(doc(db, 'recurrentCompletions', compDocId), {
@@ -192,7 +227,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
   };
 
   const handlePrint = () => {
-    const windowPrint = window.open('', '', 'width=1024,height=768');
+    const windowPrint = window.open('about:blank', '_blank', 'width=1024,height=768');
     if (!windowPrint) return;
 
     const formattedMonth = format(currentMonth, 'MMMM yyyy', { locale: ptBR });
@@ -256,7 +291,7 @@ const fData = isEditMode ? tpl : {
                   recibo: fDataRaw.recibo ?? tpl.recibo,
                   fgts: fDataRaw.fgts ?? tpl.fgts,
                   dctf: fDataRaw.dctf ?? tpl.dctf,
-                  guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? defaultLabStatus,
+                  guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? (fDataRaw.guiaSindicato ?? defaultLabStatus),
                   guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
                   verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
                   observacoes: fDataRaw.observacoes ?? tpl.observacoes,
@@ -494,7 +529,7 @@ const fData = isEditMode ? tpl : {
                 recibo: fDataRaw.recibo ?? tpl.recibo,
                 fgts: fDataRaw.fgts ?? tpl.fgts,
                 dctf: fDataRaw.dctf ?? tpl.dctf,
-                guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? defaultLabStatus,
+                guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? (fDataRaw.guiaSindicato ?? defaultLabStatus),
                 guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
                 verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
                 observacoes: fDataRaw.observacoes ?? tpl.observacoes,
@@ -738,7 +773,7 @@ const fData = isEditMode ? tpl : {
             recibo: fDataRaw.recibo ?? tpl.recibo,
             fgts: fDataRaw.fgts ?? tpl.fgts,
             dctf: fDataRaw.dctf ?? tpl.dctf,
-            guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? defaultLabStatus,
+            guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? (fDataRaw.guiaSindicato ?? defaultLabStatus),
             guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
             verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
             observacoes: fDataRaw.observacoes ?? tpl.observacoes,

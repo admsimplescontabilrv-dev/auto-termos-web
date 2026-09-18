@@ -691,7 +691,7 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
     const container = document.getElementById('trct-preview-container');
     if (!container) return;
     const htmlContent = container.innerHTML;
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('about:blank', '_blank');
     if (!printWindow) {
       showNotification('Permita pop-ups para imprimir', 'error');
       return;
@@ -797,17 +797,17 @@ const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.Dr
         </head>
         <body>
           ${htmlContent}
+          <script>
+            window.onload = function() {
+              setTimeout(function() { window.print(); }, 500);
+            };
+          <\/script>
         </body>
       </html>
     `;
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
-    };
   };
 
   const handleDownloadExcel = async () => {

@@ -974,7 +974,7 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                         ? `PROLABORE ${mesRef} ${nomeFormatado}`
                         : `RECIBO EXTRA CONTABIL ${mesRef} ${nomeFormatado}`).toUpperCase();
                       
-                    const printWindow = window.open('', '_blank');
+                    const printWindow = window.open('about:blank', '_blank');
                     if (!printWindow) return alert('Permita pop-ups.');
                     printWindow.document.write(`
                       <!DOCTYPE html><html><head><title>${docTitle}</title>

@@ -233,15 +233,35 @@ export default function CalendarioApp() {
       else if (upperTitle.includes('DCTF')) fechamentoField = 'dctf';
       else if (upperTitle.includes('SINDICATO')) fechamentoField = 'guiaSindicato';
       else if (upperTitle.includes('RECIBO')) fechamentoField = 'recibo';
+      else if (upperTitle.includes('ADIANTAMENTO')) fechamentoField = 'adiantamento';
+      else if (upperTitle.includes('EMPRÉSTIMO') || upperTitle.includes('EMPRESTIMO') || upperTitle.includes('CONSIGNADO')) fechamentoField = 'consignado';
+      else if (upperTitle.includes('LANÇAMENTO') || upperTitle.includes('LANCAMENTO') || upperTitle.includes('PONTO') || upperTitle.includes('COMISSÃO') || upperTitle.includes('COMISSAO')) fechamentoField = 'lancamento';
+      else if (upperTitle.includes('VERIFICAR ENVIO') || upperTitle.includes('VERIFICAR')) fechamentoField = 'verificarEnvio';
 
       if (fechamentoField) {
+        let okValue = 'OK';
+        let pendingValue = 'PENDENTE';
+
+        if (fechamentoField === 'consignado') {
+          pendingValue = 'A CONSULTAR';
+        } else if (fechamentoField === 'adiantamento') {
+          pendingValue = 'A CONSULTAR';
+        } else if (fechamentoField === 'lancamento') {
+          pendingValue = 'PENDENTE (PONTO/COMISSÃO)';
+        }
+
         const fechamentoDocId = `${monthKey}_${entityId}`;
-        await setDoc(doc(db, 'fechamentoFolha', fechamentoDocId), {
-          [fechamentoField]: isCompleted ? 'PENDENTE' : 'OK',
+        const updatePayload: Record<string, any> = {
+          [fechamentoField]: isCompleted ? pendingValue : okValue,
           monthKey,
           empresaId: entityId,
           updatedAt: Date.now()
-        }, { merge: true });
+        };
+        if (fechamentoField === 'guiaSindicato') {
+          updatePayload.guiaSindicatoLaboral = isCompleted ? pendingValue : okValue;
+        }
+
+        await setDoc(doc(db, 'fechamentoFolha', fechamentoDocId), updatePayload, { merge: true });
       }
     }
   };
