@@ -2067,15 +2067,12 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                       <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
                         <a 
                           href="/CHECKLIST VEICULOS.pdf" 
+                          download="CHECKLIST VEICULOS.pdf"
                           onClick={async (e) => {
                             e.preventDefault();
                             try {
                               const res = await fetch("/CHECKLIST VEICULOS.pdf");
                               const blob = await res.blob();
-                              if (blob.type.includes("text/html")) {
-                                window.open("/CHECKLIST VEICULOS.pdf", "_blank");
-                                return;
-                              }
                               const blobUrl = window.URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = blobUrl;
@@ -2085,7 +2082,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                               document.body.removeChild(a);
                               window.URL.revokeObjectURL(blobUrl);
                             } catch (err) {
-                              window.open("/CHECKLIST VEICULOS.pdf", "_blank");
+                              window.location.href = "/CHECKLIST VEICULOS.pdf";
                             }
                           }}
                           className="flex-1 flex items-center justify-between text-left p-3"
@@ -2106,15 +2103,12 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                       <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
                         <a 
                           href="/Modelo_Aviso_de_Advertencia.docx" 
+                          download="Modelo_Aviso_de_Advertencia.docx"
                           onClick={async (e) => {
                             e.preventDefault();
                             try {
                               const res = await fetch("/Modelo_Aviso_de_Advertencia.docx");
                               const blob = await res.blob();
-                              if (blob.type.includes("text/html")) {
-                                window.open("/Modelo_Aviso_de_Advertencia.docx", "_blank");
-                                return;
-                              }
                               const blobUrl = window.URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = blobUrl;
@@ -2124,7 +2118,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                               document.body.removeChild(a);
                               window.URL.revokeObjectURL(blobUrl);
                             } catch (err) {
-                              window.open("/Modelo_Aviso_de_Advertencia.docx", "_blank");
+                              window.location.href = "/Modelo_Aviso_de_Advertencia.docx";
                             }
                           }}
                           className="flex-1 flex items-center justify-between text-left p-3"
