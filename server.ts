@@ -115,7 +115,7 @@ const ExtractPdfSchema = z.object({
 
 const GerarReciboSchema = z.object({
   dadosEmpresa: z.object({
-    mesAno: z.string().regex(/^\d{4}-\d{2}$/, "Formato inválido para mesAno. Esperado YYYY-MM."),
+    mesAno: z.string().regex(/^(\d{4}-\d{1,2}|\d{1,2}\/\d{4})$/, "Formato inválido para mesAno. Esperado MM/AAAA ou YYYY-MM."),
   }).passthrough(),
 }).passthrough();
 
@@ -1180,10 +1180,17 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
 
       const mesAnoFormatado = (() => {
         if (!dadosEmpresa.mesAno) return '';
-        const [year, month] = dadosEmpresa.mesAno.split('-');
+        let year = '', month = '';
+        if (dadosEmpresa.mesAno.includes('/')) {
+          [month, year] = dadosEmpresa.mesAno.split('/');
+        } else if (dadosEmpresa.mesAno.includes('-')) {
+          [year, month] = dadosEmpresa.mesAno.split('-');
+        }
+        if (!year || !month) return dadosEmpresa.mesAno;
         const date = new Date(parseInt(year), parseInt(month) - 1);
+        if (isNaN(date.getTime())) return dadosEmpresa.mesAno;
         const mStr = date.toLocaleString('pt-BR', { month: 'long' });
-        const yStr = year.slice(2);
+        const yStr = year.slice(-2);
         return `${mStr}-${yStr}`.toUpperCase();
       })();
 

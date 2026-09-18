@@ -17,12 +17,26 @@ export const LayoutRecibo = ({
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatMesAno = (val: string) => {
     if (!val) return '';
+    let year = '', month = '';
     if (val.includes('-') && val.split('-').length === 2 && val.split('-')[0].length === 4) {
-      const [year, month] = val.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1);
-      const mStr = date.toLocaleString('pt-BR', { month: 'long' });
-      const yStr = year.slice(2);
-      return `${mStr}-${yStr}`;
+      [year, month] = val.split('-');
+    } else if (val.includes('/')) {
+      const parts = val.split('/');
+      if (parts.length === 2) {
+        [month, year] = parts;
+      } else if (parts.length === 3) {
+        [, month, year] = parts;
+      }
+    }
+    if (year && month) {
+      const y = year.length === 4 ? parseInt(year) : parseInt('20' + year);
+      const m = parseInt(month);
+      if (!isNaN(m) && !isNaN(y) && m >= 1 && m <= 12) {
+        const date = new Date(y, m - 1);
+        const mStr = date.toLocaleString('pt-BR', { month: 'long' });
+        const yStr = String(y).slice(-2);
+        return `${mStr}-${yStr}`;
+      }
     }
     return val;
   };

@@ -56,7 +56,9 @@ useEffect(() => {
         const payload = JSON.parse(aiPayload);
         
         // ZERAR DADOS PRIMEIRO
-        setDadosEmpresa({ nome: '', cnpj: '', endereco: '', mesAno: new Date().toISOString().slice(0, 7), geracaoEmLote: false, mesAnoFinal: '', tipoRecibo: 'salario', calcularTributos: false, calcularINSS: true, calcularIRRF: true, calcularFGTS: true });
+        const now = new Date();
+        const defaultMesAno = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        setDadosEmpresa({ nome: '', cnpj: '', endereco: '', mesAno: defaultMesAno, geracaoEmLote: false, mesAnoFinal: '', tipoRecibo: 'salario', calcularTributos: false, calcularINSS: true, calcularIRRF: true, calcularFGTS: true });
         setDadosFuncionario({ codigo: '', nome: '', funcao: '', cbo: '', numeroDependentes: 0, salarioBaseContratual: undefined, diasTrabalhados: undefined });
         setRubricas([{ codigo: 2001, descricao: 'DIAS NORMAIS', referencia: '30', valor: 0, tipo: 'provento' }]);
 
@@ -64,13 +66,7 @@ useEffect(() => {
           processReciboPdfExtraction(payload.pdfBase64);
           if (payload.pdfName) showToast(`Extraindo dados do PDF: ${payload.pdfName}`, 'success');
         } else {
-          let formattedMesAno = payload.mesAno || '';
-          if (formattedMesAno && formattedMesAno.includes('/')) {
-            const parts = formattedMesAno.split('/');
-            if (parts.length === 2) {
-              formattedMesAno = `${parts[1]}-${parts[0].padStart(2, '0')}`;
-            }
-          }
+          const formattedMesAno = payload.mesAno ? applyMesAnoMask(payload.mesAno) : '';
           // Pre-fill data
           setDadosEmpresa(prev => ({
             ...prev,
@@ -290,14 +286,7 @@ ${text}`);
           })));
         }
         if (data.mesAno) {
-           let formattedMesAno = data.mesAno;
-           if (formattedMesAno && formattedMesAno.includes('/')) {
-             const parts = formattedMesAno.split('/');
-             if (parts.length === 2) {
-               formattedMesAno = `${parts[1]}-${parts[0].padStart(2, '0')}`;
-             }
-           }
-           setDadosEmpresa(prev => ({ ...prev, mesAno: formattedMesAno }));
+           setDadosEmpresa(prev => ({ ...prev, mesAno: applyMesAnoMask(data.mesAno) }));
         }
 
         showToast('Dados do recibo importados!', 'success');
@@ -372,7 +361,7 @@ ${text}`);
             nome: (d.empresa.nome || '').toUpperCase(),
             cnpj: (d.empresa.cnpj || '').toUpperCase(),
             endereco: (d.empresa.endereco || '').toUpperCase(),
-            mesAno: d.mesAno || prev.mesAno
+            mesAno: d.mesAno ? applyMesAnoMask(d.mesAno) : prev.mesAno
           }));
         }
         if (d.funcionario) {
@@ -465,12 +454,30 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
   
-  const applyDateMask = (val: string) => {
-    const digits = val.replace(/\D/g, '');
+  const applyMesAnoMask = (val: string) => {
+    if (!val) return '';
+    const clean = val.trim();
+    // Se formato YYYY-MM (ex: 2026-09)
+    if (/^\d{4}-\d{1,2}$/.test(clean)) {
+      const [y, m] = clean.split('-');
+      return `${m.padStart(2, '0')}/${y}`;
+    }
+    // Se o usuário digitou "X/" com 1 dígito no mês (ex: "5/"), transforma em "05/"
+    if (clean.length === 2 && clean.endsWith('/') && /^\d$/.test(clean[0])) {
+      return `0${clean[0]}/`;
+    }
+    // Se já contém barra e veio de payload ou cópia como M/AAAA
+    if (clean.includes('/')) {
+      const parts = clean.split('/');
+      if (parts.length === 2 && parts[0].length === 1 && parts[1].length === 4) {
+        return `0${parts[0]}/${parts[1]}`;
+      }
+    }
+    const digits = clean.replace(/\D/g, '').slice(0, 6);
     if (digits.length <= 2) return digits;
-    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
   };
+  const applyDateMask = applyMesAnoMask;
 
   const getMesesLote = () => {
     if (!dadosEmpresa.geracaoEmLote || !dadosEmpresa.mesAnoFinal) return [dadosEmpresa.mesAno];
@@ -658,13 +665,31 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
 
                 <div>
                   <label className="block text-sm text-slate-200 mb-1">{dadosEmpresa.geracaoEmLote ? 'Mês/Ano Inicial' : 'Mês/Ano de Referência'}</label>
-                  <input id="recibo_empresa_mesAno" name="recibo_empresa_mesAno" type="text" placeholder="Ex: 05/10/2024" value={dadosEmpresa.mesAno} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAno: applyDateMask(e.target.value)})} className="w-full bg-slate-950 border border-slate-700/50 rounded-lg p-3 text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                  <input 
+                    id="recibo_empresa_mesAno" 
+                    name="recibo_empresa_mesAno" 
+                    type="text" 
+                    maxLength={7}
+                    placeholder="mm/aaaa" 
+                    value={dadosEmpresa.mesAno} 
+                    onChange={e => setDadosEmpresa({...dadosEmpresa, mesAno: applyMesAnoMask(e.target.value)})} 
+                    className="w-full bg-slate-950 border border-slate-700/50 rounded-lg p-3 text-slate-200 focus:border-indigo-500 focus:outline-none" 
+                  />
                 </div>
 
                 {dadosEmpresa.geracaoEmLote && (
                   <div>
                     <label className="block text-sm text-slate-200 mb-1">Mês/Ano Final</label>
-                    <input id="recibo_empresa_mesAnoFinal" name="recibo_empresa_mesAnoFinal" type="text" placeholder="Ex: 20/12/2024" value={dadosEmpresa.mesAnoFinal || ''} onChange={e => setDadosEmpresa({...dadosEmpresa, mesAnoFinal: applyDateMask(e.target.value)})} className="w-full bg-slate-950 border border-slate-700/50 rounded-lg p-3 text-slate-200 focus:border-indigo-500 focus:outline-none" />
+                    <input 
+                      id="recibo_empresa_mesAnoFinal" 
+                      name="recibo_empresa_mesAnoFinal" 
+                      type="text" 
+                      maxLength={7}
+                      placeholder="mm/aaaa" 
+                      value={dadosEmpresa.mesAnoFinal || ''} 
+                      onChange={e => setDadosEmpresa({...dadosEmpresa, mesAnoFinal: applyMesAnoMask(e.target.value)})} 
+                      className="w-full bg-slate-950 border border-slate-700/50 rounded-lg p-3 text-slate-200 focus:border-indigo-500 focus:outline-none" 
+                    />
                   </div>
                 )}
 
