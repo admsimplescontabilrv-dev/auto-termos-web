@@ -605,10 +605,10 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
         </div>
     
       ) : (
-        <div className="flex gap-6 lg:gap-8 flex-1 min-h-0 overflow-x-auto custom-scrollbar pb-4">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 min-h-0">
           
           {/* Left Column: Schedule & Fixed */}
-          <div className="w-[380px] lg:w-[420px] shrink-0 flex flex-col space-y-6">
+          <div className="w-full lg:w-[420px] xl:w-[480px] shrink-0 flex flex-col space-y-6">
             <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-indigo-400" />
               <span>Programação & Fixos</span>
@@ -790,7 +790,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
           </div>
     
           {/* Right Column: Process Checklists */}
-          <div className="flex-1 min-w-[500px] flex flex-col min-h-0">
+          <div className="flex-1 w-full lg:w-auto flex flex-col min-h-0">
             <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-2 mb-6">
               <FileText className="w-5 h-5 text-emerald-400" />
               <span>Checklists de Processo</span>
