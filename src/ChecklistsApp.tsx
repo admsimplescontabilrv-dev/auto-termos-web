@@ -485,7 +485,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
 
   return ( <DragDropContext onDragEnd={handleDragEndDnd}>
     
-    <div className="flex-1 w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col h-full animate-in fade-in zoom-in-95 duration-200 print:p-0 print:m-0 print:max-w-none">
+    <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 md:p-8 flex flex-col min-h-full animate-in fade-in zoom-in-95 duration-200 print:p-0 print:m-0 print:max-w-none">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 print:hidden">
         <div className="flex items-center space-x-3 mb-4 sm:mb-0">
           <CheckSquare className="w-8 h-8 text-indigo-400" />
@@ -591,19 +591,19 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     
 
       {!selectedEntity ? (
-        <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 border border-slate-700/50 rounded-2xl p-10 opacity-60">
+        <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 border border-slate-700/50 rounded-2xl p-10 opacity-60 min-h-[300px]">
           <CheckSquare className="w-16 h-16 text-slate-700 mb-4" />
-          <p className="text-slate-400 text-lg">Busque e selecione uma empresa ou sindicato acima para visualizar a programação.</p>
+          <p className="text-slate-400 text-lg text-center">Busque e selecione uma empresa ou sindicato acima para visualizar a programação.</p>
         </div>
     
       ) : (
-        <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0 w-full">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 w-full min-h-0">
           
           {/* ========================================== */}
           {/* COLUNA ESQUERDA: Programação & Fixos (380px) */}
           {/* ========================================== */}
           <div className="w-full lg:w-[380px] shrink-0 flex flex-col min-h-0">
-            <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-2 mb-6">
+            <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-2 mb-4 lg:mb-6 shrink-0">
               <Calendar className="w-5 h-5 text-indigo-400" />
               <span>Programação & Fixos</span>
             </h2>
@@ -628,7 +628,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               </div>
 
               {/* Lista: Obrigações do Mês (Scrollable) */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+              <div className="max-h-[360px] lg:max-h-none lg:flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                 {currentMonthEvents.length === 0 && (
                   <p className="text-slate-500 text-sm italic text-center py-4">Nenhum evento programado.</p>
                 )}
@@ -710,7 +710,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               </div>
               
               {/* Lista: Avulsos (Scrollable) */}
-              <div className="max-h-[300px] overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              <div className="max-h-[240px] lg:max-h-[300px] overflow-y-auto p-4 space-y-4 custom-scrollbar">
                 {nextMonths.map((month, i) => (
                   <div key={`month-${i}-${month.toISOString()}`} className="space-y-2">
                     <h4 className="text-xs font-bold text-slate-500 uppercase">{format(month, 'MMMM yyyy', { locale: ptBR })}</h4>
@@ -752,14 +752,14 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
           {/* ========================================== */}
           {/* COLUNA DIREITA: Checklists de Processo     */}
           {/* ========================================== */}
-          <div className="flex-1 flex flex-col min-h-0 min-w-0">
-            <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-2 mb-6 shrink-0">
+          <div className="w-full flex-1 flex flex-col min-h-0 min-w-0">
+            <h2 className="text-xl font-medium text-slate-200 flex items-center space-x-2 mb-4 lg:mb-6 shrink-0">
               <FileText className="w-5 h-5 text-emerald-400" />
               <span>Checklists de Processo</span>
             </h2>
 
             {/* Tabs horizontais */}
-            <div className="flex items-center space-x-2 mb-6 overflow-x-auto custom-scrollbar pb-2 shrink-0">
+            <div className="flex items-center space-x-2 mb-4 lg:mb-6 overflow-x-auto custom-scrollbar pb-2 shrink-0 max-w-full">
               {allTabs.map((tab, i) => {
                 const isSindicatoOnlyTab = selectedEntity?.type === 'EMPRESA' && checklistRules.some(r => r.type === tab.id && r.targetType === 'SPECIFIC_SINDICATO') && !checklistRules.some(r => r.type === tab.id && r.targetId === selectedEntity?.id);
                 return (
@@ -796,11 +796,11 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
             </div>
 
             {/* Corpo do Checklist */}
-            <div className="flex-1 bg-slate-900 border border-slate-700/50 rounded-2xl p-6 shadow-xl flex flex-col min-h-0">
+            <div className="flex-1 bg-slate-900 border border-slate-700/50 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col min-h-[350px] lg:min-h-0">
               
               {/* Info Box Compacto */}
-              <div className="bg-slate-950/50 border border-slate-800 rounded-lg px-4 py-3 mb-6 flex items-center justify-between shrink-0">
-                <div className="flex items-center space-x-3 overflow-hidden">
+              <div className="bg-slate-950/50 border border-slate-800 rounded-lg px-4 py-3 mb-4 lg:mb-6 flex items-center justify-between shrink-0 gap-2">
+                <div className="flex items-center space-x-3 overflow-hidden min-w-0">
                   <AlertCircle className="w-5 h-5 text-emerald-500 shrink-0" />
                   <h3 className="text-emerald-400 font-medium text-sm truncate">
                     Padrão de Qualidade: <span className="text-slate-200">{activeProcessType}</span>
@@ -808,7 +808,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                 </div>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="ml-4 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center space-x-2 whitespace-nowrap shadow-lg shrink-0"
+                  className="ml-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-colors flex items-center space-x-1 sm:space-x-2 whitespace-nowrap shadow-lg shrink-0"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Adicionar Item</span>
@@ -816,7 +816,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
               </div>
 
               {/* Itens do Checklist */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+              <div className="flex-1 min-h-[220px] max-h-[550px] lg:max-h-none overflow-y-auto custom-scrollbar pr-2 space-y-3">
                 {currentProcessRules.map((rule, i) => {
                   const isChecked = !!transientChecks[rule.id];
                   const isFromPadrao = selectedEntity?.type === 'EMPRESA' && rule.targetId === padraoId;
