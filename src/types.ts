@@ -12,8 +12,8 @@ export interface Empresa {
   id: string;
   nome: string;
   cnpj: string;
-  codigo: string;
-  sindicatoId: string;
+  codigo?: string;
+  sindicatoId?: string;
   sindicatoNome?: string;
   telefone?: string;
   email?: string;
@@ -34,6 +34,15 @@ export interface Empresa {
     observacoes?: string;
     contatos?: string;
   };
+  regime?: string;
+  situacao?: string;
+  dataEntrada?: string;
+  dataSaida?: string;
+  linkDrive?: string;
+  inscEstadual?: string;
+  inscMunicipal?: string;
+  cidade?: string;
+  modulosResponsavel?: string[]; // Ex: ['DP & RH', 'FISCAL', 'CONTÁBIL']
   createdAt: number;
 }
 
@@ -181,4 +190,25 @@ export interface KanbanTask {
   order: number;
   createdAt: Date | number; // Support both firestore timestamp/Date and numeric
   archived?: boolean;
+}
+
+export type AlvaraSituacao =
+  | 'PENDENTE'
+  | 'EM ANDAMENTO'
+  | 'NÃO PAGO'
+  | 'PARALISADO'
+  | 'EMITIDO'
+  | 'CONCLUÍDO';
+
+export interface Alvara {
+  id?: string;
+  empresaId: string;
+  empresaNome?: string;
+  cnpj?: string;
+  codigo?: string;
+  ano: number;
+  situacao: AlvaraSituacao | string;
+  observacoes?: string;
+  updatedAt?: number;
+  createdAt?: number;
 }

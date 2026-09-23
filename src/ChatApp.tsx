@@ -1,7 +1,7 @@
 import { auth } from './lib/firebase';
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Sparkles, Building2, Briefcase, CheckCircle2, Paperclip, X } from 'lucide-react';
-import { collection, getDocs, addDoc, getDoc, doc, updateDoc, query, where, orderBy, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, getDoc, doc, updateDoc, query, where, orderBy, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import ReactMarkdown from 'react-markdown';
 import { useFirestore } from './hooks/useFirestore';
@@ -36,7 +36,8 @@ export default function ChatApp() {
     const fetchContextData = async () => {
       try {
         const empresasSnap = await getDocs(collection(db, 'empresas'));
-        const empresas = empresasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allEmpresas = empresasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const empresas = allEmpresas.filter((e: any) => !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes('DP & RH'));
         
         const sindicatosSnap = await getDocs(collection(db, 'sindicatos'));
         const sindicatos = sindicatosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -196,6 +197,20 @@ export default function ChatApp() {
       const calendarEventsSnapshot = await getDocs(collection(db, 'calendarEvents'));
       const fetchedCalendarEvents = calendarEventsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
+      const alvarasSnapshot = await getDocs(collection(db, 'alvaras'));
+      const fetchedAlvaras = alvarasSnapshot.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          empresaId: data.empresaId,
+          empresaNome: data.empresaNome,
+          cnpj: data.cnpj,
+          ano: data.ano,
+          situacao: data.situacao,
+          observacoes: data.observacoes
+        };
+      });
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 
@@ -208,6 +223,7 @@ export default function ChatApp() {
           cctText: cctTextToSend,
           kanbanTasks: fetchedKanbanTasks,
           calendarEvents: fetchedCalendarEvents,
+          alvaras: fetchedAlvaras,
           pdfBase64: pdfBase64,
           pdfName: pdfFile?.name
         })
@@ -376,7 +392,80 @@ export default function ChatApp() {
           window.dispatchEvent(new CustomEvent('navigate-module', { detail: 'trct' }));
           setActionFeedback(prev => (prev || '') + '✅ Preparando TRCT... Redirecionando!\n');
         }
+
+        else if (action === 'UPDATE_ALVARA') {
+          if (payload.empresaId) {
+            const ano = payload.ano ? Number(payload.ano) : new Date().getFullYear();
+            const docId = `${payload.empresaId}_${ano}`;
+            const emp = contextData?.empresas?.find((e: any) => e.id === payload.empresaId);
+            await setDoc(doc(db, 'alvaras', docId), {
+              empresaId: payload.empresaId,
+              empresaNome: emp?.nome || payload.empresaNome || '',
+              cnpj: emp?.cnpj || payload.cnpj || '',
+              codigo: emp?.codigo || '',
+              ano,
+              ...(payload.situacao ? { situacao: payload.situacao } : {}),
+              ...(payload.observacoes !== undefined ? { observacoes: payload.observacoes } : {}),
+              updatedAt: Date.now()
+            }, { merge: true });
+            setActionFeedback(prev => (prev || '') + `✅ Alvará de ${ano} atualizado com sucesso (${payload.situacao || 'observações'})!\n`);
+          }
+        }
+
+        else if (action === 'NAVIGATE_ALVARAS') {
+          window.dispatchEvent(new CustomEvent('navigate-module', { detail: 'alvaras' }));
+          setActionFeedback(prev => (prev || '') + '✅ Redirecionando para Controle de Alvarás!\n');
+        }
+
+        else if (action === 'CLEAN_DUPLICATE_COMPANIES') {
+          window.dispatchEvent(new CustomEvent('navigate-module', { detail: 'empresas' }));
+          setActionFeedback(prev => (prev || '') + '✅ Redirecionando para Cadastro de Empresas!\n');
+        }
+
+        else if (action === 'SYNC_DRIVE_FOLDERS') {
+          setActionFeedback(prev => (prev || '') + '⏳ Sincronizando pastas do Google Drive com as empresas cadastradas...\n');
+          const user = auth.currentUser;
+          const token = user ? await user.getIdToken() : '';
+          const folderId = payload?.folderId || localStorage.getItem('google_drive_folder_id') || '';
+          
+          const companiesPayload = (contextData?.empresas || []).map((e: any) => ({
+            id: e.id,
+            codigo: e.codigo || '',
+            nome: e.nome || ''
+          }));
+
+          const syncRes = await fetch('/api/sync-drive', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ 
+              folderId,
+              companies: companiesPayload
+            })
+          });
+          const syncData = await syncRes.json();
+          if (syncRes.ok && syncData.success) {
+            if (syncData.updatedCompanies && syncData.updatedCompanies.length > 0) {
+              const batch = writeBatch(db);
+              for (const item of syncData.updatedCompanies) {
+                const docRef = doc(db, 'empresas', item.id);
+                batch.update(docRef, {
+                  linkDrive: item.linkDrive,
+                  updatedAt: Date.now()
+                });
+              }
+              await batch.commit();
+            }
+            setActionFeedback(prev => (prev || '') + `✅ Sincronização concluída! ${syncData.matchedCount} empresa(s) vinculada(s) às pastas do Google Drive (${syncData.totalFoldersFound} pastas encontradas).\n`);
+          } else {
+            setActionFeedback(prev => (prev || '') + `⚠️ Aviso na sincronização: ${syncData.error || 'Verifique as credenciais do Drive ou o ID da pasta.'}\n`);
+          }
+        }
       }
+
+
 
       // Hide buttons by removing proposedAction
       const newMessages = [...messages];

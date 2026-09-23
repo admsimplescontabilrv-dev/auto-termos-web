@@ -12,9 +12,21 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export default function KanbanApp() {
-  const { data: tasksData, loading: tasksLoading, error: tasksError, add: addTask, update: updateTask, remove: removeTask } = useFirestore<KanbanTask>('kanban_tasks');
-  const { data: columnsData, loading: columnsLoading, error: columnsError, add: addColumn, update: updateColumn } = useFirestore<KanbanColumn>('kanban_columns');
+interface KanbanAppProps {
+  tasksCollection?: string;
+  columnsCollection?: string;
+  moduleTitle?: string;
+  autoSeed?: boolean;
+}
+
+export default function KanbanApp({
+  tasksCollection = 'kanban_tasks',
+  columnsCollection = 'kanban_columns',
+  moduleTitle = 'Kanban de Demandas',
+  autoSeed = true
+}: KanbanAppProps = {}) {
+  const { data: tasksData, loading: tasksLoading, error: tasksError, add: addTask, update: updateTask, remove: removeTask } = useFirestore<KanbanTask>(tasksCollection);
+  const { data: columnsData, loading: columnsLoading, error: columnsError, add: addColumn, update: updateColumn } = useFirestore<KanbanColumn>(columnsCollection);
   
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [addingInColumn, setAddingInColumn] = useState<string | null>(null);
@@ -37,16 +49,16 @@ export default function KanbanApp() {
 
   // Seed default columns if none exist to preserve existing tasks
   useEffect(() => {
-    if (!columnsLoading && columnsData.length === 0 && !hasSeeded) {
+    if (autoSeed && !columnsLoading && columnsData.length === 0 && !hasSeeded) {
       setHasSeeded(true);
       const seed = async () => {
-        await setDoc(doc(db, 'kanban_columns', 'ENTRADA DE DEMANDAS'), { title: 'ENTRADA DE DEMANDAS', order: 1000 });
-        await setDoc(doc(db, 'kanban_columns', 'URGENTE'), { title: 'URGENTE', order: 2000 });
-        await setDoc(doc(db, 'kanban_columns', 'CONCLUIDO'), { title: 'CONCLUÍDO', order: 3000 });
+        await setDoc(doc(db, columnsCollection, 'ENTRADA DE DEMANDAS'), { title: 'ENTRADA DE DEMANDAS', order: 1000 });
+        await setDoc(doc(db, columnsCollection, 'URGENTE'), { title: 'URGENTE', order: 2000 });
+        await setDoc(doc(db, columnsCollection, 'CONCLUIDO'), { title: 'CONCLUÍDO', order: 3000 });
       };
       seed();
     }
-  }, [columnsLoading, columnsData.length, hasSeeded]);
+  }, [autoSeed, columnsCollection, columnsLoading, columnsData.length, hasSeeded]);
 
   const tasks = tasksData.filter(t => !t.archived);
   const columns = [...columnsData].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -244,7 +256,7 @@ export default function KanbanApp() {
     <div className="h-full flex flex-col bg-slate-950">
       <div className="p-6 pb-2 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Kanban de Demandas</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">{moduleTitle}</h1>
           <p className="text-slate-400">Arraste os cartões e colunas. Clique nos títulos para editar.</p>
         </div>
         <button 

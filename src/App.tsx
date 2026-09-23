@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "./lib/firebase";
-import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc, onSnapshot, writeBatch } from "firebase/firestore";
 import {
   Search,
   Menu,
@@ -57,7 +57,9 @@ import { getTrimmedPdfBase64 } from "./pdfUtils";
 import { ErrorLogViewer } from "./ErrorLogViewer";
 
 import BancoDeHorasApp from "./pages/banco-horas/BancoDeHorasApp";
-import { BotMessageSquare } from "lucide-react";
+import AlvaraApp from "./AlvaraApp";
+import FechamentoFolhaApp from "./FechamentoFolhaApp";
+import { BotMessageSquare, ShieldCheck, FileSpreadsheet } from "lucide-react";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -92,16 +94,27 @@ export default function App() {
   const [modulo, setModulo] = useState<
     | "dashboard"
     | "empresas"
+    | "sindicatos"
     | "checklists"
     | "calendario"
+    | "fechamento"
     | "kanban"
+    | "kanban-legalizacao"
     | "autotermos"
     | "recibos"
     | "boletos"
     | "trct"
     | "banco-horas"
+    | "alvaras"
   >("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
+  const [openMenus, setOpenMenus] = useState<string[]>([]);
+
+  const toggleMenu = (menu: string) => {
+    setOpenMenus(prev => 
+      prev.includes(menu) ? prev.filter(m => m !== menu) : [...prev, menu]
+    );
+  };
 
   const handleNavigate = (mod: any) => {
     setModulo(mod);
@@ -202,11 +215,43 @@ export default function App() {
   const [empresas, setEmpresas] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchEmpresas = async () => {
-      const snap = await getDocs(collection(db, "empresas"));
-      setEmpresas(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    };
-    fetchEmpresas();
+    const unsub = onSnapshot(collection(db, "empresas"), (snap) => {
+      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setEmpresas(all.filter((e: any) => !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes("DP & RH")));
+
+      // Auto-ajuste no banco de dados: empresas com código repetido têm o código alterado para '0'
+      const codeMap = new Map<string, any[]>();
+      all.forEach((emp: any) => {
+        const cod = (emp.codigo !== undefined && emp.codigo !== null ? String(emp.codigo) : '').trim();
+        if (cod && cod !== '0') {
+          if (!codeMap.has(cod)) codeMap.set(cod, []);
+          codeMap.get(cod)!.push(emp);
+        }
+      });
+
+      const empresasComCodigoRepetido: any[] = [];
+      codeMap.forEach((lista) => {
+        if (lista.length > 1) {
+          empresasComCodigoRepetido.push(...lista);
+        }
+      });
+
+      if (empresasComCodigoRepetido.length > 0) {
+        const batch = writeBatch(db);
+        for (const emp of empresasComCodigoRepetido) {
+          batch.update(doc(db, "empresas", emp.id), {
+            codigo: "0",
+            updatedAt: Date.now()
+          });
+        }
+        batch.commit().then(() => {
+          console.log(`[Firestore Auto-Fix] ${empresasComCodigoRepetido.length} empresas com códigos repetidos foram alteradas para o código 0.`);
+        }).catch((err) => {
+          console.error("Erro ao atualizar códigos repetidos para 0:", err);
+        });
+      }
+    });
+    return () => unsub();
   }, []);
 
   // Active template being edited
@@ -1714,157 +1759,101 @@ ${error instanceof Error ? error.stack : "N/A"}`,
         <div className="p-4 border-b border-slate-700/50 flex items-center gap-3">
           <img
             src="/logo.png?v=2"
-            alt="DP Simples"
+            alt="Simples Assessoria"
             className="h-8 w-8 object-contain shrink-0"
           />
           {sidebarOpen && (
-            <span className="text-lg font-semibold text-white tracking-tight whitespace-nowrap">
-              DP Simples
+            <span className="text-[13px] font-bold text-white uppercase tracking-tight whitespace-normal leading-tight">
+              SIMPLES ASSESSORIA<br/><span className="text-[10px] text-slate-400">CONTÁBIL E EMPRESARIAL</span>
             </span>
           )}
         </div>
 
-        {/* Menu Items */}
-        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        {/* Menu Items Accordion */}
+        <nav className="flex-1 py-4 px-2 space-y-2 overflow-y-auto custom-scrollbar">
+          
           <button
             onClick={() => handleNavigate("dashboard")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors ${
               modulo === "dashboard"
                 ? "bg-indigo-600/20 text-indigo-400"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
             }`}
           >
             <LayoutDashboard className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
+            {sidebarOpen && <span>Tela Inicial</span>}
           </button>
 
-          <button
-            onClick={() => handleNavigate("kanban")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "kanban"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <KanbanSquare className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Kanban de Demandas</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigate("checklists")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "checklists"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <CheckSquare className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Programação e Processos</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigate("empresas")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "empresas"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <Building2 className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Cadastro</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigate("calendario")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "calendario"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <CalendarDays className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Calendário</span>}
-          </button>
-
-          <div className="pt-4 pb-1">
-            {sidebarOpen ? (
-              <div className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Gestão
+          {sidebarOpen ? (
+            <>
+              {/* DP & RH MODULE */}
+              <div className="mt-4">
+                <button 
+                  onClick={() => toggleMenu('dprh')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                >
+                  <span>DP & RH</span>
+                  {openMenus.includes('dprh') ? <ChevronUp className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>}
+                </button>
+                
+                {openMenus.includes('dprh') && (
+                  <div className="mt-1 space-y-1 ml-2 border-l border-slate-700/50 pl-2">
+                    <button onClick={() => handleNavigate("kanban")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "kanban" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><KanbanSquare className="w-4 h-4 shrink-0" /> <span>Kanban</span></button>
+                    <button onClick={() => handleNavigate("checklists")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "checklists" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><CheckSquare className="w-4 h-4 shrink-0" /> <span>Programação e Processos</span></button>
+                    <button onClick={() => handleNavigate("calendario")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "calendario" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><CalendarDays className="w-4 h-4 shrink-0" /> <span>Calendário</span></button>
+                    <button onClick={() => handleNavigate("fechamento")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "fechamento" ? "bg-emerald-600/20 text-emerald-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileSpreadsheet className="w-4 h-4 shrink-0 text-emerald-400" /> <span>Fechamento de Folha</span></button>
+                    <button onClick={() => handleNavigate("autotermos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "autotermos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileText className="w-4 h-4 shrink-0" /> <span>Termos</span></button>
+                    <button onClick={() => handleNavigate("recibos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "recibos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><Receipt className="w-4 h-4 shrink-0" /> <span>Recibos</span></button>
+                    <button onClick={() => handleNavigate("boletos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "boletos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileStack className="w-4 h-4 shrink-0" /> <span>Boletos</span></button>
+                    <button onClick={() => handleNavigate("trct")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "trct" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><Briefcase className="w-4 h-4 shrink-0" /> <span>TRCT</span></button>
+                    <button onClick={() => handleNavigate("sindicatos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "sindicatos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><Building2 className="w-4 h-4 shrink-0" /> <span>Cadastro de Sindicatos</span></button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="border-t border-slate-700/50 mx-2"></div>
-            )}
-          </div>
 
-          <button
-            onClick={() => handleNavigate("banco-horas")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "banco-horas"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <Clock className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Banco de Horas</span>}
-          </button>
-
-          <div className="pt-4 pb-1">
-            {sidebarOpen ? (
-              <div className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Geradores
+              {/* GERAL MODULE */}
+              <div className="mt-4">
+                <button 
+                  onClick={() => toggleMenu('geral')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                >
+                  <span>GERAL</span>
+                  {openMenus.includes('geral') ? <ChevronUp className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>}
+                </button>
+                
+                {openMenus.includes('geral') && (
+                  <div className="mt-1 space-y-1 ml-2 border-l border-slate-700/50 pl-2">
+                    <button onClick={() => handleNavigate("empresas")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "empresas" ? "bg-emerald-600/20 text-emerald-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><Building2 className="w-4 h-4 shrink-0" /> <span>Cadastro de Empresas</span></button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="border-t border-slate-700/50 mx-2"></div>
-            )}
-          </div>
 
-          <button
-            onClick={() => handleNavigate("autotermos")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "autotermos"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <FileText className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Termos</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigate("recibos")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "recibos"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <Receipt className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Recibos</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigate("boletos")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "boletos"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <FileStack className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>Boletos</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigate("trct")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              modulo === "trct"
-                ? "bg-indigo-600/20 text-indigo-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            }`}
-          >
-            <Briefcase className="w-5 h-5 shrink-0" />
-            {sidebarOpen && <span>TRCT</span>}
-          </button>
+              {/* LEGALIZAÇÃO MODULE */}
+              <div className="mt-4">
+                <button 
+                  onClick={() => toggleMenu('legalizacao')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                >
+                  <span>LEGALIZAÇÃO</span>
+                  {openMenus.includes('legalizacao') ? <ChevronUp className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>}
+                </button>
+                
+                {openMenus.includes('legalizacao') && (
+                  <div className="mt-1 space-y-1 ml-2 border-l border-slate-700/50 pl-2">
+                    <button onClick={() => handleNavigate("kanban-legalizacao")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "kanban-legalizacao" ? "bg-amber-600/20 text-amber-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><KanbanSquare className="w-4 h-4 shrink-0" /> <span>Kanban de Legalização</span></button>
+                    <button onClick={() => handleNavigate("alvaras")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "alvaras" ? "bg-amber-600/20 text-amber-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><ShieldCheck className="w-4 h-4 shrink-0" /> <span>Controle de Alvarás</span></button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 flex flex-col gap-4 items-center border-t border-slate-700/50 pt-4">
+               {/* Modo colapsado */}
+               <button onClick={() => setSidebarOpen(true)} title="DP & RH" className="text-slate-500 hover:text-indigo-400 transition-colors"><Briefcase className="w-5 h-5"/></button>
+               <button onClick={() => setSidebarOpen(true)} title="Cadastro de Empresas" className="text-slate-500 hover:text-emerald-400 transition-colors"><Building2 className="w-5 h-5"/></button>
+               <button onClick={() => setSidebarOpen(true)} title="Legalização / Alvarás" className="text-slate-500 hover:text-amber-400 transition-colors"><ShieldCheck className="w-5 h-5"/></button>
+            </div>
+          )}
         </nav>
 
         {/* Toggle button no rodapé */}
@@ -1887,11 +1876,11 @@ ${error instanceof Error ? error.stack : "N/A"}`,
           <div className="flex items-center gap-3">
             <img
               src="/logo.png?v=2"
-              alt="DP Simples"
+              alt="Simples Assessoria"
               className="h-8 w-8 object-contain shrink-0"
             />
-            <span className="text-lg font-semibold text-white tracking-tight">
-              DP Simples
+            <span className="text-sm font-bold text-white uppercase tracking-tight">
+              Simples Assessoria
             </span>
           </div>
           <button
@@ -1903,8 +1892,17 @@ ${error instanceof Error ? error.stack : "N/A"}`,
         </div>
         {modulo === "dashboard" ? (
           <DashboardApp />
+        ) : modulo === "fechamento" ? (
+          <FechamentoFolhaApp />
+        ) : modulo === "sindicatos" ? (
+          <EmpresasApp
+            initialTab="SINDICATOS"
+            entityToEdit={entityToEdit}
+            clearEntityToEdit={() => setEntityToEdit(null)}
+          />
         ) : modulo === "empresas" ? (
           <EmpresasApp
+            initialTab="EMPRESAS"
             entityToEdit={entityToEdit}
             clearEntityToEdit={() => setEntityToEdit(null)}
           />
@@ -1918,7 +1916,19 @@ ${error instanceof Error ? error.stack : "N/A"}`,
         ) : modulo === "calendario" ? (
           <CalendarioApp />
         ) : modulo === "kanban" ? (
-          <KanbanApp />
+          <KanbanApp 
+            moduleTitle="Kanban de Demandas" 
+            tasksCollection="kanban_tasks" 
+            columnsCollection="kanban_columns" 
+            autoSeed={true} 
+          />
+        ) : modulo === "kanban-legalizacao" ? (
+          <KanbanApp 
+            moduleTitle="Kanban de Legalização" 
+            tasksCollection="kanban_legalizacao_tasks" 
+            columnsCollection="kanban_legalizacao_columns" 
+            autoSeed={false} 
+          />
         ) : modulo === "recibos" ? (
           <main className="w-full flex flex-col print:p-0 print:m-0">
             <ReciboApp />
@@ -1934,6 +1944,10 @@ ${error instanceof Error ? error.stack : "N/A"}`,
         ) : modulo === "trct" ? (
           <main className="w-full flex flex-col print:p-0 print:m-0">
             <TrctApp />
+          </main>
+        ) : modulo === "alvaras" ? (
+          <main className="w-full flex flex-col print:p-0 print:m-0">
+            <AlvaraApp />
           </main>
         ) : (
           <main className="w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col print:p-0 print:m-0 print:max-w-none">

@@ -7,6 +7,7 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterv
 import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import UnifiedAddModal from './components/UnifiedAddModal';
+import { isCompanyInExcludedDprhList } from './data/excludedDprhCompanies';
 
 export default function CalendarioApp() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -163,7 +164,11 @@ export default function CalendarioApp() {
 
   useEffect(() => {
     const unsubEmpresas = onSnapshot(collection(db, 'empresas'), (snapshot) => {
-      setEmpresas(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Empresa)));
+      const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Empresa));
+      setEmpresas(all.filter(e => {
+        if (isCompanyInExcludedDprhList(e)) return false;
+        return !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes('DP & RH');
+      }));
     });
     const unsubSindicatos = onSnapshot(collection(db, 'sindicatos'), (snapshot) => {
       setSindicatos(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Sindicato)));

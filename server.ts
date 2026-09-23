@@ -92,11 +92,13 @@ const ChatSchema = z.object({
   context: z.object({
     empresas: z.array(z.any()).optional().nullable(),
     sindicatos: z.array(z.any()).optional().nullable(),
-    kanbanTasks: z.array(z.any()).optional().nullable()
+    kanbanTasks: z.array(z.any()).optional().nullable(),
+    alvaras: z.array(z.any()).optional().nullable()
   }).optional().nullable(),
   cctText: z.string().optional().nullable(),
   kanbanTasks: z.array(z.any()).optional().nullable(),
   calendarEvents: z.array(z.any()).optional().nullable(),
+  alvaras: z.array(z.any()).optional().nullable(),
   pdfBase64: z.string().optional().nullable(),
   pdfName: z.string().optional().nullable()
 });
@@ -118,6 +120,25 @@ const GerarReciboSchema = z.object({
     mesAno: z.string().regex(/^(\d{4}-\d{1,2}|\d{1,2}\/\d{4})$/, "Formato inválido para mesAno. Esperado MM/AAAA ou YYYY-MM."),
   }).passthrough(),
 }).passthrough();
+
+const SyncDriveSchema = z.object({
+  folderId: z.string().min(1, "ID da Pasta Raiz do Drive é obrigatório."),
+  credentialsJson: z.union([z.string(), z.record(z.string(), z.any())]).optional().nullable(),
+  companies: z.array(z.object({
+    id: z.string(),
+    codigo: z.union([z.string(), z.number()]).optional().nullable(),
+    nome: z.string().optional().nullable()
+  })).optional().nullable()
+});
+
+const CreateDriveFolderSchema = z.object({
+  empresaId: z.string().min(1, "ID da empresa é obrigatório."),
+  codigo: z.union([z.string(), z.number()]).optional().nullable(),
+  nome: z.string().min(1, "Nome da empresa é obrigatório.")
+});
+
+
+
 
 // async function startServer() { // Remover encapsulamento de startServer() completo
 const app = express();
@@ -260,6 +281,413 @@ app.set('trust proxy', 1);
     }
   });
 
+  // --- Helpers de Autenticação e Acesso ao Google Drive ---
+  const getDriveCredentialsObject = (customCredentials?: any) => {
+    // 1. Credenciais enviadas diretamente na requisição
+    if (customCredentials) {
+      try {
+        const parsed = typeof customCredentials === 'string' ? JSON.parse(customCredentials) : customCredentials;
+        if (parsed.client_email && (parsed.private_key || parsed.privateKey)) return parsed;
+      } catch (e) {
+        console.error("Erro ao analisar customCredentials para Drive:", e);
+      }
+    }
+
+    // 2. Arquivo credentials.json na raiz do projeto
+    const credPath = path.join(process.cwd(), 'credentials.json');
+    if (fs.existsSync(credPath)) {
+      try {
+        const fileContent = fs.readFileSync(credPath, 'utf8');
+        const parsed = JSON.parse(fileContent);
+        if (parsed.client_email && (parsed.private_key || parsed.privateKey)) return parsed;
+      } catch (e) {
+        console.error("Erro ao carregar credentials.json:", e);
+      }
+    }
+
+    // 3. Variáveis de ambiente GOOGLE_DRIVE_CREDENTIALS ou GOOGLE_SERVICE_ACCOUNT_CREDENTIALS
+    const envCred = process.env.GOOGLE_DRIVE_CREDENTIALS || process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS;
+    if (envCred) {
+      try {
+        let raw = envCred.trim();
+        if (!raw.startsWith('{')) {
+          raw = Buffer.from(raw, 'base64').toString('utf8');
+        }
+        const parsed = JSON.parse(raw);
+        if (parsed.client_email && (parsed.private_key || parsed.privateKey)) return parsed;
+      } catch (e) {
+        console.error("Erro ao analisar GOOGLE_DRIVE_CREDENTIALS da env:", e);
+      }
+    }
+
+    // 4. Fallback para FIREBASE_SERVICE_ACCOUNT_KEY se tiver permissão de Drive no GCP
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+      try {
+        const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+        if (parsed.client_email && (parsed.private_key || parsed.privateKey)) return parsed;
+      } catch (e) {
+        console.error("Erro ao analisar FIREBASE_SERVICE_ACCOUNT_KEY:", e);
+      }
+    }
+
+    return null;
+  };
+
+  const getDriveAuth = (customCredentials?: any) => {
+    const creds = getDriveCredentialsObject(customCredentials);
+    if (!creds) return null;
+    try {
+      return new google.auth.GoogleAuth({
+        credentials: creds,
+        scopes: [
+          'https://www.googleapis.com/auth/drive.readonly',
+          'https://www.googleapis.com/auth/drive'
+        ]
+      });
+    } catch (e) {
+      console.error("Erro ao instanciar GoogleAuth para o Drive:", e);
+      return null;
+    }
+  };
+
+  // Status da configuração do Google Drive
+  app.get('/api/drive-status', requireApiKey, async (req, res) => {
+    try {
+      const creds = getDriveCredentialsObject();
+      const defaultFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || '';
+      res.json({
+        configured: !!creds,
+        clientEmail: creds?.client_email || null,
+        defaultFolderId
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao consultar status do Google Drive.' });
+    }
+  });
+
+  // Rota de Sincronização Google Drive -> Firebase Empresas
+  app.post('/api/sync-drive', requireApiKey, async (req, res) => {
+    try {
+      const parseResult = SyncDriveSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: parseResult.error.issues[0].message });
+      }
+
+      const { folderId: rawFolderId, credentialsJson, companies } = parseResult.data;
+      let folderId = rawFolderId.trim();
+
+      // Se o usuário colou a URL completa da pasta, extrai apenas o ID
+      const urlMatch = folderId.match(/folders\/([a-zA-Z0-9_-]+)/);
+      if (urlMatch) {
+        folderId = urlMatch[1];
+      }
+
+      const auth = getDriveAuth(credentialsJson);
+      if (!auth) {
+        return res.status(400).json({
+          error: 'Credenciais da Service Account do Google Drive não configuradas.',
+          instruction: 'Compartilhe a pasta "CLIENTES - SISTEMA" com o e-mail da sua Service Account e configure o arquivo credentials.json ou a variável de ambiente GOOGLE_DRIVE_CREDENTIALS.'
+        });
+      }
+
+      const drive = google.drive({ version: 'v3', auth });
+
+      // 1. Listar todas as subpastas dentro da pasta raiz
+      const q = `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+      let pageToken: string | undefined = undefined;
+      const allFolders: Array<{ id: string; name: string; webViewLink?: string }> = [];
+
+      do {
+        const response: any = await drive.files.list({
+          q,
+          fields: 'nextPageToken, files(id, name, webViewLink)',
+          pageSize: 1000,
+          pageToken,
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true
+        });
+
+        if (response.data.files && Array.isArray(response.data.files)) {
+          for (const f of response.data.files) {
+            if (f.id && f.name) {
+              allFolders.push({
+                id: f.id,
+                name: f.name,
+                webViewLink: f.webViewLink || `https://drive.google.com/drive/folders/${f.id}`
+              });
+            }
+          }
+        }
+        pageToken = response.data.nextPageToken || undefined;
+      } while (pageToken);
+
+      if (allFolders.length === 0) {
+        return res.json({
+          success: true,
+          message: 'Nenhuma subpasta encontrada dentro da pasta raiz informada.',
+          totalFoldersFound: 0,
+          matchedCount: 0,
+          unmatchedCount: 0,
+          skippedCount: 0,
+          updatedCompanies: [],
+          unmatchedFolders: [],
+          skippedFolders: []
+        });
+      }
+
+      // 2. Carregar lista de empresas (prioriza lista enviada pelo cliente autenticado)
+      let companyList: Array<{ id: string; codigo: string; nome: string; ref?: any }> = [];
+
+      if (Array.isArray(companies) && companies.length > 0) {
+        companyList = companies.map(c => ({
+          id: c.id,
+          codigo: c.codigo !== undefined && c.codigo !== null ? String(c.codigo).trim() : '',
+          nome: c.nome || ''
+        }));
+      } else {
+        try {
+          const db = getFirestore(firestoreDatabaseId);
+          const empresasSnap = await db.collection('empresas').get();
+          companyList = empresasSnap.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              codigo: data.codigo !== undefined && data.codigo !== null ? String(data.codigo).trim() : '',
+              nome: data.nome || '',
+              ref: doc.ref
+            };
+          });
+        } catch (dbErr: any) {
+          console.warn("Firestore Admin não acessível no servidor (usando fallback resiliente):", dbErr?.message || dbErr);
+        }
+      }
+
+      // Padrão de nome da pasta: [CODIGO] - Nome da Empresa (Ex: 186 - Centro Automotivo Omega)
+      // Regex que suporta "186 - Nome", "[186] - Nome", "186- Nome", "186 – Nome"
+      const folderCodeRegex = /^\[?(\d+)\]?\s*[-_–]/;
+
+      let matchedCount = 0;
+      const updatedCompanies: Array<{ id: string; nome: string; codigo: string; linkDrive: string }> = [];
+      const unmatchedFolders: Array<{ name: string; codigo: string; link: string }> = [];
+      const skippedFolders: Array<{ name: string; reason: string }> = [];
+
+      for (const folder of allFolders) {
+        const match = folder.name.trim().match(folderCodeRegex);
+        if (!match) {
+          skippedFolders.push({
+            name: folder.name,
+            reason: 'Nome não segue o padrão [CÓDIGO] - Nome da Empresa'
+          });
+          continue;
+        }
+
+        const rawCode = match[1];
+        const codeNum = parseInt(rawCode, 10);
+        const webViewLink = folder.webViewLink || `https://drive.google.com/drive/folders/${folder.id}`;
+
+        // Localizar empresa correspondente
+        const matchedEmp = companyList.find(c => {
+          const empCodStr = c.codigo;
+          const empCodNum = empCodStr ? parseInt(empCodStr, 10) : NaN;
+          return (empCodStr && empCodStr === rawCode) || (!isNaN(empCodNum) && !isNaN(codeNum) && empCodNum === codeNum);
+        });
+
+        if (matchedEmp) {
+          matchedCount++;
+          updatedCompanies.push({
+            id: matchedEmp.id,
+            nome: matchedEmp.nome || 'Empresa',
+            codigo: rawCode,
+            linkDrive: webViewLink
+          });
+
+          // Tentar atualizar no Firestore Admin no servidor se houver ref disponível
+          if (matchedEmp.ref) {
+            try {
+              await matchedEmp.ref.update({
+                linkDrive: webViewLink,
+                updatedAt: Date.now()
+              });
+            } catch (updErr) {
+              console.warn(`Atualização Firestore Admin ignorada para ${matchedEmp.id} (o cliente aplicará via Firebase SDK):`, updErr);
+            }
+          }
+        } else {
+          unmatchedFolders.push({
+            name: folder.name,
+            codigo: rawCode,
+            link: webViewLink
+          });
+        }
+      }
+
+
+      res.json({
+        success: true,
+        message: `Sincronização concluída com sucesso! ${matchedCount} empresa(s) vinculada(s).`,
+        totalFoldersFound: allFolders.length,
+        matchedCount,
+        unmatchedCount: unmatchedFolders.length,
+        skippedCount: skippedFolders.length,
+        updatedCompanies,
+        unmatchedFolders,
+        skippedFolders
+      });
+    } catch (error: any) {
+      console.error('Erro na rota /api/sync-drive:', error);
+      res.status(500).json({ error: error.message || 'Erro ao sincronizar pastas do Google Drive.' });
+    }
+  });
+
+  // Rota para criação de estrutura de pastas no Google Drive para uma empresa
+  app.post('/api/create-drive-folder', requireApiKey, async (req, res) => {
+    try {
+      const parseResult = CreateDriveFolderSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: parseResult.error.issues[0].message });
+      }
+
+      const { empresaId, codigo, nome } = parseResult.data;
+      const rootFolderId = (process.env.GOOGLE_DRIVE_FOLDER_ID || '1iPDF_4ZRShIUPZU0xif6Ql10ETS-WUCG').trim();
+
+      const auth = getDriveAuth();
+      if (!auth) {
+        return res.status(400).json({
+          error: 'Credenciais da Service Account do Google Drive não configuradas.',
+          instruction: 'Configure a variável GOOGLE_DRIVE_CREDENTIALS ou arquivo credentials.json.'
+        });
+      }
+
+      const drive = google.drive({ version: 'v3', auth });
+
+      // Nome da pasta mãe: [codigo] - [nome]
+      const cleanCod = codigo !== undefined && codigo !== null && String(codigo).trim() !== '' ? String(codigo).trim() : '';
+      const motherFolderName = cleanCod ? `${cleanCod} - ${nome.trim()}` : nome.trim();
+
+      // 1. Criar pasta mãe na raiz
+      const motherRes = await drive.files.create({
+        requestBody: {
+          name: motherFolderName,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [rootFolderId]
+        },
+        fields: 'id, name, webViewLink',
+        supportsAllDrives: true
+      });
+
+      const motherFolderId = motherRes.data.id;
+      if (!motherFolderId) {
+        throw new Error('Falha ao obter ID da pasta criada no Google Drive.');
+      }
+
+      const webViewLink = motherRes.data.webViewLink || `https://drive.google.com/drive/folders/${motherFolderId}`;
+
+      // 2. Criar subpasta DP & RH (filha da pasta mãe)
+      await drive.files.create({
+        requestBody: {
+          name: 'DP & RH',
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [motherFolderId]
+        },
+        fields: 'id, name',
+        supportsAllDrives: true
+      });
+
+      // 3. Criar subpasta LEGALIZAÇÃO (filha da pasta mãe)
+      const legRes = await drive.files.create({
+        requestBody: {
+          name: 'LEGALIZAÇÃO',
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [motherFolderId]
+        },
+        fields: 'id, name',
+        supportsAllDrives: true
+      });
+      const legalizacaoFolderId = legRes.data.id;
+
+      // 4. Criar subpasta ALVARÁS (filha de LEGALIZAÇÃO)
+      if (legalizacaoFolderId) {
+        await drive.files.create({
+          requestBody: {
+            name: 'ALVARÁS',
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [legalizacaoFolderId]
+          },
+          fields: 'id, name',
+          supportsAllDrives: true
+        });
+      }
+
+      // 5. Atualizar no Firestore Admin se possível
+      try {
+        const db = getFirestore(firestoreDatabaseId);
+        await db.collection('empresas').doc(empresaId).update({
+          linkDrive: webViewLink,
+          updatedAt: Date.now()
+        });
+      } catch (dbErr: any) {
+        console.warn(`Atualização Firestore Admin ignorada para empresa ${empresaId} (o cliente aplicará via Firebase SDK):`, dbErr?.message);
+      }
+
+      return res.json({
+        success: true,
+        message: 'Estrutura de pastas criada com sucesso no Google Drive!',
+        folderId: motherFolderId,
+        folderName: motherFolderName,
+        linkDrive: webViewLink
+      });
+    } catch (error: any) {
+      console.error('Erro na rota /api/create-drive-folder:', error);
+      return res.status(500).json({ error: error.message || 'Erro ao criar pastas no Google Drive.' });
+    }
+  });
+
+  // Rota de teste: Marcar todas as empresas com o módulo LEGALIZAÇÃO
+  app.post('/api/empresas/marcar-todas-legalizacao', requireApiKey, async (req, res) => {
+    try {
+      let updatedCount = 0;
+      let totalEmpresas = 0;
+
+      try {
+        const db = getFirestore(firestoreDatabaseId);
+        const empresasSnap = await db.collection('empresas').get();
+        totalEmpresas = empresasSnap.size;
+
+        for (const doc of empresasSnap.docs) {
+          const data = doc.data();
+          const currentMods: string[] = Array.isArray(data.modulosResponsavel) ? data.modulosResponsavel : ['DP & RH'];
+          
+          const hasLegalizacao = currentMods.some((m: string) => 
+            (m || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim() === 'LEGALIZACAO'
+          );
+
+          if (!hasLegalizacao) {
+            const merged = [...currentMods, 'LEGALIZAÇÃO'];
+            await doc.ref.update({
+              modulosResponsavel: merged,
+              updatedAt: Date.now()
+            });
+            updatedCount++;
+          }
+        }
+      } catch (err: any) {
+        console.warn('Firestore Admin inacessível para marcar empresas no backend (o frontend cuidará via client SDK):', err?.message || err);
+      }
+
+      res.json({
+        success: true,
+        message: `${updatedCount} empresas foram marcadas com o módulo LEGALIZAÇÃO.`,
+        updatedCount,
+        totalEmpresas
+      });
+    } catch (error: any) {
+      console.error('Erro ao marcar empresas como legalização:', error);
+      res.status(500).json({ error: 'Erro ao processar solicitação de legalização.' });
+    }
+  });
+
+
+
   app.post('/api/webhook/sheets', async (req, res) => {
     try {
       const authHeader = req.headers.authorization;
@@ -385,6 +813,10 @@ DADOS DISPONÍVEIS DO SISTEMA:
 EMPRESAS: ${JSON.stringify(context.empresas)}
 SINDICATOS: ${JSON.stringify(context.sindicatos)}
 TAREFAS KANBAN ATUAIS: ${JSON.stringify(context.kanbanTasks || [])}
+
+INFORMAÇÕES SOBRE AS EMPRESAS CADASTRADAS:
+As empresas agora possuem código, regime tributário (Simples, Presumido, Real), data de entrada, data de saída, e status (Ativa/Inativa/Suspensa).
+Ao referenciar entidades para criar tarefas, eventos ou checklists, você deve sempre preferir e priorizar o uso do Código ou CNPJ caso o usuário os forneça.
 
 Se o usuário enviar um arquivo PDF, extraia as informações necessárias para criar tarefas, documentos ou termos baseados no conteúdo.
 
@@ -547,7 +979,7 @@ ${baseInstruction}`;
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { history, context, cctText, kanbanTasks, calendarEvents, pdfBase64, pdfName } = parseResult.data;
+      const { history, context, cctText, kanbanTasks, calendarEvents, alvaras, pdfBase64, pdfName } = parseResult.data;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
@@ -566,6 +998,19 @@ EMPRESAS CADASTRADAS: ${JSON.stringify(context?.empresas || [])}
 SINDICATOS CADASTRADOS: ${JSON.stringify(context?.sindicatos || [])}
 CARTÕES DO KANBAN (TAREFAS ABERTAS): ${JSON.stringify(kanbanTasks || context?.kanbanTasks || [])}
 EVENTOS DO CALENDÁRIO: ${JSON.stringify(calendarEvents || [])}
+ALVARÁS CADASTRADOS (ANO E SITUAÇÃO): ${JSON.stringify(alvaras || context?.alvaras || [])}
+
+═══════════════════════════════════════════════
+CONTROLE DE ALVARÁS E LEGALIZAÇÃO:
+═══════════════════════════════════════════════
+Você tem acesso à lista de alvarás do ano X, cruzada com as empresas. Identifique empresas com alvarás vencidos, pendentes, paralisados ou não pagos.
+As empresas com alvarás sob sua responsabilidade são aquelas que possuem "LEGALIZAÇÃO" no array modulosResponsavel.
+As situações possíveis para cada alvará são: "PENDENTE", "EM ANDAMENTO", "NÃO PAGO", "PARALISADO", "EMITIDO" ou "CONCLUÍDO".
+Ao responder sobre alvarás, você pode listar as empresas pendentes, alertar sobre as não pagas e propor a intenção UPDATE_ALVARA para alterar o status ou salvar observações.
+
+INFORMAÇÕES SOBRE AS EMPRESAS CADASTRADAS:
+As empresas agora possuem código, regime tributário (Simples, Presumido, Real), data de entrada, data de saída, e status (Ativa/Inativa/Suspensa).
+Ao referenciar entidades para criar tarefas, eventos ou checklists, você deve sempre preferir e priorizar o uso do Código ou CNPJ caso o usuário os forneça.
 
 ═══════════════════════════════════════════════
 CATÁLOGO DE TERMOS DISPONÍVEIS NO SISTEMA:
@@ -733,6 +1178,28 @@ INTENT: GENERATE_TRCT
     "descontarINSS": true,
     "rescisaoAntecipada": false
   }
+
+INTENT: UPDATE_ALVARA
+  Quando usar: O usuário pede para alterar, atualizar ou registrar a situação ou observação de um alvará de uma empresa (ex: "marque o alvará de 2026 da empresa X como EMITIDO", "coloque em andamento o alvará de 2026 da empresa Y", "adicione observação no alvará da empresa Z").
+  Payload:
+  {
+    "empresaId": "ID da empresa (busque no contexto de EMPRESAS)",
+    "ano": 2026, // Ano do alvará (numérico, default ano atual)
+    "situacao": "EMITIDO", // Escolha um: "PENDENTE", "EM ANDAMENTO", "NÃO PAGO", "PARALISADO", "EMITIDO", "CONCLUÍDO"
+    "observacoes": "Texto de observação (opcional)"
+  }
+
+INTENT: CLEAN_DUPLICATE_COMPANIES
+  Quando usar: O usuário pede para limpar, remover ou dedobrar empresas duplicadas, varrer duplicidades ou unificar cadastros mantendo DP & RH no banco de dados.
+  Payload: {}
+
+INTENT: SYNC_DRIVE_FOLDERS
+  Quando usar: O usuário pede para sincronizar as pastas do Google Drive com as empresas cadastradas no sistema (ex: "sincronize as pastas do drive", "vincule os links do drive às empresas", "atualize as pastas dos clientes no drive").
+  Payload:
+  {
+    "folderId": "ID da pasta raiz do Drive (opcional se já configurada)"
+  }
+
 
 ═══════════════════════════════════════════════
 CATÁLOGO DE MÓDULOS E CAMPOS DO SISTEMA
