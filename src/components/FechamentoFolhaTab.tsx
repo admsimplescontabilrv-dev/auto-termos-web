@@ -10,11 +10,25 @@ interface FechamentoFolhaTabProps {
   empresas: Empresa[];
 }
 
+/**
+ * Regra de Competência:
+ * O ciclo vai do dia 16 do mês de competência até o dia 15 do mês seguinte.
+ * Exemplos:
+ * - 16 de Setembro a 15 de Outubro => Competência de Setembro (09)
+ * - 16 de Outubro a 15 de Novembro => Competência de Outubro (10)
+ * - 16 de Novembro a 15 de Dezembro => Competência de Novembro (11)
+ * 
+ * Se o dia atual for >= 16: competência é o mês atual (ex: 23/09 pertence à competência 09 - Setembro).
+ * Se o dia atual for <= 15: competência é o mês anterior (ex: 10/10 pertence à competência 09 - Setembro, pois o ciclo 16/09 a 15/10 ainda está ativo).
+ */
+export function getCompetenciaAtual(date: Date = new Date()): Date {
+  const dia = date.getDate();
+  const target = dia >= 16 ? date : subMonths(date, 1);
+  return new Date(target.getFullYear(), target.getMonth(), 1);
+}
+
 export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps) {
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    const today = new Date();
-    return today.getDate() > 22 ? addMonths(today, 1) : today;
-  });
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => getCompetenciaAtual(new Date()));
   const [searchTerm, setSearchTerm] = useState('');
   const [fechamentos, setFechamentos] = useState<Record<string, any>>({});
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -139,8 +153,22 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
               completedAt: Date.now(),
               createdAt: Date.now()
             });
+            if (!event.isRecurrent) {
+              await updateDoc(doc(db, 'calendarEvents', event.id), {
+                status: 'CONCLUIDO',
+                completedAt: Date.now(),
+                updatedAt: Date.now()
+              }).catch(() => {});
+            }
           } else {
             await deleteDoc(doc(db, 'recurrentCompletions', compDocId)).catch(() => {});
+            if (!event.isRecurrent) {
+              await updateDoc(doc(db, 'calendarEvents', event.id), {
+                status: 'ATIVO',
+                completedAt: null,
+                updatedAt: Date.now()
+              }).catch(() => {});
+            }
           }
         }
       }
@@ -399,7 +427,7 @@ const fData = isEditMode ? tpl : {
     <div className="bg-slate-900 border border-slate-700/50 rounded-2xl shadow-xl flex flex-col min-h-[500px]">
       <div className="p-4 border-b border-slate-800 bg-slate-950/50 flex flex-col md:flex-row items-center justify-between gap-4 rounded-t-2xl">
         <div className="flex items-center space-x-3">
-          <FileSpreadsheet className="w-6 h-6 text-emerald-400" />
+          <FileSpreadsheet className="w-6 h-6 text-indigo-400" />
           <h2 className="text-lg font-bold text-slate-200">Fechamento de Folha</h2>
           <span className="bg-slate-800 text-slate-400 text-xs px-2 py-1 rounded-md font-mono font-bold">
             {filteredEmpresas.length} empresas
@@ -465,21 +493,26 @@ const fData = isEditMode ? tpl : {
                 placeholder="Buscar empresa..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
             
             {!isEditMode && (
-              <div className="flex items-center justify-between bg-slate-800 border border-slate-700/50 rounded-lg p-1 w-full sm:w-48 shrink-0">
-                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 text-slate-400 hover:text-slate-200 transition-colors rounded">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-bold text-slate-300 capitalize">
-                  {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
-                </span>
-                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 text-slate-400 hover:text-slate-200 transition-colors rounded">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+              <div className="flex flex-col bg-slate-800 border border-slate-700/50 rounded-lg px-2 py-1 w-full sm:w-56 shrink-0">
+                <div className="flex items-center justify-between">
+                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 text-slate-400 hover:text-slate-200 transition-colors rounded" title="Competência anterior">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm font-bold text-slate-200 capitalize">
+                    {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+                  </span>
+                  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1 text-slate-400 hover:text-slate-200 transition-colors rounded" title="Próxima competência">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="text-[10px] text-center text-slate-400 font-medium">
+                  Ciclo: 16/{format(currentMonth, 'MM')} a 15/{format(addMonths(currentMonth, 1), 'MM')}
+                </div>
               </div>
             )}
           </div>

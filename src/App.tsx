@@ -55,6 +55,7 @@ import CalendarioApp from "./CalendarioApp";
 import KanbanApp from "./pages/KanbanApp";
 import { getTrimmedPdfBase64 } from "./pdfUtils";
 import { ErrorLogViewer } from "./ErrorLogViewer";
+import { isEmpresaAtivaNosModulos } from "./utils/empresaUtils";
 
 import BancoDeHorasApp from "./pages/banco-horas/BancoDeHorasApp";
 import AlvaraApp from "./AlvaraApp";
@@ -217,7 +218,7 @@ export default function App() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "empresas"), (snap) => {
       const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setEmpresas(all.filter((e: any) => !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes("DP & RH")));
+      setEmpresas(all.filter((e: any) => isEmpresaAtivaNosModulos(e) && (!e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes("DP & RH"))));
 
       // Auto-ajuste no banco de dados: empresas com código repetido têm o código alterado para '0'
       const codeMap = new Map<string, any[]>();
@@ -1801,7 +1802,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                     <button onClick={() => handleNavigate("kanban")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "kanban" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><KanbanSquare className="w-4 h-4 shrink-0" /> <span>Kanban</span></button>
                     <button onClick={() => handleNavigate("checklists")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "checklists" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><CheckSquare className="w-4 h-4 shrink-0" /> <span>Programação e Processos</span></button>
                     <button onClick={() => handleNavigate("calendario")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "calendario" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><CalendarDays className="w-4 h-4 shrink-0" /> <span>Calendário</span></button>
-                    <button onClick={() => handleNavigate("fechamento")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "fechamento" ? "bg-emerald-600/20 text-emerald-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileSpreadsheet className="w-4 h-4 shrink-0 text-emerald-400" /> <span>Fechamento de Folha</span></button>
+                    <button onClick={() => handleNavigate("fechamento")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "fechamento" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileSpreadsheet className="w-4 h-4 shrink-0" /> <span>Fechamento de Folha</span></button>
                     <button onClick={() => handleNavigate("autotermos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "autotermos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileText className="w-4 h-4 shrink-0" /> <span>Termos</span></button>
                     <button onClick={() => handleNavigate("recibos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "recibos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><Receipt className="w-4 h-4 shrink-0" /> <span>Recibos</span></button>
                     <button onClick={() => handleNavigate("boletos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "boletos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileStack className="w-4 h-4 shrink-0" /> <span>Boletos</span></button>

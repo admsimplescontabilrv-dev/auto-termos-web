@@ -8,17 +8,15 @@ import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import UnifiedAddModal from './components/UnifiedAddModal';
-import RelatoriosChecklistTab from './components/RelatoriosChecklistTab';
-import FechamentoFolhaTab from './components/FechamentoFolhaTab';
 import { isCompanyInExcludedDprhList } from './data/excludedDprhCompanies';
+import { isEmpresaAtivaNosModulos } from './utils/empresaUtils';
+import { checkIsEventCompleted, toggleUnifiedEventCompletion } from './utils/eventSync';
 
 interface ChecklistsAppProps {
   onEditEntity?: (id: string, type: 'EMPRESA' | 'SINDICATO') => void;
 }
 
 export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
-  const [mainTab, setMainTab] = useState<'gerenciamento' | 'relatorios' | 'fechamento'>('gerenciamento');
-  
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [sindicatos, setSindicatos] = useState<Sindicato[]>([]);
   
@@ -273,6 +271,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     const unsubEmpresas = onSnapshot(collection(db, 'empresas'), (snapshot) => {
       const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Empresa));
       setEmpresas(all.filter(e => {
+        if (!isEmpresaAtivaNosModulos(e)) return false;
         if (isCompanyInExcludedDprhList(e)) return false;
         return !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes('DP & RH');
       }));
@@ -356,9 +355,10 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
     
     const unsub = onSnapshot(qCompletions, (snapshot) => {
       const completions: { [eventId: string]: number } = {};
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
+      snapshot.docs.forEach(d => {
+        const data = d.data();
         completions[data.eventId] = data.completedAt;
+        completions[`${data.eventId}_${data.entityId}_${data.monthKey}`] = data.completedAt;
       });
       setRecurrentCompletions(completions);
     });
@@ -369,87 +369,15 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   const toggleRecurrentCompletion = async (eventId: string, isCompleted: boolean) => {
     if (!selectedEntity) return;
     const monthKey = format(currentRecurrentMonth, 'yyyy-MM');
-    const docId = `${eventId}_${selectedEntity.id}_${monthKey}`;
-    
-    if (isCompleted) {
-      await deleteDoc(doc(db, 'recurrentCompletions', docId));
-    } else {
-      await setDoc(doc(db, 'recurrentCompletions', docId), {
-        eventId,
-        monthKey,
-        entityId: selectedEntity.id,
-        completedAt: Date.now(),
-        createdAt: Date.now()
-      });
-    }
-
     const event = calendarEvents.find(e => e.id === eventId);
-    if (event) {
-      let fechamentoField = '';
-      const upperTitle = event.title.toUpperCase();
-      if (upperTitle.includes('FGTS')) fechamentoField = 'fgts';
-      else if (upperTitle.includes('DCTF')) fechamentoField = 'dctf';
-      else if (upperTitle.includes('SINDICATO')) fechamentoField = 'guiaSindicato';
-      else if (upperTitle.includes('RECIBO')) fechamentoField = 'recibo';
-      else if (upperTitle.includes('ADIANTAMENTO')) fechamentoField = 'adiantamento';
-      else if (upperTitle.includes('EMPRÉSTIMO') || upperTitle.includes('EMPRESTIMO') || upperTitle.includes('CONSIGNADO')) fechamentoField = 'consignado';
-      else if (upperTitle.includes('LANÇAMENTO') || upperTitle.includes('LANCAMENTO') || upperTitle.includes('PONTO') || upperTitle.includes('COMISSÃO') || upperTitle.includes('COMISSAO')) fechamentoField = 'lancamento';
-      else if (upperTitle.includes('VERIFICAR ENVIO') || upperTitle.includes('VERIFICAR')) fechamentoField = 'verificarEnvio';
-
-      if (fechamentoField) {
-        let okValue = 'OK';
-        let pendingValue = 'PENDENTE';
-        if (fechamentoField === 'consignado') pendingValue = 'A CONSULTAR';
-        else if (fechamentoField === 'adiantamento') pendingValue = 'A CONSULTAR';
-        else if (fechamentoField === 'lancamento') pendingValue = 'PENDENTE (PONTO/COMISSÃO)';
-
-        const fechamentoDocId = `${monthKey}_${selectedEntity.id}`;
-        const updatePayload: Record<string, any> = {
-          [fechamentoField]: isCompleted ? pendingValue : okValue,
-          monthKey,
-          empresaId: selectedEntity.id,
-          updatedAt: Date.now()
-        };
-        if (fechamentoField === 'guiaSindicato') {
-          updatePayload.guiaSindicatoLaboral = isCompleted ? pendingValue : okValue;
-        }
-
-        await setDoc(doc(db, 'fechamentoFolha', fechamentoDocId), updatePayload, { merge: true });
-
-        // Sync to Google Sheets
-        try {
-          const token = await auth.currentUser?.getIdToken();
-          if (token) {
-            const columnMap: Record<string, string> = {
-              fgts: "FGTS",
-              dctf: "DCTF",
-              guiaSindicato: "Guia Sindicato",
-              recibo: "Recibo",
-              adiantamento: "Adiantamento",
-              consignado: "Empréstimo",
-              lancamento: "Inf. Lançamento",
-              verificarEnvio: "Verificar Envio"
-            };
-            const coluna = columnMap[fechamentoField] || fechamentoField;
-
-            fetch('/api/sheets/update', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                empresaId: selectedEntity.id,
-                coluna,
-                novoStatus: isCompleted ? pendingValue : okValue
-              })
-            }).catch(err => console.error("Error syncing to sheets", err));
-          }
-        } catch (err) {
-          console.error("Auth error", err);
-        }
-      }
-    }
+    
+    await toggleUnifiedEventCompletion({
+      eventId,
+      empresaId: selectedEntity.id,
+      monthKey,
+      isCompleted,
+      event,
+    });
   };
 
 
@@ -563,45 +491,9 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
           <CheckSquare className="w-8 h-8 text-indigo-400" />
           <h1 className="text-3xl font-medium text-indigo-400 tracking-wider uppercase">Programação e Processos</h1>
         </div>
-    
-        
-        <div className="flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-          <button
-            onClick={() => setMainTab('gerenciamento')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              mainTab === 'gerenciamento' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Gerenciamento
-          </button>
-          <button
-            onClick={() => setMainTab('relatorios')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              mainTab === 'relatorios' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Relatórios
-          </button>
-          <button
-            onClick={() => setMainTab('fechamento')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              mainTab === 'fechamento' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Fechamento de Folha
-          </button>
-        </div>
-    
       </div>
-    
 
-      {mainTab === 'fechamento' ? (
-        <FechamentoFolhaTab empresas={empresas} />
-      ) : mainTab === 'relatorios' ? (
-        <RelatoriosChecklistTab empresas={empresas} />
-      ) : (
-        <>
-          <div className="bg-slate-900 border border-slate-700/50 p-4 rounded-xl mb-6 flex flex-col md:flex-row items-center gap-4 shadow-lg relative" ref={dropdownRef}>
+      <div className="bg-slate-900 border border-slate-700/50 p-4 rounded-xl mb-6 flex flex-col md:flex-row items-center gap-4 shadow-lg relative" ref={dropdownRef}>
         <div className="flex-1 w-full relative">
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
             Buscar Empresa ou Sindicato
@@ -741,8 +633,11 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
                   <p className="text-slate-500 text-sm italic text-center py-4">Nenhum evento programado.</p>
                 )}
                 {currentMonthEvents.map((event, i) => {
-                  const isCompleted = !!recurrentCompletions[event.id];
-                  const completedAt = recurrentCompletions[event.id];
+                  const monthKey = format(currentRecurrentMonth, 'yyyy-MM');
+                  const entityId = selectedEntity?.id || 'GERAL';
+                  const completion = checkIsEventCompleted(event, entityId, monthKey, recurrentCompletions);
+                  const isCompleted = completion.completed;
+                  const completedAt = completion.completedAt;
                   const isFromPadrao = selectedEntity?.type === 'EMPRESA' && event.empresaId === padraoId;
                   const isFromSindicato = selectedEntity?.type === 'EMPRESA' && event.empresaId !== selectedEntity.id && event.empresaId !== padraoId;
 
@@ -980,8 +875,6 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
 
         </div>
     
-      )}
-      </>
       )}
 
       {/* New Category Modal */}

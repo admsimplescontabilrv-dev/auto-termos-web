@@ -5,6 +5,7 @@ import { collection, getDocs, addDoc, getDoc, doc, updateDoc, query, where, orde
 import { db } from './lib/firebase';
 import ReactMarkdown from 'react-markdown';
 import { useFirestore } from './hooks/useFirestore';
+import { isEmpresaAtivaNosModulos } from './utils/empresaUtils';
 
 type Message = {
   role: 'user' | 'model';
@@ -37,7 +38,7 @@ export default function ChatApp() {
       try {
         const empresasSnap = await getDocs(collection(db, 'empresas'));
         const allEmpresas = empresasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const empresas = allEmpresas.filter((e: any) => !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes('DP & RH'));
+        const empresas = allEmpresas.filter((e: any) => isEmpresaAtivaNosModulos(e) && (!e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes('DP & RH')));
         
         const sindicatosSnap = await getDocs(collection(db, 'sindicatos'));
         const sindicatos = sindicatosSnap.docs.map(d => ({ id: d.id, ...d.data() }));

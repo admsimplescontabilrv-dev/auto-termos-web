@@ -35,7 +35,7 @@ export interface Empresa {
     contatos?: string;
   };
   regime?: string;
-  situacao?: string;
+  situacao?: 'ATIVA' | 'INATIVA' | 'SUSPENSA' | 'BAIXADA' | 'TRANSFERIDA' | string;
   dataEntrada?: string;
   dataSaida?: string;
   linkDrive?: string;
@@ -103,6 +103,8 @@ export interface CalendarEvent {
   specificDate?: string; // YYYY-MM-DD
   recurrentRule?: ScheduleFrequency; // New field for specific recurrence logic
   status?: 'ATIVO' | 'CONCLUIDO';
+  completedAt?: number | null;
+  updatedAt?: number;
   createdAt: number;
   order?: number;
 }

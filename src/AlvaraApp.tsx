@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFirestore } from './hooks/useFirestore';
 import { Empresa, Alvara, AlvaraSituacao } from './types';
+import { isEmpresaAtivaNosModulos } from './utils/empresaUtils';
 import { db } from './lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import {
@@ -36,9 +37,10 @@ export default function AlvaraApp() {
   const { data: alvaras, loading: loadingAlvaras } = useFirestore<Alvara>('alvaras');
   const { data: empresas, loading: loadingEmpresas } = useFirestore<Empresa>('empresas');
 
-  // 2. Filter companies: show ONLY those that contain "LEGALIZAÇÃO" in modulosResponsavel
+  // 2. Filter companies: show ONLY those that contain "LEGALIZAÇÃO" in modulosResponsavel and are not BAIXADA/TRANSFERIDA
   const legalizacaoEmpresas = useMemo(() => {
     return empresas.filter((emp) => {
+      if (!isEmpresaAtivaNosModulos(emp)) return false;
       if (!emp.modulosResponsavel || !Array.isArray(emp.modulosResponsavel)) return false;
       return emp.modulosResponsavel.some((mod) => {
         const normalized = (mod || '')

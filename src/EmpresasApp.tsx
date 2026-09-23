@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth } from './lib/firebase';
 import { collection, addDoc, updateDoc, doc, deleteDoc, onSnapshot, getDoc, getDocs, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { Empresa, Sindicato } from './types';
@@ -6,9 +6,10 @@ import {
   Plus, Trash2, Building, Building2, Pencil, X, AlertTriangle, Search, FileText, 
   ExternalLink, BookOpen, CheckCircle2, Upload, RefreshCw, FolderSync, Folder, 
   FolderCheck, Check, Loader2, Sparkles, Copy, ChevronDown, ChevronUp, Info, ShieldCheck,
-  Cloud, UserMinus
+  Cloud, Filter, ArrowUpDown, RotateCcw, MapPin, SlidersHorizontal
 } from 'lucide-react';
 import { isCompanyInExcludedDprhList, EXCLUDED_DPRH_COMPANIES } from './data/excludedDprhCompanies';
+import { parseDateToTimestamp } from './utils/empresaUtils';
 
 interface EmpresasAppProps {
   entityToEdit?: { id: string, type: 'EMPRESA' | 'SINDICATO' } | null;
@@ -29,6 +30,10 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
   const [sindicatos, setSindicatos] = useState<Sindicato[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModuloFilter, setSelectedModuloFilter] = useState<string>('TODOS');
+  const [selectedRegimeFilter, setSelectedRegimeFilter] = useState<string>('TODOS');
+  const [selectedSituacaoFilter, setSelectedSituacaoFilter] = useState<string>('TODAS');
+  const [selectedCidadeFilter, setSelectedCidadeFilter] = useState<string>('TODAS');
+  const [sortBy, setSortBy] = useState<string>('DEFAULT');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSindicato, setEditingSindicato] = useState<Partial<Sindicato> | null>(null);
@@ -51,7 +56,6 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
   const [isCreatingFolderModal, setIsCreatingFolderModal] = useState(false);
 
   // DPRH Exclusions State
-  const [isExcludingDprh, setIsExcludingDprh] = useState(false);
   const [hasExcludedDprhCleaned, setHasExcludedDprhCleaned] = useState(false);
 
   // Toast State
@@ -221,46 +225,6 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
       }
     }
   }, [empresas, hasExcludedDprhCleaned]);
-
-  const handleExcluirEmpresasDprhBanco = async () => {
-    setIsExcludingDprh(true);
-    try {
-      const batch = writeBatch(db);
-      let count = 0;
-
-      for (const emp of empresas) {
-        if (isCompanyInExcludedDprhList(emp)) {
-          const currentMods: string[] = Array.isArray(emp.modulosResponsavel) && emp.modulosResponsavel.length > 0 
-            ? emp.modulosResponsavel 
-            : ['DP & RH'];
-          
-          if (currentMods.includes('DP & RH')) {
-            const filtered = currentMods.filter(m => m !== 'DP & RH' && m !== 'DP' && m !== 'RH');
-            const newMods = filtered.length > 0 ? filtered : ['OUTROS'];
-            const docRef = doc(db, 'empresas', emp.id);
-            batch.update(docRef, {
-              modulosResponsavel: newMods,
-              updatedAt: Date.now()
-            });
-            count++;
-          }
-        }
-      }
-
-      if (count > 0) {
-        await batch.commit();
-        setToastMessage(`Sucesso! ${count} empresa(s) tiveram o DP & RH removido no Firestore.`);
-      } else {
-        setToastMessage('Todas as empresas da lista já estão excluídas do módulo DP & RH.');
-      }
-      setTimeout(() => setToastMessage(null), 5000);
-    } catch (err: any) {
-      console.error('Erro ao excluir empresas do DP & RH:', err);
-      alert('Erro ao atualizar banco: ' + (err.message || err));
-    } finally {
-      setIsExcludingDprh(false);
-    }
-  };
 
   const handleCreateDriveFolder = async (emp: Empresa) => {
     if (creatingFolderEmpresaId) return;
@@ -649,6 +613,196 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
     });
   };
 
+  // Lista dinâmica de cidades únicas existentes
+  const uniqueCidades = useMemo(() => {
+    const set = new Set<string>();
+    empresas.forEach(e => {
+      const c = (e.cidade || '').trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [empresas]);
+
+  // Lista dinâmica de regimes únicos existentes
+  const uniqueRegimes = useMemo(() => {
+    const base = ['SIMPLES', 'PRESUMIDO', 'REAL', 'REAL TRIMESTRAL', 'DOMESTICA', 'MEI', 'OUTRO'];
+    const set = new Set<string>(base);
+    empresas.forEach(e => {
+      const r = (e.regime || '').trim().toUpperCase();
+      if (r) set.add(r);
+    });
+    return Array.from(set);
+  }, [empresas]);
+
+  // Contadores por situação para atalhos rápidos
+  const situacaoCounts = useMemo(() => {
+    const counts = {
+      TODAS: empresas.length,
+      ATIVA: 0,
+      INATIVA: 0,
+      SUSPENSA: 0,
+      BAIXADA: 0,
+      TRANSFERIDA: 0,
+    };
+    empresas.forEach(e => {
+      const sit = (e.situacao || 'ATIVA').toUpperCase().trim();
+      if (sit === 'ATIVA') counts.ATIVA++;
+      else if (sit === 'INATIVA') counts.INATIVA++;
+      else if (sit === 'SUSPENSA') counts.SUSPENSA++;
+      else if (sit === 'BAIXADA') counts.BAIXADA++;
+      else if (sit === 'TRANSFERIDA') counts.TRANSFERIDA++;
+      else counts.ATIVA++;
+    });
+    return counts;
+  }, [empresas]);
+
+  const hasActiveFilters = 
+    searchTerm.trim() !== '' ||
+    selectedModuloFilter !== 'TODOS' ||
+    selectedSituacaoFilter !== 'TODAS' ||
+    selectedRegimeFilter !== 'TODOS' ||
+    selectedCidadeFilter !== 'TODAS' ||
+    sortBy !== 'DEFAULT';
+
+  const resetAllFilters = () => {
+    setSearchTerm('');
+    setSelectedModuloFilter('TODOS');
+    setSelectedSituacaoFilter('TODAS');
+    setSelectedRegimeFilter('TODOS');
+    setSelectedCidadeFilter('TODAS');
+    setSortBy('DEFAULT');
+  };
+
+  // Filtragem e ordenação combinada das empresas
+  const filteredAndSortedEmpresas = useMemo(() => {
+    return empresas.filter(e => {
+      // Filtragem por módulo
+      if (selectedModuloFilter !== 'TODOS') {
+        const hasModulos = e.modulosResponsavel && e.modulosResponsavel.length > 0;
+        if (hasModulos) {
+          if (!e.modulosResponsavel.includes(selectedModuloFilter)) return false;
+        } else {
+          if (selectedModuloFilter !== 'DP & RH') return false;
+        }
+      }
+
+      // Filtragem por Situação
+      if (selectedSituacaoFilter !== 'TODAS') {
+        const sit = (e.situacao || 'ATIVA').toUpperCase().trim();
+        if (sit !== selectedSituacaoFilter) return false;
+      }
+
+      // Filtragem por Regime
+      if (selectedRegimeFilter !== 'TODOS') {
+        const reg = (e.regime || 'SIMPLES').toUpperCase().trim();
+        if (reg !== selectedRegimeFilter) return false;
+      }
+
+      // Filtragem por Cidade
+      if (selectedCidadeFilter !== 'TODAS') {
+        if (selectedCidadeFilter === '__SEM_CIDADE__') {
+          if (e.cidade && e.cidade.trim() !== '') return false;
+        } else {
+          if ((e.cidade || '').trim().toLowerCase() !== selectedCidadeFilter.toLowerCase()) return false;
+        }
+      }
+
+      // Busca textual
+      if (searchTerm.trim()) {
+        const sindicato = sindicatos.find(s => s.id === e.sindicatoId);
+        const search = searchTerm.toLowerCase().trim();
+        const matches = 
+          (e.nome && e.nome.toLowerCase().includes(search)) ||
+          (e.cnpj && e.cnpj.toLowerCase().includes(search)) ||
+          (e.codigo && String(e.codigo).toLowerCase().includes(search)) ||
+          (e.regime && e.regime.toLowerCase().includes(search)) ||
+          (e.situacao && e.situacao.toLowerCase().includes(search)) ||
+          (e.cidade && e.cidade.toLowerCase().includes(search)) ||
+          (e.dataEntrada && e.dataEntrada.includes(search)) ||
+          (e.dataSaida && e.dataSaida.includes(search)) ||
+          (sindicato && sindicato.regiaoAtuacao && sindicato.regiaoAtuacao.toLowerCase().includes(search)) ||
+          (sindicato && sindicato.nome && sindicato.nome.toLowerCase().includes(search));
+        if (!matches) return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'ENTRADA_DESC') {
+        const timeA = parseDateToTimestamp(a.dataEntrada);
+        const timeB = parseDateToTimestamp(b.dataEntrada);
+        if (!timeA && !timeB) return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+        if (!timeA) return 1;
+        if (!timeB) return -1;
+        return timeB - timeA;
+      }
+      if (sortBy === 'ENTRADA_ASC') {
+        const timeA = parseDateToTimestamp(a.dataEntrada);
+        const timeB = parseDateToTimestamp(b.dataEntrada);
+        if (!timeA && !timeB) return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+        if (!timeA) return 1;
+        if (!timeB) return -1;
+        return timeA - timeB;
+      }
+      if (sortBy === 'SAIDA_DESC') {
+        const timeA = parseDateToTimestamp(a.dataSaida);
+        const timeB = parseDateToTimestamp(b.dataSaida);
+        if (!timeA && !timeB) return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+        if (!timeA) return 1;
+        if (!timeB) return -1;
+        return timeB - timeA;
+      }
+      if (sortBy === 'SAIDA_ASC') {
+        const timeA = parseDateToTimestamp(a.dataSaida);
+        const timeB = parseDateToTimestamp(b.dataSaida);
+        if (!timeA && !timeB) return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+        if (!timeA) return 1;
+        if (!timeB) return -1;
+        return timeA - timeB;
+      }
+      if (sortBy === 'NOME_ASC') {
+        return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+      }
+      if (sortBy === 'NOME_DESC') {
+        return (b.nome || '').localeCompare(a.nome || '', 'pt-BR');
+      }
+      if (sortBy === 'CODIGO_ASC') {
+        const numA = parseInt(String(a.codigo || '0'), 10);
+        const numB = parseInt(String(b.codigo || '0'), 10);
+        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA - numB;
+        return String(a.codigo || '').localeCompare(String(b.codigo || ''));
+      }
+      if (sortBy === 'CODIGO_DESC') {
+        const numA = parseInt(String(a.codigo || '0'), 10);
+        const numB = parseInt(String(b.codigo || '0'), 10);
+        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numB - numA;
+        return String(b.codigo || '').localeCompare(String(a.codigo || ''));
+      }
+      // Padrão: Código crescente se existir > 0, senão nome
+      const codA = parseInt(String(a.codigo || '0'), 10);
+      const codB = parseInt(String(b.codigo || '0'), 10);
+      if (codA > 0 && codB > 0 && codA !== codB) return codA - codB;
+      return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+    });
+  }, [empresas, sindicatos, searchTerm, selectedModuloFilter, selectedSituacaoFilter, selectedRegimeFilter, selectedCidadeFilter, sortBy]);
+
+  const getSituacaoBadgeClass = (situacao?: string) => {
+    const sit = (situacao || 'ATIVA').toUpperCase().trim();
+    switch (sit) {
+      case 'ATIVA':
+        return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      case 'SUSPENSA':
+        return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+      case 'INATIVA':
+        return 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
+      case 'BAIXADA':
+        return 'bg-rose-500/15 text-rose-400 border border-rose-500/30';
+      case 'TRANSFERIDA':
+        return 'bg-purple-500/15 text-purple-300 border border-purple-500/30';
+      default:
+        return 'bg-slate-700/50 text-slate-300 border border-slate-600/40';
+    }
+  };
+
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto p-6 md:p-8 flex flex-col h-full animate-in fade-in zoom-in-95 duration-200">
       <h1 className="text-3xl font-medium text-indigo-400 tracking-wider mb-8 uppercase">Cadastrar</h1>
@@ -697,22 +851,6 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 <FolderSync className="w-4 h-4 text-emerald-100" />
                 <span>Sincronizar Drive</span>
               </button>
-
-              {/* Botão Sincronizar Exclusões DP & RH */}
-              <button
-                onClick={handleExcluirEmpresasDprhBanco}
-                disabled={isExcludingDprh}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 px-4 py-2.5 rounded-lg font-medium transition-all flex items-center space-x-2 cursor-pointer text-sm shadow-sm"
-                title="Excluir as 57 empresas especificadas do módulo DP & RH no banco de dados"
-              >
-                {isExcludingDprh ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />
-                ) : (
-                  <UserMinus className="w-4 h-4 text-rose-400" />
-                )}
-                <span>Exclusões DP & RH</span>
-              </button>
-
             </>
           )}
         </div>
@@ -721,37 +859,177 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <input 
             type="text" 
-            placeholder={`Buscar ${activeTab.toLowerCase()}...`}
+            placeholder={`Buscar por nome, CNPJ, código, cidade...`}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm"
+            className="w-full pl-10 pr-9 py-2.5 bg-slate-900 border border-slate-700 text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm"
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-0.5"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
       {activeTab === 'EMPRESAS' && (
-        <div className="flex flex-wrap items-center gap-2 mb-5 pb-3 border-b border-slate-800">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">Filtrar por Módulo:</span>
-          {['TODOS', 'DP & RH', 'LEGALIZAÇÃO', 'FISCAL', 'CONTÁBIL', 'SOCIETÁRIO'].map(mod => {
-            const isSelected = selectedModuloFilter === mod;
-            return (
-              <button
-                key={mod}
-                type="button"
-                onClick={() => setSelectedModuloFilter(mod)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                  isSelected 
-                    ? 'bg-indigo-600 text-white font-semibold shadow-sm' 
-                    : 'bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60'
-                }`}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 mb-6 space-y-4 shadow-sm">
+          {/* Linha 1: Filtro Rápido por Situação com Contadores */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+                Situação Cadastral:
+              </span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer font-medium"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'TODAS', label: 'Todas', count: situacaoCounts.TODAS, color: 'border-slate-700' },
+                { key: 'ATIVA', label: 'Ativas', count: situacaoCounts.ATIVA, color: 'border-emerald-500/30' },
+                { key: 'INATIVA', label: 'Inativas', count: situacaoCounts.INATIVA, color: 'border-slate-600/30' },
+                { key: 'SUSPENSA', label: 'Suspensas', count: situacaoCounts.SUSPENSA, color: 'border-amber-500/30' },
+                { key: 'BAIXADA', label: 'Baixadas', count: situacaoCounts.BAIXADA, color: 'border-rose-500/30' },
+                { key: 'TRANSFERIDA', label: 'Transferidas', count: situacaoCounts.TRANSFERIDA, color: 'border-purple-500/30' },
+              ].map(sit => {
+                const isSelected = selectedSituacaoFilter === sit.key;
+                return (
+                  <button
+                    key={sit.key}
+                    type="button"
+                    onClick={() => setSelectedSituacaoFilter(sit.key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer border ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white font-semibold border-indigo-500 shadow-sm'
+                        : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700/60'
+                    }`}
+                  >
+                    <span>{sit.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                      isSelected ? 'bg-indigo-900/60 text-indigo-200' : 'bg-slate-700/60 text-slate-400'
+                    }`}>
+                      {sit.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Linha 2: Dropdowns e Filtros Complementares (Módulo, Regime, Cidade, Ordenação) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-800">
+            {/* Filtro por Módulo */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                Módulo Responsável
+              </label>
+              <select
+                value={selectedModuloFilter}
+                onChange={e => setSelectedModuloFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700/80 text-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
               >
-                {mod}
+                <option value="TODOS">Todos os Módulos</option>
+                <option value="DP & RH">DP & RH</option>
+                <option value="LEGALIZAÇÃO">Legalização</option>
+              </select>
+            </div>
+
+            {/* Filtro por Regime */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                Regime Tributário
+              </label>
+              <select
+                value={selectedRegimeFilter}
+                onChange={e => setSelectedRegimeFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700/80 text-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                <option value="TODOS">Todos os Regimes</option>
+                {uniqueRegimes.map(reg => (
+                  <option key={reg} value={reg}>{reg}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro por Cidade */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                Cidade / Município
+              </label>
+              <select
+                value={selectedCidadeFilter}
+                onChange={e => setSelectedCidadeFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700/80 text-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                <option value="TODAS">Todas as Cidades ({uniqueCidades.length})</option>
+                {uniqueCidades.map(cid => (
+                  <option key={cid} value={cid}>{cid}</option>
+                ))}
+                <option value="__SEM_CIDADE__">Sem cidade informada</option>
+              </select>
+            </div>
+
+            {/* Ordenação */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <ArrowUpDown className="w-3 h-3 text-indigo-400" />
+                Ordenar Por
+              </label>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700/80 text-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer font-medium"
+              >
+                <option value="DEFAULT">Padrão (Código / Nome)</option>
+                <option value="ENTRADA_DESC">Data Entrada (Mais Recente → Antiga)</option>
+                <option value="ENTRADA_ASC">Data Entrada (Mais Antiga → Recente)</option>
+                <option value="SAIDA_DESC">Data Saída (Mais Recente → Antiga)</option>
+                <option value="SAIDA_ASC">Data Saída (Mais Antiga → Recente)</option>
+                <option value="NOME_ASC">Nome (A → Z)</option>
+                <option value="NOME_DESC">Nome (Z → A)</option>
+                <option value="CODIGO_ASC">Código (Menor → Maior)</option>
+                <option value="CODIGO_DESC">Código (Maior → Menor)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Linha 3: Barra de Resumo da Busca */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/60 text-xs text-slate-400">
+            <div className="flex items-center gap-2">
+              <span>
+                Exibindo <strong className="text-white">{filteredAndSortedEmpresas.length}</strong> de <strong className="text-slate-300">{empresas.length}</strong> empresas
+              </span>
+              {hasActiveFilters && (
+                <span className="text-[11px] bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded-md border border-indigo-500/20">
+                  Filtros aplicados
+                </span>
+              )}
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={resetAllFilters}
+                className="text-xs text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
+              >
+                Restaurar visualização padrão
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
       )}
-
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {activeTab === 'SINDICATOS' && (
@@ -818,30 +1096,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
 
         {activeTab === 'EMPRESAS' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {empresas.filter(e => {
-              // Filtragem por módulo
-              if (selectedModuloFilter !== 'TODOS') {
-                const hasModulos = e.modulosResponsavel && e.modulosResponsavel.length > 0;
-                if (hasModulos) {
-                  if (!e.modulosResponsavel.includes(selectedModuloFilter)) return false;
-                } else {
-                  // Fallback para empresas legadas sem o array modulosResponsavel
-                  if (selectedModuloFilter !== 'DP & RH') return false;
-                }
-              }
-
-              const sindicato = sindicatos.find(s => s.id === e.sindicatoId);
-              const search = searchTerm.toLowerCase();
-              return (
-                (e.nome && e.nome.toLowerCase().includes(search)) ||
-                (e.cnpj && e.cnpj.toLowerCase().includes(search)) ||
-                (e.codigo && e.codigo.toLowerCase().includes(search)) ||
-                (e.regime && e.regime.toLowerCase().includes(search)) ||
-                (e.situacao && e.situacao.toLowerCase().includes(search)) ||
-                (sindicato && sindicato.regiaoAtuacao && sindicato.regiaoAtuacao.toLowerCase().includes(search)) ||
-                (sindicato && sindicato.nome && sindicato.nome.toLowerCase().includes(search))
-              );
-            }).map(emp => {
+            {filteredAndSortedEmpresas.map(emp => {
               const sindicato = sindicatos.find(s => s.id === emp.sindicatoId);
               return (
                 <div key={emp.id} className="bg-slate-800/50 border border-slate-700/50 p-5 rounded-xl flex flex-col justify-between transition-colors hover:border-slate-600 gap-3">
@@ -854,13 +1109,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                           </span>
                         )}
                         {emp.situacao && (
-                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                            emp.situacao === 'ATIVA' 
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : emp.situacao === 'SUSPENSA'
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                          }`}>
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${getSituacaoBadgeClass(emp.situacao)}`}>
                             {emp.situacao}
                           </span>
                         )}
@@ -873,7 +1122,12 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                       <h3 className="font-bold text-slate-200 text-lg mb-1 break-words leading-tight">{emp.nome}</h3>
                       <div className="text-sm text-slate-400 space-y-1">
                         <p className="truncate">CNPJ: <span className="text-slate-300">{emp.cnpj || '-'}</span></p>
-                        {emp.cidade && <p className="truncate">Cidade: <span className="text-slate-300">{emp.cidade}</span></p>}
+                        {emp.cidade && (
+                          <p className="truncate flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="text-slate-300">{emp.cidade}</span>
+                          </p>
+                        )}
                         <p className="truncate">Sindicato: <span className="text-indigo-400">{sindicato ? sindicato.nome : 'Nenhum'}</span></p>
                         {(emp.dataEntrada || emp.dataSaida) && (
                           <p className="text-xs text-slate-400 truncate">
@@ -942,28 +1196,20 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 </div>
               );
             })}
-            {empresas.filter(e => {
-              if (selectedModuloFilter !== 'TODOS') {
-                const hasModulos = e.modulosResponsavel && e.modulosResponsavel.length > 0;
-                if (hasModulos) {
-                  if (!e.modulosResponsavel.includes(selectedModuloFilter)) return false;
-                } else {
-                  if (selectedModuloFilter !== 'DP & RH') return false;
-                }
-              }
-
-              const sindicato = sindicatos.find(s => s.id === e.sindicatoId);
-              const search = searchTerm.toLowerCase();
-              return (
-                (e.nome && e.nome.toLowerCase().includes(search)) ||
-                (e.cnpj && e.cnpj.toLowerCase().includes(search)) ||
-                (e.codigo && e.codigo.toLowerCase().includes(search)) ||
-                (e.regime && e.regime.toLowerCase().includes(search)) ||
-                (e.situacao && e.situacao.toLowerCase().includes(search)) ||
-                (sindicato && sindicato.regiaoAtuacao && sindicato.regiaoAtuacao.toLowerCase().includes(search)) ||
-                (sindicato && sindicato.nome && sindicato.nome.toLowerCase().includes(search))
-              );
-            }).length === 0 && <div className="col-span-full text-center text-slate-500 py-10">Nenhuma empresa encontrada para o filtro selecionado.</div>}
+            {filteredAndSortedEmpresas.length === 0 && (
+              <div className="col-span-full text-center text-slate-500 py-12 flex flex-col items-center justify-center gap-3 bg-slate-900/40 rounded-xl border border-slate-800">
+                <Building className="w-10 h-10 text-slate-600" />
+                <p className="text-sm text-slate-400">Nenhuma empresa encontrada para os filtros selecionados.</p>
+                {hasActiveFilters && (
+                  <button
+                    onClick={resetAllFilters}
+                    className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                  >
+                    Limpar todos os filtros
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1049,6 +1295,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                     <option value="REAL">REAL</option>
                     <option value="REAL TRIMESTRAL">REAL TRIMESTRAL</option>
                     <option value="DOMESTICA">DOMESTICA</option>
+                    <option value="MEI">MEI</option>
                     <option value="OUTRO">OUTRO</option>
                   </select>
                 </div>
@@ -1069,6 +1316,8 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                     <option value="ATIVA">ATIVA</option>
                     <option value="INATIVA">INATIVA</option>
                     <option value="SUSPENSA">SUSPENSA</option>
+                    <option value="BAIXADA">BAIXADA</option>
+                    <option value="TRANSFERIDA">TRANSFERIDA</option>
                   </select>
                 </div>
               </div>
@@ -1120,7 +1369,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                   />
                   {(editingEmpresa.situacao || 'ATIVA') === 'ATIVA' && (
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Para registrar data de saída, altere a situação para <strong>INATIVA</strong> ou <strong>SUSPENSA</strong>.
+                      Para registrar data de saída, altere a situação para <strong>INATIVA</strong>, <strong>SUSPENSA</strong>, <strong>BAIXADA</strong> ou <strong>TRANSFERIDA</strong>.
                     </p>
                   )}
                 </div>
@@ -1178,8 +1427,8 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
               {/* Seção de Módulos Responsáveis */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Módulos Responsáveis</label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl">
-                  {['DP & RH', 'FISCAL', 'CONTÁBIL', 'SOCIETÁRIO', 'LEGALIZAÇÃO'].map(mod => {
+                <div className="grid grid-cols-2 gap-2.5 bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl">
+                  {['DP & RH', 'LEGALIZAÇÃO'].map(mod => {
                     const currentModulos = editingEmpresa.modulosResponsavel || ['DP & RH'];
                     const isChecked = currentModulos.includes(mod);
                     return (

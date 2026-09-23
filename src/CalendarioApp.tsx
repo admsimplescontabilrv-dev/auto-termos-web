@@ -8,6 +8,8 @@ import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import UnifiedAddModal from './components/UnifiedAddModal';
 import { isCompanyInExcludedDprhList } from './data/excludedDprhCompanies';
+import { isEmpresaAtivaNosModulos } from './utils/empresaUtils';
+import { checkIsEventCompleted, toggleUnifiedEventCompletion } from './utils/eventSync';
 
 export default function CalendarioApp() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -166,6 +168,7 @@ export default function CalendarioApp() {
     const unsubEmpresas = onSnapshot(collection(db, 'empresas'), (snapshot) => {
       const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Empresa));
       setEmpresas(all.filter(e => {
+        if (!isEmpresaAtivaNosModulos(e)) return false;
         if (isCompanyInExcludedDprhList(e)) return false;
         return !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes('DP & RH');
       }));
@@ -217,58 +220,14 @@ export default function CalendarioApp() {
     const actualEventId = event.originalEventId || event.id;
     const entityId = event.empresaId || 'GERAL';
     const monthKey = format(date, 'yyyy-MM');
-    const docId = `${actualEventId}_${entityId}_${monthKey}`;
 
-    if (isCompleted) {
-      await deleteDoc(doc(db, 'recurrentCompletions', docId));
-    } else {
-      await setDoc(doc(db, 'recurrentCompletions', docId), {
-        eventId: actualEventId,
-        monthKey,
-        entityId,
-        completedAt: Date.now(),
-        createdAt: Date.now()
-      });
-    }
-
-    if (entityId !== 'GERAL') {
-      let fechamentoField = '';
-      const upperTitle = event.title.toUpperCase();
-      if (upperTitle.includes('FGTS')) fechamentoField = 'fgts';
-      else if (upperTitle.includes('DCTF')) fechamentoField = 'dctf';
-      else if (upperTitle.includes('SINDICATO')) fechamentoField = 'guiaSindicato';
-      else if (upperTitle.includes('RECIBO')) fechamentoField = 'recibo';
-      else if (upperTitle.includes('ADIANTAMENTO')) fechamentoField = 'adiantamento';
-      else if (upperTitle.includes('EMPRÉSTIMO') || upperTitle.includes('EMPRESTIMO') || upperTitle.includes('CONSIGNADO')) fechamentoField = 'consignado';
-      else if (upperTitle.includes('LANÇAMENTO') || upperTitle.includes('LANCAMENTO') || upperTitle.includes('PONTO') || upperTitle.includes('COMISSÃO') || upperTitle.includes('COMISSAO')) fechamentoField = 'lancamento';
-      else if (upperTitle.includes('VERIFICAR ENVIO') || upperTitle.includes('VERIFICAR')) fechamentoField = 'verificarEnvio';
-
-      if (fechamentoField) {
-        let okValue = 'OK';
-        let pendingValue = 'PENDENTE';
-
-        if (fechamentoField === 'consignado') {
-          pendingValue = 'A CONSULTAR';
-        } else if (fechamentoField === 'adiantamento') {
-          pendingValue = 'A CONSULTAR';
-        } else if (fechamentoField === 'lancamento') {
-          pendingValue = 'PENDENTE (PONTO/COMISSÃO)';
-        }
-
-        const fechamentoDocId = `${monthKey}_${entityId}`;
-        const updatePayload: Record<string, any> = {
-          [fechamentoField]: isCompleted ? pendingValue : okValue,
-          monthKey,
-          empresaId: entityId,
-          updatedAt: Date.now()
-        };
-        if (fechamentoField === 'guiaSindicato') {
-          updatePayload.guiaSindicatoLaboral = isCompleted ? pendingValue : okValue;
-        }
-
-        await setDoc(doc(db, 'fechamentoFolha', fechamentoDocId), updatePayload, { merge: true });
-      }
-    }
+    await toggleUnifiedEventCompletion({
+      eventId: actualEventId,
+      empresaId: entityId,
+      monthKey,
+      isCompleted,
+      event,
+    });
   };
 
   const openEventModal = (date: Date, event?: CalendarEvent) => {
@@ -660,10 +619,10 @@ export default function CalendarioApp() {
                       </div>
                       <div className="p-2 space-y-1 max-h-[250px] overflow-y-auto custom-scrollbar">
                         {eventsGroup.map((ev: CalendarEvent, i: number) => {
-                          const actualEventId = ev.originalEventId || ev.id;
                           const entityId = ev.empresaId || 'GERAL';
-                          const checkKey = `${actualEventId}_${entityId}_${format(selectedDate, 'yyyy-MM')}`;
-                          const isChecked = !!recurrentCompletions[checkKey];
+                          const monthKey = format(selectedDate, 'yyyy-MM');
+                          const completion = checkIsEventCompleted(ev, entityId, monthKey, recurrentCompletions);
+                          const isChecked = completion.completed;
                           return (
                             <div key={ev.id + (ev.empresaId || '') || i} className={`flex justify-between items-center p-2 rounded-lg transition-colors group ${isChecked ? 'bg-emerald-500/10 border-emerald-500/20' : 'hover:bg-slate-800 border-transparent'} border`}>
                               <div className="flex items-center space-x-3">
