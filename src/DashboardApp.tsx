@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, CalendarDays, Building2, CheckSquare, KanbanSquare, FileText, Receipt, FileStack, Briefcase, ShieldCheck, FileSpreadsheet } from 'lucide-react';
+import { ChevronDown, CalendarDays, Building2, CheckSquare, KanbanSquare, FileText, Receipt, FileStack, Briefcase, ShieldCheck, FileSpreadsheet, Clock } from 'lucide-react';
 import ChatApp from './ChatApp';
 
 export default function DashboardApp() {
@@ -35,6 +35,7 @@ export default function DashboardApp() {
               <button onClick={() => handleNav('fechamento')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 cursor-pointer font-semibold text-emerald-400"><FileSpreadsheet className="w-4 h-4 text-emerald-400"/> Fechamento de Folha</button>
               <button onClick={() => handleNav('autotermos')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 cursor-pointer"><FileText className="w-4 h-4"/> Termos</button>
               <button onClick={() => handleNav('recibos')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 cursor-pointer"><Receipt className="w-4 h-4"/> Recibos</button>
+              <button onClick={() => handleNav('banco-horas')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 cursor-pointer"><Clock className="w-4 h-4"/> Banco de Horas</button>
               <button onClick={() => handleNav('boletos')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 cursor-pointer"><FileStack className="w-4 h-4"/> Boletos</button>
               <button onClick={() => handleNav('trct')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 cursor-pointer"><Briefcase className="w-4 h-4"/> TRCT</button>
               <button onClick={() => handleNav('sindicatos')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 cursor-pointer"><Building2 className="w-4 h-4"/> Cadastro de Sindicatos</button>

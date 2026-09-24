@@ -92,9 +92,15 @@ export default function UnifiedAddModal({
         body: JSON.stringify({ pdfBase64: base64Pdf, type: 'aviso_previo' })
       });
       
-      if (!response.ok) throw new Error('Falha na extração');
-
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error('Falha na resposta do servidor durante a extração do PDF.');
+      }
+      
+      if (!response.ok) throw new Error(data?.error || 'Falha na extração');
       
       let foundEmpresaId = empresaId;
       if (data.nomeEmpresa && !foundEmpresaId && empresas.length > 0) {

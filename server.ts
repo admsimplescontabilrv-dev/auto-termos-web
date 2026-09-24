@@ -99,6 +99,8 @@ const ChatSchema = z.object({
   kanbanTasks: z.array(z.any()).optional().nullable(),
   calendarEvents: z.array(z.any()).optional().nullable(),
   alvaras: z.array(z.any()).optional().nullable(),
+  fechamentos: z.array(z.any()).optional().nullable(),
+  bancoHorasColaboradores: z.array(z.any()).optional().nullable(),
   pdfBase64: z.string().optional().nullable(),
   pdfName: z.string().optional().nullable()
 });
@@ -142,7 +144,7 @@ const CreateDriveFolderSchema = z.object({
 
 // async function startServer() { // Remover encapsulamento de startServer() completo
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Habilita a confiança no proxy (X-Forwarded-For) pois o app roda atrás do reverse proxy do Cloud Run.
 // Isso resolve o aviso do express-rate-limit e garante que as requisições sejam bloqueadas pelo IP do usuário, não do proxy.
@@ -967,8 +969,24 @@ ${baseInstruction}`;
       });
     } catch (error: any) {
       console.error('AI Command Error:', error);
-      console.error(error);
-      res.status(500).json({ error: 'Erro interno ao processar comando com IA.' });
+      let errorMessage = 'Não foi possível processar o comando com IA no momento.';
+      const errStr = typeof error === 'string' ? error : (error?.message || JSON.stringify(error) || '');
+      
+      if (errStr.includes('API key not valid') || error?.status === 'INVALID_ARGUMENT') {
+        errorMessage = 'A chave da API do Gemini (GEMINI_API_KEY) configurada é inválida.';
+      } else if (
+        error?.status === 'UNAVAILABLE' || 
+        error?.status === 503 || 
+        errStr.includes('503') || 
+        errStr.includes('high demand') || 
+        errStr.includes('UNAVAILABLE') ||
+        errStr.includes('temporarily')
+      ) {
+        errorMessage = 'O serviço de inteligência artificial está temporariamente com alta demanda nos servidores do Gemini. Por favor, tente novamente em alguns instantes.';
+      } else if (error?.message) {
+        errorMessage = `Erro ao comunicar com a IA: ${error.message}`;
+      }
+      res.status(422).json({ error: errorMessage });
     }
   });
 
@@ -979,7 +997,7 @@ ${baseInstruction}`;
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { history, context, cctText, kanbanTasks, calendarEvents, alvaras, pdfBase64, pdfName } = parseResult.data;
+      const { history, context, cctText, kanbanTasks, calendarEvents, alvaras, fechamentos, bancoHorasColaboradores, pdfBase64, pdfName } = parseResult.data;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(400).json({ error: 'GEMINI_API_KEY não configurada.' });
@@ -999,14 +1017,26 @@ SINDICATOS CADASTRADOS: ${JSON.stringify(context?.sindicatos || [])}
 CARTÕES DO KANBAN (TAREFAS ABERTAS): ${JSON.stringify(kanbanTasks || context?.kanbanTasks || [])}
 EVENTOS DO CALENDÁRIO: ${JSON.stringify(calendarEvents || [])}
 ALVARÁS CADASTRADOS (ANO E SITUAÇÃO): ${JSON.stringify(alvaras || context?.alvaras || [])}
+FECHAMENTO DE FOLHA (COMPETÊNCIA ATUAL): ${JSON.stringify(fechamentos || [])}
+COLABORADORES DE BANCO DE HORAS: ${JSON.stringify(bancoHorasColaboradores || [])}
 
 ═══════════════════════════════════════════════
 CONTROLE DE ALVARÁS E LEGALIZAÇÃO:
 ═══════════════════════════════════════════════
-Você tem acesso à lista de alvarás do ano X, cruzada com as empresas. Identifique empresas com alvarás vencidos, pendentes, paralisados ou não pagos.
-As empresas com alvarás sob sua responsabilidade são aquelas que possuem "LEGALIZAÇÃO" no array modulosResponsavel.
+Você tem acesso à lista completa de alvarás de cada empresa para o ano em questão (cruzada no sistema com o cadastro de empresas).
+As empresas com alvarás sob sua responsabilidade são aquelas que possuem "LEGALIZAÇÃO" no array modulosResponsavel e não estão baixadas ou transferidas.
 As situações possíveis para cada alvará são: "PENDENTE", "EM ANDAMENTO", "NÃO PAGO", "PARALISADO", "EMITIDO" ou "CONCLUÍDO".
-Ao responder sobre alvarás, você pode listar as empresas pendentes, alertar sobre as não pagas e propor a intenção UPDATE_ALVARA para alterar o status ou salvar observações.
+REGRA CRÍTICA: No sistema, TODA empresa ativa que possui "LEGALIZAÇÃO" em modulosResponsavel e ainda não possui registro de emitido ou concluído para o ano (ex: 2026) está com a situação "PENDENTE" por padrão.
+Portanto, ao ser perguntado "quantas empresas estão com alvará pendente no ano de 2026" (ou qualquer ano), conte todas as empresas da lista de ALVARÁS CADASTRADOS que possuem situação "PENDENTE". Liste seus nomes e CNPJs de forma clara.
+
+═══════════════════════════════════════════════
+CONTROLE DE BANCO DE HORAS E COLABORADORES:
+═══════════════════════════════════════════════
+Você tem acesso à lista de COLABORADORES DE BANCO DE HORAS contendo seus saldos apurados (saldo acumulado total 'saldoTotalFormatado' e saldo da competência atual 'saldoMesAtualFormatado' no formato de horas ex: +05:30 ou -02:15).
+Ao ser perguntado sobre o saldo ou banco de horas de um colaborador (ex: "qual o banco de horas do José Gabriel?"):
+- Procure o colaborador pelo nome na lista de COLABORADORES DE BANCO DE HORAS.
+- Se encontrar, informe o saldo acumulado total (saldoTotalFormatado) e o saldo do mês atual (saldoMesAtualFormatado).
+- Se não encontrar nenhum colaborador cadastrado com aquele nome na lista, informe educadamente que o colaborador não consta cadastrado no módulo de Banco de Horas (aba "Colaboradores"), orientando que é possível cadastrá-lo no módulo Banco de Horas.
 
 INFORMAÇÕES SOBRE AS EMPRESAS CADASTRADAS:
 As empresas agora possuem código, regime tributário (Simples, Presumido, Real), data de entrada, data de saída, e status (Ativa/Inativa/Suspensa).
@@ -1150,13 +1180,15 @@ INTENT: GENERATE_RECIBO
   Quando usar: O usuário pede para gerar um recibo (pagamento, pró-labore, adiantamento, etc).
   Campos a preencher no Payload (se souber, ou pergunte o que faltar):
   {
-    "nomeFuncionario": "Nome do favorecido/funcionário",
+    "nomeFuncionario": "Nome do favorecido/funcionário (pode ficar em branco/vazio se solicitado pelo usuário)",
     "empresaNome": "Nome da empresa pagadora",
+    "cnpj": "CNPJ da empresa pagadora (busque SEMPRE na lista de EMPRESAS CADASTRADAS)",
+    "endereco": "Endereço completo da empresa (busque SEMPRE na lista de EMPRESAS CADASTRADAS)",
     "mesAno": "Ex: 2026-04 (MANDATÓRIO usar formato YYYY-MM para Competência/Mês)",
     "salarioBaseContratual": 1548.80 (Opcional: O salário mensal integral APENAS NUMÉRICO, sem R$),
     "diasTrabalhados": 30 (Opcional: Quantos dias trabalhou no mês),
     "valor": 1548.80 (Opcional: O valor específico a pagar APENAS NUMÉRICO, se diferente do salário),
-    "referenteA": "Ex: Salário de Abril"
+    "referenteA": "Ex: Salário de Abril ou Adiantamento Salarial"
   }
 
 INTENT: GENERATE_TRCT
@@ -1202,29 +1234,67 @@ INTENT: SYNC_DRIVE_FOLDERS
 
 
 ═══════════════════════════════════════════════
-CATÁLOGO DE MÓDULOS E CAMPOS DO SISTEMA
+CATÁLOGO COMPLETO DE MÓDULOS E CAMPOS DO SISTEMA
 ═══════════════════════════════════════════════
-O sistema possui os seguintes módulos e campos que podem ser preenchidos:
+O sistema "DP - Simples Contábil" possui os seguintes módulos e campos:
 
-1. RECIBOS (GENERATE_RECIBO):
-   - Dados da Empresa: Nome, CNPJ, Endereço, Mês/Ano de Referência, Tipo de Recibo (Salário, Pró-Labore).
+1. RECIBOS / HOLERITES (GENERATE_RECIBO):
+   - Dados da Empresa: Nome, CNPJ, Endereço, Mês/Ano de Referência (YYYY-MM), Tipo de Recibo (Salário, Pró-Labore).
    - Dados do Funcionário: Código, Nome, Função, Salário Integral, Dias Trabalhados.
-   - Rubricas: Descrição, Valor.
+   - Rubricas: Descrição, Valor, Proventos e Descontos, Salário Líquido Final.
 
-2. TRCT - RESCISÃO (GENERATE_TRCT):
-   - Dados do Empregador: CNPJ, Razão Social, Endereço, Município. (IMPORTANTE: Se o usuário informar a empresa, busque o CNPJ nas EMPRESAS CADASTRADAS).
+2. TRCT - TERMO DE RESCISÃO CONTRATUAL (GENERATE_TRCT):
+   - Dados do Empregador: CNPJ, Razão Social, Endereço, Município (busque nas EMPRESAS CADASTRADAS).
    - Dados do Trabalhador: CPF, Nome Completo, PIS, CTPS.
-   - Dados do Contrato: Admissão, Afastamento, Causa do Afastamento, Remuneração Base (Mês Anterior).
-   - Detalhes: Rescisão Antecipada (Sim/Não)? Calcular e Descontar INSS (Sim/Não)?
+   - Dados do Contrato: Data de Admissão, Data de Afastamento, Causa do Afastamento (Dispensa sem justa causa, Pedido de demissão, etc.), Remuneração Base (Mês Anterior).
+   - Parâmetros: Rescisão Antecipada (Sim/Não), Calcular e Descontar INSS (Sim/Não).
 
-3. TERMOS E ACORDOS (GENERATE_TERMO):
-   - Varia conforme o termo, mas geralmente exige: Nome da Empresa, CNPJ, Nome do Funcionário, CPF, Cidade e Data.
+3. TERMOS E ACORDOS COLETIVOS/INDIVIDUAIS (GENERATE_TERMO):
+   - Modelos: tpl-nda, tpl-banco-horas, tpl-etica-digital, tpl-imagem, tpl-equipamentos, tpl-monitoramento, tpl-veiculo, tpl-custom.
+   - Variáveis: Razão Social, CNPJ, Endereço, Cidade/UF, Nome do Colaborador, CPF, RG, Veículo/Placa, Itens/Equipamentos, Data.
 
-4. KANBAN (CREATE_KANBAN_TASK):
-   - Campos: Título/Descrição da Tarefa, Status/Coluna de destino.
+4. KANBAN DE DEMANDAS & LEGALIZAÇÃO (CREATE_KANBAN_TASK, UPDATE_KANBAN_TASK):
+   - Campos: Título da Tarefa, Coluna/Status ("ENTRADA DE DEMANDAS", "URGENTE", "CONCLUIDO"), Descrição detalhada.
 
-5. CALENDÁRIO (CREATE_CALENDAR_EVENT):
-   - Campos: Título, Descrição, Data, Tipo de Evento (Lembrete, Prazo, Fechamento).
+5. CALENDÁRIO & PRAZOS (CREATE_CALENDAR_EVENT):
+   - Campos: Título, Data (timestamp), Empresa Vinculada, Tipo ("DEADLINE", "MEETING", "REMINDER", "HOLIDAY").
+   - Regras Recorrentes: Diária, Semanal, Mensal (5º dia útil, dia 20, dia 30, etc.), Anual.
+
+6. FECHAMENTO DE FOLHA MENSAL (UPDATE_FECHAMENTO_FOLHA):
+   - Competência: Mês/Ano (ex: "2026-04" ou "ATUAL"). O ciclo do escritório vai do dia 16 do mês anterior ao dia 15 do mês corrente.
+   - Campos de Controle:
+     * "lancamento": Fechamento e apontamento de ponto/variáveis.
+     * "consignado": Lançamento de empréstimos consignados.
+     * "adiantamento": Folha de adiantamento quinzenal.
+     * "recibo": Emissão e distribuição dos holerites/recibos.
+     * "fgts": Apuração e emissão do FGTS Digital.
+     * "dctf": Transmissão da DCTFWeb e emissão de DARF Previdenciário.
+     * "guiaSindicato" (ou "guiaSindicatoLaboral" / "guiaSindicatoPatronal"): Guias e contribuições sindicais.
+     * "verificarEnvio": Conferência de entrega de documentos ao cliente.
+     * "observacoes": Notas internas do analista de DP sobre pendências da empresa.
+     * "tipoFolha": Folha Normal, Folha Complementar, 13º Salário.
+   - Valores aceitos: "OK", "PENDENTE", "NÃO TEM", ou texto explicativo.
+
+7. BANCO DE HORAS:
+   - Colaboradores: Cadastro por empresa, Nome, CPF, Função, Carga Horária Semanal, Status ("ATIVO"/"INATIVO").
+   - Lançamentos e Saldos: Apuração de horas extras (crédito) e atrasos/faltas (débito).
+
+8. CONTROLE DE ALVARÁS E LEGALIZAÇÃO (UPDATE_ALVARA):
+   - Empresa vinculada, Ano base, Situação ("PENDENTE", "EM ANDAMENTO", "NÃO PAGO", "PARALISADO", "EMITIDO", "CONCLUÍDO"), Observações.
+
+9. CADASTRO DE EMPRESAS:
+   - Código interno, Razão Social, Nome Fantasia, CNPJ, Regime Tributário (Simples Nacional, Lucro Presumido, Lucro Real), Situação (Ativa, Inativa, Suspensa, Baixada), Telefone, E-mail, Endereço, Cidade/UF, Módulos sob responsabilidade (DP & RH, Legalização), Link da Pasta do Google Drive.
+
+10. SINDICATOS & CCTS:
+    - Entidade Sindical, Região de Atuação, Data-base, Convenções Coletivas Vigentes, Pisos Salariais, Adicionais e Cláusulas Sociais.
+
+═══════════════════════════════════════════════
+TRANSPARÊNCIA E RESPONSIVIDADE ATIVA:
+═══════════════════════════════════════════════
+Ao responder a qualquer solicitação do usuário:
+1. Demonstre domínio imediato dos dados do sistema. Sempre cite no início da resposta quais fontes foram verificadas no banco (ex: "📌 **Fontes Consultadas:** Cadastro da Empresa [Nome], CCT Vigente [Sindicato], Fechamento de Folha [Mês/Ano]").
+2. Se o usuário estiver solicitando uma ação ou criação de documento, identifique os dados já preenchidos e mostre o que ainda falta para completar o procedimento.
+3. Seja direto, técnico e ágil, com o tom de um especialista sênior de Departamento Pessoal.
 
 ═══════════════════════════════════════════════
 FLUXO INTERATIVO DE ATENDIMENTO (OBRIGATÓRIO)
@@ -1242,10 +1312,10 @@ FORMATO DE SAÍDA (JSON ESTRITO E OBRIGATÓRIO):
 
 Retorne SEMPRE e APENAS um JSON válido neste formato:
 {
-  "text": "Sua resposta amigável e conversacional (Markdown permitido). Se propondo ações ou questionando dados faltantes, faça isso aqui.",
+  "text": "Sua resposta amigável, clara e conversacional (Markdown permitido). Apresente as fontes consultadas e faça perguntas de confirmação se houver dados pendentes.",
   "intents": [
     {
-      "action": "CLEAN_BOLETO | GENERATE_TERMO | CREATE_KANBAN_TASK | UPDATE_KANBAN_TASK | CREATE_CALENDAR_EVENT | CREATE_CHECKLIST_RULE | GENERATE_RECIBO | GENERATE_TRCT",
+      "action": "CLEAN_BOLETO | GENERATE_TERMO | CREATE_KANBAN_TASK | UPDATE_KANBAN_TASK | CREATE_CALENDAR_EVENT | CREATE_CHECKLIST_RULE | GENERATE_RECIBO | GENERATE_TRCT | UPDATE_FECHAMENTO_FOLHA | UPDATE_ALVARA | CLEAN_DUPLICATE_COMPANIES | SYNC_DRIVE_FOLDERS",
       "payload": { ... }
     }
   ]
@@ -1356,8 +1426,26 @@ ${baseInstruction}`;
       });
     } catch (error: any) {
       console.error('Chat AI Error:', error);
-      console.error(error);
-      res.status(500).json({ error: 'Erro interno ao processar conversa com IA.' });
+      
+      let errorMessage = 'Não foi possível processar a conversa com IA no momento.';
+      const errStr = typeof error === 'string' ? error : (error?.message || JSON.stringify(error) || '');
+      
+      if (errStr.includes('API key not valid') || error?.status === 'INVALID_ARGUMENT') {
+        errorMessage = 'A chave da API do Gemini (GEMINI_API_KEY) configurada é inválida. Por favor, verifique a chave nas configurações do AI Studio (Settings > Secrets).';
+      } else if (
+        error?.status === 'UNAVAILABLE' || 
+        error?.status === 503 || 
+        errStr.includes('503') || 
+        errStr.includes('high demand') || 
+        errStr.includes('UNAVAILABLE') ||
+        errStr.includes('temporarily')
+      ) {
+        errorMessage = 'O serviço de inteligência artificial está temporariamente com alta demanda nos servidores do Gemini. Por favor, tente enviar sua mensagem novamente em alguns instantes.';
+      } else if (error?.message) {
+        errorMessage = `Erro ao comunicar com a IA: ${error.message}`;
+      }
+      
+      res.status(422).json({ error: errorMessage });
     }
   });
 
@@ -2029,8 +2117,13 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
   const processCronReminders = async (force: boolean = false) => {
     try {
       if (!process.env.RESEND_API_KEY || !process.env.USER_EMAIL) {
-        console.error('Cron Error: Configurações de e-mail ausentes no servidor.');
+        console.warn('Cron: Configurações de e-mail ausentes no servidor (RESEND_API_KEY ou USER_EMAIL).');
         return { success: false, message: 'Configurações de e-mail ausentes no servidor.' };
+      }
+
+      if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        console.warn('Cron: FIREBASE_SERVICE_ACCOUNT_KEY não configurada no ambiente. Lembretes no servidor ignorados (disponível com credenciais de serviço).');
+        return { success: false, message: 'FIREBASE_SERVICE_ACCOUNT_KEY não configurada no ambiente.' };
       }
 
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -2177,14 +2270,22 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
       return { success: true, count: uniqueReminders.length, message: 'E-mail enviado com sucesso.', data };
 
     } catch (error: any) {
-      console.error('Process Cron Reminders Error:', error);
-      return { success: false, error: error.message || 'Falha ao processar Cron Job.' };
+      if (error?.code === 7 || error?.message?.includes('PERMISSION_DENIED') || error?.message?.includes('insufficient permissions')) {
+        console.warn('Process Cron Reminders: Permissão insuficiente no Firestore Admin (FIREBASE_SERVICE_ACCOUNT_KEY ausente ou sem acesso).');
+        return { success: false, error: 'Permissão insuficiente no Firestore Admin.', details: error?.message };
+      }
+      console.error('Process Cron Reminders Error:', error?.message || error);
+      return { success: false, error: error?.message || 'Falha ao processar Cron Job.' };
     }
   };
 
   // Schedule internal background cron job (Runs on server, not reliant on external vercel cron)
   // Run every hour on weekdays (Monday-Friday) in America/Sao_Paulo timezone
   cron.schedule('0 * * * 1-5', async () => {
+    // Só dispara se houver credenciais de serviço do Firebase configuradas para evitar erros de permissão
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      return;
+    }
     console.log('Running scheduled hourly cron reminders check (BRT)...');
     await processCronReminders();
   }, {
@@ -2276,11 +2377,19 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
     res.status(status).json({ error: err.message || 'Falha no processamento (interceptado de 500).' });
   });
 
-  // Inicia o servidor apenas em ambiente de desenvolvimento local (NÃO na Vercel)
+  // Inicia o servidor em ambiente local ou Cloud Run (NÃO na Vercel serverless)
   if (!process.env.VERCEL) {
     (async () => {
       try {
-        if (process.env.NODE_ENV !== 'production') {
+        const distPath = path.join(process.cwd(), 'dist');
+        const distIndexExists = fs.existsSync(path.join(distPath, 'index.html'));
+
+        if (process.env.NODE_ENV === 'production' && distIndexExists) {
+          app.use(express.static(distPath));
+          app.get('*', (req, res) => {
+            res.sendFile(path.join(distPath, 'index.html'));
+          });
+        } else {
           const vitePkg = 'vite';
           const { createServer: createViteServer } = await import(/* @vite-ignore */ vitePkg);
           const vite = await createViteServer({
@@ -2288,19 +2397,13 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
             appType: 'spa',
           });
           app.use(vite.middlewares);
-        } else {
-          const distPath = path.join(process.cwd(), 'dist');
-          app.use(express.static(distPath));
-          app.get('*', (req, res) => {
-            res.sendFile(path.join(distPath, 'index.html'));
-          });
         }
 
         app.listen(PORT, "0.0.0.0", () => {
-          console.log(`Server running on http://localhost:${PORT}`);
+          console.log(`Server running on http://0.0.0.0:${PORT}`);
         });
       } catch (err) {
-        console.error('Erro ao inicializar o servidor dev:', err);
+        console.error('Erro ao inicializar o servidor:', err);
       }
     })();
   }

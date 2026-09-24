@@ -1,4 +1,5 @@
-import { auth } from './lib/firebase';
+import { auth, db } from './lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { Upload, Loader2, Plus, Trash2, ArrowRight, ArrowLeft, Download, ExternalLink, Printer, Activity, FileText } from 'lucide-react';
 import { Rubrica, DadosEmpresa, DadosFuncionario, ResultadoCalculo } from './types';
@@ -67,12 +68,40 @@ useEffect(() => {
           if (payload.pdfName) showToast(`Extraindo dados do PDF: ${payload.pdfName}`, 'success');
         } else {
           const formattedMesAno = payload.mesAno ? applyMesAnoMask(payload.mesAno) : '';
+          const payloadCnpj = payload.cnpj || payload.empresaCnpj || '';
+          const payloadEndereco = payload.endereco || payload.empresaEndereco || '';
+
           // Pre-fill data
           setDadosEmpresa(prev => ({
             ...prev,
             nome: payload.empresaNome || prev.nome,
+            cnpj: payloadCnpj || prev.cnpj,
+            endereco: payloadEndereco || prev.endereco,
             mesAno: formattedMesAno || prev.mesAno
           }));
+
+          // Se tiver empresaNome mas não tiver cnpj ou endereco, tenta buscar do banco de empresas
+          if (payload.empresaNome && (!payloadCnpj || !payloadEndereco)) {
+            getDocs(collection(db, 'empresas')).then(snap => {
+              const term = payload.empresaNome.toLowerCase().trim();
+              const found = snap.docs
+                .map(d => ({ id: d.id, ...d.data() } as any))
+                .find(e => 
+                  (e.nome && (e.nome.toLowerCase().includes(term) || term.includes(e.nome.toLowerCase()))) ||
+                  (e.razaoSocial && (e.razaoSocial.toLowerCase().includes(term) || term.includes(e.razaoSocial.toLowerCase()))) ||
+                  (e.nomeFantasia && (e.nomeFantasia.toLowerCase().includes(term) || term.includes(e.nomeFantasia.toLowerCase())))
+                );
+              if (found) {
+                const fullEnd = found.endereco || [found.logradouro, found.numero, found.bairro, found.cidade, found.uf].filter(Boolean).join(', ') || '';
+                setDadosEmpresa(prev => ({
+                  ...prev,
+                  nome: found.nome || found.razaoSocial || prev.nome,
+                  cnpj: prev.cnpj || found.cnpj || '',
+                  endereco: prev.endereco || fullEnd
+                }));
+              }
+            }).catch(err => console.warn('Erro ao auto-completar empresa do recibo:', err));
+          }
           
           setDadosFuncionario(prev => ({
              ...prev,

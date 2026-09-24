@@ -198,19 +198,138 @@ export default function ChatApp() {
       const calendarEventsSnapshot = await getDocs(collection(db, 'calendarEvents'));
       const fetchedCalendarEvents = calendarEventsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const alvarasSnapshot = await getDocs(collection(db, 'alvaras'));
-      const fetchedAlvaras = alvarasSnapshot.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          empresaId: data.empresaId,
-          empresaNome: data.empresaNome,
-          cnpj: data.cnpj,
-          ano: data.ano,
-          situacao: data.situacao,
-          observacoes: data.observacoes
+      // Alvarás de Legalização (calculados cruzando empresas ativas com alvaras)
+      let fetchedAlvaras: any[] = [];
+      try {
+        const alvarasSnapshot = await getDocs(collection(db, 'alvaras'));
+        const alvarasMap = new Map<string, any>();
+        alvarasSnapshot.docs.forEach(d => {
+          const data = d.data();
+          if (data.empresaId && data.ano) {
+            alvarasMap.set(`${data.empresaId}_${data.ano}`, { id: d.id, ...data });
+          }
+        });
+
+        const currentYear = new Date().getFullYear();
+        // Empresas ativas sob responsabilidade do módulo de Legalização
+        const legalizacaoEmpresas = (contextData?.empresas || []).filter((emp: any) => {
+          const sit = (emp.situacao || '').trim().toUpperCase();
+          if (sit === 'BAIXADA' || sit === 'TRANSFERIDA') return false;
+          if (!emp.modulosResponsavel || !Array.isArray(emp.modulosResponsavel)) return false;
+          return emp.modulosResponsavel.some((mod: string) => {
+            const normalized = (mod || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            return normalized === 'LEGALIZACAO';
+          });
+        });
+
+        // Monta a situação do alvará de cada empresa de legalização para o ano (padrão PENDENTE se não emitida)
+        legalizacaoEmpresas.forEach((emp: any) => {
+          const key = `${emp.id}_${currentYear}`;
+          const record = alvarasMap.get(key);
+          fetchedAlvaras.push({
+            id: record?.id || key,
+            empresaId: emp.id,
+            empresaNome: emp.nome || emp.razaoSocial || emp.nomeFantasia,
+            cnpj: emp.cnpj || '',
+            codigo: emp.codigo || '',
+            cidade: emp.cidade || '',
+            ano: currentYear,
+            situacao: record?.situacao || 'PENDENTE',
+            observacoes: record?.observacoes || ''
+          });
+        });
+
+        // Inclui também registros explícitos de outros anos cadastrados
+        alvarasSnapshot.docs.forEach(d => {
+          const data = d.data();
+          if (data.ano && data.ano !== currentYear) {
+            fetchedAlvaras.push({
+              id: d.id,
+              empresaId: data.empresaId,
+              empresaNome: data.empresaNome,
+              cnpj: data.cnpj,
+              codigo: data.codigo || '',
+              ano: data.ano,
+              situacao: data.situacao || 'PENDENTE',
+              observacoes: data.observacoes || ''
+            });
+          }
+        });
+      } catch (err) {
+        console.warn('Erro ao carregar alvarás para o chat:', err);
+      }
+
+      // Fechamento de Folha da competência corrente
+      let fetchedFechamentos: any[] = [];
+      try {
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const fechamentoSnapshot = await getDocs(
+          query(collection(db, 'fechamentoFolha'), where('monthKey', '==', currentMonthKey))
+        );
+        fetchedFechamentos = fechamentoSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (err) {
+        console.warn('Erro ao carregar fechamentos para o chat:', err);
+      }
+
+      // Colaboradores e Lançamentos do Banco de Horas
+      let fetchedColaboradores: any[] = [];
+      try {
+        const [colabSnapshot, lancamentosSnapshot] = await Promise.all([
+          getDocs(collection(db, 'colaboradores')),
+          getDocs(collection(db, 'banco_horas_lancamentos'))
+        ]);
+
+        const allLancamentos = lancamentosSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        const formatMin = (totalMin: number) => {
+          const sign = totalMin < 0 ? '-' : '+';
+          const abs = Math.abs(totalMin);
+          const h = Math.floor(abs / 60);
+          const m = abs % 60;
+          return `${sign}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
         };
-      });
+
+        fetchedColaboradores = colabSnapshot.docs
+          .map(d => {
+            const data = d.data();
+            const colabId = d.id;
+            const records = allLancamentos.filter((l: any) => l.colaboradorId === colabId);
+
+            let totalPos = 0;
+            let totalNeg = 0;
+            let mesPos = 0;
+            let mesNeg = 0;
+
+            records.forEach((l: any) => {
+              totalPos += Number(l.minutosPositivos || 0);
+              totalNeg += Number(l.minutosNegativos || 0);
+              if (l.mesAno === currentMonthKey) {
+                mesPos += Number(l.minutosPositivos || 0);
+                mesNeg += Number(l.minutosNegativos || 0);
+              }
+            });
+
+            const saldoTotalMin = totalPos - totalNeg;
+            const saldoMesMin = mesPos - mesNeg;
+
+            return {
+              id: colabId,
+              nome: data.nome,
+              ativo: data.ativo !== false,
+              saldoTotalFormatado: formatMin(saldoTotalMin),
+              saldoTotalMinutos: saldoTotalMin,
+              saldoMesAtualFormatado: formatMin(saldoMesMin),
+              saldoMesAtualMinutos: saldoMesMin,
+              mesCompetencia: currentMonthKey
+            };
+          })
+          .filter((c: any) => c.ativo);
+      } catch (err) {
+        console.warn('Erro ao carregar colaboradores e banco de horas para o chat:', err);
+      }
 
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -225,17 +344,27 @@ export default function ChatApp() {
           kanbanTasks: fetchedKanbanTasks,
           calendarEvents: fetchedCalendarEvents,
           alvaras: fetchedAlvaras,
+          fechamentos: fetchedFechamentos,
+          bancoHorasColaboradores: fetchedColaboradores,
           pdfBase64: pdfBase64,
           pdfName: pdfFile?.name
         })
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Erro na comunicação com a IA.');
+      let resData: any = null;
+      const responseText = await response.text();
+      try {
+        resData = JSON.parse(responseText);
+      } catch {
+        if (!response.ok) {
+          throw new Error('O serviço está temporariamente sobrecarregado. Por favor, tente novamente em alguns instantes.');
+        }
+        throw new Error('Resposta inesperada recebida do servidor.');
       }
 
-      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData?.error || 'Erro na comunicação com a IA.');
+      }
       
       let newModelMsg: Message = { 
         role: 'model', 
@@ -364,8 +493,24 @@ export default function ChatApp() {
         }
 
         else if (action === 'GENERATE_RECIBO') {
+          let enrichedPayload = { ...payload };
+          if (contextData?.empresas && (payload.empresaNome || payload.empresaId)) {
+            const term = (payload.empresaNome || '').toLowerCase().trim();
+            const emp = contextData.empresas.find((e: any) => 
+              (payload.empresaId && e.id === payload.empresaId) ||
+              (e.nome && (e.nome.toLowerCase().includes(term) || term.includes(e.nome.toLowerCase()))) ||
+              (e.razaoSocial && (e.razaoSocial.toLowerCase().includes(term) || term.includes(e.razaoSocial.toLowerCase()))) ||
+              (e.nomeFantasia && (e.nomeFantasia.toLowerCase().includes(term) || term.includes(e.nomeFantasia.toLowerCase())))
+            );
+            if (emp) {
+              enrichedPayload.empresaNome = emp.nome || emp.razaoSocial || enrichedPayload.empresaNome;
+              enrichedPayload.cnpj = enrichedPayload.cnpj || emp.cnpj || '';
+              const fullEnd = emp.endereco || [emp.logradouro, emp.numero, emp.bairro, emp.cidade, emp.uf].filter(Boolean).join(', ') || '';
+              enrichedPayload.endereco = enrichedPayload.endereco || fullEnd;
+            }
+          }
           localStorage.setItem('@app:ai_generated_recibo', JSON.stringify({
-            ...payload,
+            ...enrichedPayload,
             pdfBase64: msg.pdfBase64,
             pdfName: msg.pdfName
           }));
