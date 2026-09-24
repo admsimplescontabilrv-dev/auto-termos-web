@@ -23,6 +23,7 @@ import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import LayoutPrintRelatorioChecklist from '../LayoutPrintRelatorioChecklist';
 import { checkIsEventCompleted, toggleUnifiedEventCompletion } from '../utils/eventSync';
+import { getCompetenciaAtual } from '../utils/competenciaUtils';
 
 interface RelatoriosChecklistTabProps {
   empresas: Empresa[];
@@ -43,12 +44,7 @@ interface ProcessedReportItem {
 }
 
 export default function RelatoriosChecklistTab({ empresas }: RelatoriosChecklistTabProps) {
-  const [currentDate, setCurrentDate] = useState<Date>(() => {
-    const today = new Date();
-    const dia = today.getDate();
-    const target = dia >= 16 ? today : subMonths(today, 1);
-    return new Date(target.getFullYear(), target.getMonth(), 1);
-  });
+  const [currentDate, setCurrentDate] = useState<Date>(() => getCompetenciaAtual(new Date()));
 
   const reportMonth = useMemo(() => format(currentDate, 'yyyy-MM'), [currentDate]);
 

@@ -55,7 +55,7 @@ import CalendarioApp from "./CalendarioApp";
 import KanbanApp from "./pages/KanbanApp";
 import { getTrimmedPdfBase64 } from "./pdfUtils";
 import { ErrorLogViewer } from "./ErrorLogViewer";
-import { isEmpresaAtivaNosModulos } from "./utils/empresaUtils";
+import { isEmpresaAtivaNosModulos, sanitizeModulosResponsavel } from "./utils/empresaUtils";
 
 import BancoDeHorasApp from "./pages/banco-horas/BancoDeHorasApp";
 import AlvaraApp from "./AlvaraApp";
@@ -218,7 +218,7 @@ export default function App() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "empresas"), (snap) => {
       const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setEmpresas(all.filter((e: any) => isEmpresaAtivaNosModulos(e) && (!e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes("DP & RH"))));
+      setEmpresas(all.filter((e: any) => isEmpresaAtivaNosModulos(e) && sanitizeModulosResponsavel(e.modulosResponsavel, e).includes("DP & RH")));
 
       // Auto-ajuste no banco de dados: empresas com código repetido têm o código alterado para '0'
       const codeMap = new Map<string, any[]>();

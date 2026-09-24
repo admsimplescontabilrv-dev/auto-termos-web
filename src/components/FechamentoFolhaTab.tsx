@@ -5,26 +5,12 @@ import { Empresa, CalendarEvent } from '../types';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Search, FileSpreadsheet, ArrowUp, ArrowDown, Printer } from 'lucide-react';
+import { getCompetenciaAtual } from '../utils/competenciaUtils';
+
+export { getCompetenciaAtual };
 
 interface FechamentoFolhaTabProps {
   empresas: Empresa[];
-}
-
-/**
- * Regra de Competência:
- * O ciclo vai do dia 16 do mês de competência até o dia 15 do mês seguinte.
- * Exemplos:
- * - 16 de Setembro a 15 de Outubro => Competência de Setembro (09)
- * - 16 de Outubro a 15 de Novembro => Competência de Outubro (10)
- * - 16 de Novembro a 15 de Dezembro => Competência de Novembro (11)
- * 
- * Se o dia atual for >= 16: competência é o mês atual (ex: 23/09 pertence à competência 09 - Setembro).
- * Se o dia atual for <= 15: competência é o mês anterior (ex: 10/10 pertence à competência 09 - Setembro, pois o ciclo 16/09 a 15/10 ainda está ativo).
- */
-export function getCompetenciaAtual(date: Date = new Date()): Date {
-  const dia = date.getDate();
-  const target = dia >= 16 ? date : subMonths(date, 1);
-  return new Date(target.getFullYear(), target.getMonth(), 1);
 }
 
 export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps) {

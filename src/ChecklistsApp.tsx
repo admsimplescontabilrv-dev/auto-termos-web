@@ -9,8 +9,9 @@ import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import UnifiedAddModal from './components/UnifiedAddModal';
 import { isCompanyInExcludedDprhList } from './data/excludedDprhCompanies';
-import { isEmpresaAtivaNosModulos } from './utils/empresaUtils';
+import { isEmpresaAtivaNosModulos, sanitizeModulosResponsavel } from './utils/empresaUtils';
 import { checkIsEventCompleted, toggleUnifiedEventCompletion } from './utils/eventSync';
+import { getCompetenciaAtual } from './utils/competenciaUtils';
 
 interface ChecklistsAppProps {
   onEditEntity?: (id: string, type: 'EMPRESA' | 'SINDICATO') => void;
@@ -29,10 +30,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
   const [checklistRules, setChecklistRules] = useState<ChecklistRule[]>([]);
   
   const [activeProcessType, setActiveProcessType] = useState<string>('ADMISSÃO');
-  const [currentRecurrentMonth, setCurrentRecurrentMonth] = useState(() => {
-    const today = new Date();
-    return today.getDate() > 22 ? addMonths(today, 1) : today;
-  });
+  const [currentRecurrentMonth, setCurrentRecurrentMonth] = useState<Date>(() => getCompetenciaAtual(new Date()));
   const [recurrentCompletions, setRecurrentCompletions] = useState<{ [eventId: string]: number }>({});
   
   const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
@@ -273,7 +271,7 @@ export default function ChecklistsApp({ onEditEntity }: ChecklistsAppProps) {
       setEmpresas(all.filter(e => {
         if (!isEmpresaAtivaNosModulos(e)) return false;
         if (isCompanyInExcludedDprhList(e)) return false;
-        return !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes('DP & RH');
+        return sanitizeModulosResponsavel(e.modulosResponsavel, e).includes('DP & RH');
       }));
     });
     const unsubSindicatos = onSnapshot(collection(db, 'sindicatos'), (snapshot) => {

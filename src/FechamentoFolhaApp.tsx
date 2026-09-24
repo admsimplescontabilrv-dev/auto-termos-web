@@ -6,7 +6,7 @@ import FechamentoFolhaTab from './components/FechamentoFolhaTab';
 import RelatoriosChecklistTab from './components/RelatoriosChecklistTab';
 import { FileSpreadsheet, FileText, Loader2, TableProperties } from 'lucide-react';
 import { isCompanyInExcludedDprhList } from './data/excludedDprhCompanies';
-import { isEmpresaAtivaNosModulos } from './utils/empresaUtils';
+import { isEmpresaAtivaNosModulos, sanitizeModulosResponsavel } from './utils/empresaUtils';
 
 export default function FechamentoFolhaApp() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -20,11 +20,7 @@ export default function FechamentoFolhaApp() {
       const dprhEmpresas = all.filter(e => {
         if (!isEmpresaAtivaNosModulos(e)) return false;
         if (isCompanyInExcludedDprhList(e)) return false;
-        return (
-          !e.modulosResponsavel || 
-          e.modulosResponsavel.length === 0 || 
-          e.modulosResponsavel.includes('DP & RH')
-        );
+        return sanitizeModulosResponsavel(e.modulosResponsavel, e).includes('DP & RH');
       });
       setEmpresas(dprhEmpresas);
       setLoading(false);

@@ -9,7 +9,7 @@ import {
   Cloud, Filter, ArrowUpDown, RotateCcw, MapPin, SlidersHorizontal
 } from 'lucide-react';
 import { isCompanyInExcludedDprhList, EXCLUDED_DPRH_COMPANIES } from './data/excludedDprhCompanies';
-import { parseDateToTimestamp } from './utils/empresaUtils';
+import { parseDateToTimestamp, sanitizeModulosResponsavel } from './utils/empresaUtils';
 
 interface EmpresasAppProps {
   entityToEdit?: { id: string, type: 'EMPRESA' | 'SINDICATO' } | null;
@@ -57,6 +57,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
 
   // DPRH Exclusions State
   const [hasExcludedDprhCleaned, setHasExcludedDprhCleaned] = useState(false);
+  const [hasCleanedFiscalArtifact, setHasCleanedFiscalArtifact] = useState(false);
 
   // Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -210,8 +211,9 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 ? emp.modulosResponsavel 
                 : ['DP & RH'];
               const filtered = currentMods.filter(m => m !== 'DP & RH' && m !== 'DP' && m !== 'RH');
+              const sanitized = sanitizeModulosResponsavel(filtered, emp);
               batch.update(doc(db, 'empresas', emp.id), {
-                modulosResponsavel: filtered.length > 0 ? filtered : ['OUTROS'],
+                modulosResponsavel: sanitized,
                 updatedAt: Date.now()
               });
             }
@@ -225,6 +227,41 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
       }
     }
   }, [empresas, hasExcludedDprhCleaned]);
+
+  // Auto-limpeza de artefatos de módulos inexistentes (ex: FISCAL) no banco de dados Firestore
+  useEffect(() => {
+    if (empresas.length > 0 && !hasCleanedFiscalArtifact) {
+      setHasCleanedFiscalArtifact(true);
+      const toClean = empresas.filter(emp => {
+        if (!emp.modulosResponsavel || !Array.isArray(emp.modulosResponsavel)) return false;
+        return emp.modulosResponsavel.some(m => {
+          if (typeof m !== 'string') return false;
+          const u = m.toUpperCase().trim();
+          return u.includes('FISC') || u.includes('FICAL') || u === 'OUTROS';
+        });
+      });
+
+      if (toClean.length > 0) {
+        const runFiscalCleanup = async () => {
+          try {
+            const batch = writeBatch(db);
+            for (const emp of toClean) {
+              const sanitized = sanitizeModulosResponsavel(emp.modulosResponsavel, emp);
+              batch.update(doc(db, 'empresas', emp.id), {
+                modulosResponsavel: sanitized,
+                updatedAt: Date.now()
+              });
+            }
+            await batch.commit();
+            console.log(`[Limpeza de Artefatos] ${toClean.length} empresas tiveram o módulo Fiscal indevido removido do Firestore.`);
+          } catch (err) {
+            console.warn('[Limpeza de Artefatos] Erro ao limpar módulo Fiscal indevido:', err);
+          }
+        };
+        runFiscalCleanup();
+      }
+    }
+  }, [empresas, hasCleanedFiscalArtifact]);
 
   const handleCreateDriveFolder = async (emp: Empresa) => {
     if (creatingFolderEmpresaId) return;
@@ -365,9 +402,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
         dataSaida: isAtiva ? '' : (empresa.dataSaida || ''),
         linkDrive: empresa.linkDrive || '',
         cidade: empresa.cidade || '',
-        modulosResponsavel: empresa.modulosResponsavel && empresa.modulosResponsavel.length > 0 
-          ? empresa.modulosResponsavel 
-          : ['DP & RH']
+        modulosResponsavel: sanitizeModulosResponsavel(empresa.modulosResponsavel, empresa)
       });
     } else {
       setEditingEmpresa({ 
@@ -566,9 +601,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
         dataSaida: isAtiva ? '' : (editingEmpresa.dataSaida || ''),
         linkDrive: editingEmpresa.linkDrive || '',
         cidade: editingEmpresa.cidade || '',
-        modulosResponsavel: editingEmpresa.modulosResponsavel && editingEmpresa.modulosResponsavel.length > 0
-          ? editingEmpresa.modulosResponsavel
-          : ['DP & RH']
+        modulosResponsavel: sanitizeModulosResponsavel(editingEmpresa.modulosResponsavel, editingEmpresa)
       };
 
       if (editingEmpresa.id) {
@@ -678,12 +711,8 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
     return empresas.filter(e => {
       // Filtragem por módulo
       if (selectedModuloFilter !== 'TODOS') {
-        const hasModulos = e.modulosResponsavel && e.modulosResponsavel.length > 0;
-        if (hasModulos) {
-          if (!e.modulosResponsavel.includes(selectedModuloFilter)) return false;
-        } else {
-          if (selectedModuloFilter !== 'DP & RH') return false;
-        }
+        const sanitized = sanitizeModulosResponsavel(e.modulosResponsavel, e);
+        if (!sanitized.includes(selectedModuloFilter)) return false;
       }
 
       // Filtragem por Situação
@@ -1187,7 +1216,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                   {/* Módulos Responsáveis */}
                   <div className="pt-2 border-t border-slate-700/40 flex flex-wrap gap-1.5 items-center">
                     <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-1">Módulos:</span>
-                    {(emp.modulosResponsavel && emp.modulosResponsavel.length > 0 ? emp.modulosResponsavel : ['DP & RH']).map(mod => (
+                    {sanitizeModulosResponsavel(emp.modulosResponsavel, emp).map(mod => (
                       <span key={mod} className="text-[10px] px-2 py-0.5 rounded bg-slate-700/40 text-slate-300 font-medium border border-slate-600/30">
                         {mod}
                       </span>
@@ -1429,7 +1458,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Módulos Responsáveis</label>
                 <div className="grid grid-cols-2 gap-2.5 bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl">
                   {['DP & RH', 'LEGALIZAÇÃO'].map(mod => {
-                    const currentModulos = editingEmpresa.modulosResponsavel || ['DP & RH'];
+                    const currentModulos = sanitizeModulosResponsavel(editingEmpresa.modulosResponsavel, editingEmpresa);
                     const isChecked = currentModulos.includes(mod);
                     return (
                       <label 

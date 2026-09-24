@@ -8,7 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import UnifiedAddModal from './components/UnifiedAddModal';
 import { isCompanyInExcludedDprhList } from './data/excludedDprhCompanies';
-import { isEmpresaAtivaNosModulos } from './utils/empresaUtils';
+import { isEmpresaAtivaNosModulos, sanitizeModulosResponsavel } from './utils/empresaUtils';
 import { checkIsEventCompleted, toggleUnifiedEventCompletion } from './utils/eventSync';
 
 export default function CalendarioApp() {
@@ -170,7 +170,7 @@ export default function CalendarioApp() {
       setEmpresas(all.filter(e => {
         if (!isEmpresaAtivaNosModulos(e)) return false;
         if (isCompanyInExcludedDprhList(e)) return false;
-        return !e.modulosResponsavel || e.modulosResponsavel.length === 0 || e.modulosResponsavel.includes('DP & RH');
+        return sanitizeModulosResponsavel(e.modulosResponsavel, e).includes('DP & RH');
       }));
     });
     const unsubSindicatos = onSnapshot(collection(db, 'sindicatos'), (snapshot) => {

@@ -1,4 +1,46 @@
 import { Empresa } from '../types';
+import { isCompanyInExcludedDprhList } from '../data/excludedDprhCompanies';
+
+export const MODULOS_VALIDOS = ['DP & RH', 'LEGALIZAÇÃO'] as const;
+
+/**
+ * Remove artefatos inexistentes (como 'FISCAL' ou 'FICAL') do array modulosResponsavel
+ * e garante que apenas os módulos válidos ('DP & RH' e 'LEGALIZAÇÃO') sejam mantidos.
+ */
+export function sanitizeModulosResponsavel(
+  modulos?: string[] | null,
+  empresa?: Partial<Empresa> | null
+): string[] {
+  if (!modulos || !Array.isArray(modulos)) {
+    return empresa && isCompanyInExcludedDprhList(empresa) ? [] : ['DP & RH'];
+  }
+
+  const filtered = modulos
+    .map(m => (m || '').trim())
+    .filter(m => {
+      const upper = m.toUpperCase();
+      if (upper.includes('FISC') || upper.includes('FICAL')) return false;
+      return upper === 'DP & RH' || upper === 'LEGALIZACAO' || upper === 'LEGALIZAÇÃO';
+    })
+    .map(m => {
+      const norm = m.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      return norm === 'LEGALIZACAO' ? 'LEGALIZAÇÃO' : 'DP & RH';
+    });
+
+  const unique = Array.from(new Set(filtered));
+
+  // Se a empresa ficou sem módulos válidos
+  if (unique.length === 0) {
+    return empresa && isCompanyInExcludedDprhList(empresa) ? [] : ['DP & RH'];
+  }
+
+  // Se a empresa estiver na lista oficial de excluídas do DP & RH, garanta que DP & RH não permaneça
+  if (empresa && isCompanyInExcludedDprhList(empresa)) {
+    return unique.filter(m => m !== 'DP & RH');
+  }
+
+  return unique;
+}
 
 /**
  * Retorna se uma empresa possui a situação 'BAIXADA' ou 'TRANSFERIDA'.

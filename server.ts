@@ -657,14 +657,15 @@ app.set('trust proxy', 1);
 
         for (const doc of empresasSnap.docs) {
           const data = doc.data();
-          const currentMods: string[] = Array.isArray(data.modulosResponsavel) ? data.modulosResponsavel : ['DP & RH'];
+          const rawMods: string[] = Array.isArray(data.modulosResponsavel) ? data.modulosResponsavel : ['DP & RH'];
+          const currentMods: string[] = rawMods.filter((m: string) => typeof m === 'string' && !m.toUpperCase().includes('FISC') && !m.toUpperCase().includes('FICAL'));
           
           const hasLegalizacao = currentMods.some((m: string) => 
             (m || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim() === 'LEGALIZACAO'
           );
 
           if (!hasLegalizacao) {
-            const merged = [...currentMods, 'LEGALIZAÇÃO'];
+            const merged = [...(currentMods.length > 0 ? currentMods : ['DP & RH']), 'LEGALIZAÇÃO'];
             await doc.ref.update({
               modulosResponsavel: merged,
               updatedAt: Date.now()

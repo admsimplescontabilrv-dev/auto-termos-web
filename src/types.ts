@@ -42,7 +42,7 @@ export interface Empresa {
   inscEstadual?: string;
   inscMunicipal?: string;
   cidade?: string;
-  modulosResponsavel?: string[]; // Ex: ['DP & RH', 'FISCAL', 'CONTÁBIL']
+  modulosResponsavel?: string[]; // Ex: ['DP & RH', 'LEGALIZAÇÃO']
   createdAt: number;
 }
 
