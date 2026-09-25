@@ -8,6 +8,15 @@ import { CurrencyInput } from './CurrencyInput';
 import { getTrimmedPdfBase64 } from './pdfUtils';
 import { ErrorLogViewer } from './ErrorLogViewer';
 import { calcularINSS_CLT, calcularINSS_ProLabore, calcularIRRF } from './utils/tributos';
+import { CalculadoraHorasExtrasRecibo } from './components/CalculadoraHorasExtrasRecibo';
+import { 
+  calcularCalendarioDSR, 
+  calcularSalarioHora, 
+  calcularValorHoraExtra, 
+  calcularTotalHorasExtras, 
+  calcularDSR,
+  hhMmToDecimal
+} from './utils/dsrCalendarUtils';
 
 export default function ReciboApp() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -120,16 +129,68 @@ useEffect(() => {
             ? parseFloat(payload.valor.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.'))
             : payload.valor;
 
-          if (numValor || payload.referenteA) {
-            setRubricas([
+          let rubricasIniciais: Rubrica[] = [];
+
+          if (Array.isArray(payload.rubricas) && payload.rubricas.length > 0) {
+            rubricasIniciais = payload.rubricas.map((r: any, idx: number) => ({
+              codigo: Number(r.codigo) || (2001 + idx),
+              descricao: String(r.descricao || '').toUpperCase(),
+              referencia: String(r.referencia || ''),
+              valor: Number(r.valor) || 0,
+              tipo: (r.tipo === 'desconto' ? 'desconto' : 'provento') as 'provento' | 'desconto'
+            }));
+          } else if (numValor || payload.referenteA) {
+            rubricasIniciais = [
               { 
-                 codigo: 2001, 
-                 descricao: payload.referenteA || 'DIAS NORMAIS', 
-                 referencia: numDias.toString(), 
-                 valor: numValor || (numSalario ? (numSalario / 30) * numDias : 0), 
-                 tipo: 'provento' 
-               }
-            ]);
+                codigo: 2001, 
+                descricao: payload.referenteA || 'DIAS NORMAIS', 
+                referencia: numDias.toString(), 
+                valor: numValor || (numSalario ? (numSalario / 30) * numDias : 0), 
+                tipo: 'provento' 
+              }
+            ];
+          }
+
+          if (payload.horasExtras && Array.isArray(payload.horasExtras)) {
+            const salBase = numSalario || numValor || 0;
+            const divisor = Number(payload.divisorJornada) || 220;
+            const salHora = calcularSalarioHora(salBase, divisor);
+            const calDsr = calcularCalendarioDSR(formattedMesAno || defaultMesAno);
+            let nextCod = rubricasIniciais.length > 0 ? Math.max(...rubricasIniciais.map(r => r.codigo)) + 1 : 2010;
+
+            payload.horasExtras.forEach((he: any) => {
+              const qtdDec = typeof he.qtdHoras === 'string' ? hhMmToDecimal(he.qtdHoras) : (Number(he.qtdHoras) || 0);
+              const pct = Number(he.percentual) || 50;
+              const valHoraHe = calcularValorHoraExtra(salHora, pct);
+              const totHe = calcularTotalHorasExtras(qtdDec, valHoraHe);
+
+              if (totHe > 0) {
+                rubricasIniciais.push({
+                  codigo: nextCod++,
+                  descricao: `HORAS EXTRAS ${pct}%`,
+                  referencia: `${qtdDec.toFixed(2)}H`,
+                  valor: totHe,
+                  tipo: 'provento'
+                });
+
+                if (he.calcularDsr !== false) {
+                  const valDsr = calcularDSR(totHe, calDsr.diasUteis, calDsr.domingosEFeriados);
+                  if (valDsr > 0) {
+                    rubricasIniciais.push({
+                      codigo: nextCod++,
+                      descricao: `DSR S/ HORAS EXTRAS ${pct}%`,
+                      referencia: `${calDsr.domingosEFeriados}/${calDsr.diasUteis}`,
+                      valor: valDsr,
+                      tipo: 'provento'
+                    });
+                  }
+                }
+              }
+            });
+          }
+
+          if (rubricasIniciais.length > 0) {
+            setRubricas(rubricasIniciais);
           }
           setStep(2);
           showToast('Dados pré-preenchidos pela IA.', 'success');
@@ -855,6 +916,15 @@ ${error instanceof Error ? error.stack : 'N/A'}`);
                       </div>
                     </div>
                 </div>
+
+                {/* Calculadora de Horas Extras e DSR (CLT Art. 59, CF/88 e Súmula 172/TST) */}
+                <CalculadoraHorasExtrasRecibo
+                  salarioBaseContratual={dadosFuncionario.salarioBaseContratual}
+                  rubricasAtuais={rubricas}
+                  mesAnoReferencia={dadosEmpresa.mesAno}
+                  onAdicionarRubricas={novasRubricas => setRubricas(novasRubricas)}
+                  showToast={showToast}
+                />
 
                 <div className="bg-slate-800/50 border border-slate-700/50 p-6 rounded-xl space-y-4">
                   <div className="flex justify-between items-center">

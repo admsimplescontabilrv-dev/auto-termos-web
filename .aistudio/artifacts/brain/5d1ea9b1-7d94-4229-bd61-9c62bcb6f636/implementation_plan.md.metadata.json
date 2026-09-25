@@ -1,0 +1,6 @@
+{
+  "summary":  "Plano de implementação detalhado para a Calculadora de Horas Extras e DSR integrada ao Gerador de Recibos, fundamentada na CLT (Art. 59), CF/88, Lei 605/1949 e Súmula 172 do TST, com entrada dual (HH:MM e Decimal), divisor livre, contagem automática e manual de dias úteis/feriados e lançamento em 1 clique nas rubricas.",
+  "updatedAt":  "2026-09-25T13:14:36.742075884Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}
