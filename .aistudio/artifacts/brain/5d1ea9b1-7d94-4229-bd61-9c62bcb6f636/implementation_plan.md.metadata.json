@@ -1,6 +1,6 @@
 {
-  "summary":  "Plano de implementação detalhado para a Calculadora de Horas Extras e DSR integrada ao Gerador de Recibos, fundamentada na CLT (Art. 59), CF/88, Lei 605/1949 e Súmula 172 do TST, com entrada dual (HH:MM e Decimal), divisor livre, contagem automática e manual de dias úteis/feriados e lançamento em 1 clique nas rubricas.",
-  "updatedAt":  "2026-09-25T13:14:36.742075884Z",
+  "summary":  "Plano de implementação detalhado para parametrizar a data de pagamento da Contribuição Assistencial Laboral no Cadastro de Sindicatos (com dia de vencimento e regra de mês subsequente) e exibir a data/vencimento calculada diretamente na coluna Assistencial Laboral da tabela de Fechamento de Folha.",
+  "updatedAt":  "2026-09-29T13:26:57.069639191Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

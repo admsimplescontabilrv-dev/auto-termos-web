@@ -1,5 +1,5 @@
 import { db, auth } from '../lib/firebase';
-import { doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, getDocs, collection, query, where } from 'firebase/firestore';
 import { CalendarEvent } from '../types';
 
 export interface EventCompletionResult {
@@ -17,14 +17,28 @@ export function checkIsEventCompleted(
   monthKey: string,
   completionsMap: Record<string, { completedAt?: number } | number>
 ): EventCompletionResult {
-  const actualId = event.originalEventId || event.id;
+  const idA = event.originalEventId || event.id;
+  const idB = event.id;
 
-  const key1 = `${actualId}_${empresaId}_${monthKey}`;
-  const key2 = `${actualId}_${empresaId}`;
-  const key3 = `${actualId}_GERAL_${monthKey}`;
-  const key4 = `${actualId}_GERAL`;
+  const key1 = `${idA}_${empresaId}_${monthKey}`;
+  const key2 = `${idA}_${empresaId}`;
+  const key3 = `${idA}_GERAL_${monthKey}`;
+  const key4 = `${idA}_GERAL`;
+  const keySind1 = event.empresaId ? `${idA}_${event.empresaId}_${monthKey}` : '';
+  const keySind2 = event.empresaId ? `${idA}_${event.empresaId}` : '';
 
-  const comp = completionsMap[key1] || completionsMap[key2] || completionsMap[key3] || completionsMap[key4];
+  const keyB1 = `${idB}_${empresaId}_${monthKey}`;
+  const keyB2 = `${idB}_${empresaId}`;
+  const keyB3 = `${idB}_GERAL_${monthKey}`;
+  const keyB4 = `${idB}_GERAL`;
+  const keyBSind1 = event.empresaId ? `${idB}_${event.empresaId}_${monthKey}` : '';
+  const keyBSind2 = event.empresaId ? `${idB}_${event.empresaId}` : '';
+
+  const comp = completionsMap[key1] || completionsMap[key2] || completionsMap[key3] || completionsMap[key4]
+    || (keySind1 ? completionsMap[keySind1] : undefined) || (keySind2 ? completionsMap[keySind2] : undefined)
+    || completionsMap[keyB1] || completionsMap[keyB2] || completionsMap[keyB3] || completionsMap[keyB4]
+    || (keyBSind1 ? completionsMap[keyBSind1] : undefined) || (keyBSind2 ? completionsMap[keyBSind2] : undefined)
+    || completionsMap[idA] || completionsMap[idB];
   if (comp) {
     const ts = typeof comp === 'number' ? comp : comp.completedAt;
     return { completed: true, completedAt: ts || Date.now() };
@@ -100,9 +114,17 @@ export async function toggleUnifiedEventCompletion({
     let fechamentoField = '';
     const upperTitle = event.title.toUpperCase();
 
+    const isLaboral =
+      upperTitle.includes('ASSISTENCIAL') ||
+      upperTitle.includes('LABORAL') ||
+      upperTitle.includes('SINDICATO') ||
+      upperTitle.includes('SINDICAL') ||
+      upperTitle.includes('NEGOCIAL') ||
+      upperTitle.includes('CONFEDERATIVA');
+
     if (upperTitle.includes('FGTS')) fechamentoField = 'fgts';
     else if (upperTitle.includes('DCTF')) fechamentoField = 'dctf';
-    else if (upperTitle.includes('SINDICATO')) fechamentoField = 'guiaSindicato';
+    else if (isLaboral) fechamentoField = 'guiaSindicatoLaboral';
     else if (upperTitle.includes('RECIBO')) fechamentoField = 'recibo';
     else if (upperTitle.includes('ADIANTAMENTO')) fechamentoField = 'adiantamento';
     else if (upperTitle.includes('EMPRÉSTIMO') || upperTitle.includes('EMPRESTIMO') || upperTitle.includes('CONSIGNADO')) fechamentoField = 'consignado';
@@ -119,19 +141,66 @@ export async function toggleUnifiedEventCompletion({
         pendingValue = 'PENDENTE (PONTO/COMISSÃO)';
       }
 
-      const fechamentoDocId = `${monthKey}_${entityId}`;
-      const updatePayload: Record<string, any> = {
-        [fechamentoField]: targetCompleted ? okValue : pendingValue,
-        monthKey,
-        empresaId: entityId,
-        updatedAt: now,
+      const newStatus = targetCompleted ? okValue : pendingValue;
+
+      const updateCompanyFechamento = async (targetEmpresaId: string) => {
+        const fechamentoDocId = `${monthKey}_${targetEmpresaId}`;
+        const updatePayload: Record<string, any> = {
+          [fechamentoField]: newStatus,
+          monthKey,
+          empresaId: targetEmpresaId,
+          updatedAt: now,
+        };
+
+        if (fechamentoField === 'guiaSindicatoLaboral' || fechamentoField === 'guiaSindicato') {
+          updatePayload.guiaSindicatoLaboral = newStatus;
+          updatePayload.guiaSindicato = newStatus;
+        }
+
+        await setDoc(doc(db, 'fechamentoFolha', fechamentoDocId), updatePayload, { merge: true });
       };
 
-      if (fechamentoField === 'guiaSindicato') {
-        updatePayload.guiaSindicatoLaboral = targetCompleted ? okValue : pendingValue;
-      }
+      await updateCompanyFechamento(entityId);
 
-      await setDoc(doc(db, 'fechamentoFolha', fechamentoDocId), updatePayload, { merge: true });
+      // Se entityId for um Sindicato, propaga para todas as empresas associadas
+      try {
+        const empDocsMap = new Map<string, any>();
+        const empSnap = await getDocs(query(collection(db, 'empresas'), where('sindicatoId', '==', entityId)));
+        empSnap.docs.forEach(d => empDocsMap.set(d.id, d));
+
+        // Tenta achar pelo documento de sindicatos para obter o código ou nome
+        const sindDoc = await getDoc(doc(db, 'sindicatos', entityId)).catch(() => null);
+        if (sindDoc && sindDoc.exists()) {
+          const sData = sindDoc.data();
+          if (sData?.codigo) {
+            const empByCode = await getDocs(query(collection(db, 'empresas'), where('sindicatoId', '==', sData.codigo)));
+            empByCode.docs.forEach(d => empDocsMap.set(d.id, d));
+          }
+          if (sData?.nome) {
+            const empByName = await getDocs(query(collection(db, 'empresas'), where('sindicatoNome', '==', sData.nome)));
+            empByName.docs.forEach(d => empDocsMap.set(d.id, d));
+          }
+        }
+
+        for (const [empId] of empDocsMap.entries()) {
+          const empCompDocId = `${eventId}_${empId}_${monthKey}`;
+          if (targetCompleted) {
+            await setDoc(doc(db, 'recurrentCompletions', empCompDocId), {
+              eventId,
+              monthKey,
+              entityId: empId,
+              completedAt: now,
+              createdAt: now,
+            });
+          } else {
+            await deleteDoc(doc(db, 'recurrentCompletions', empCompDocId)).catch(() => {});
+            await deleteDoc(doc(db, 'recurrentCompletions', `${eventId}_${empId}`)).catch(() => {});
+          }
+          await updateCompanyFechamento(empId);
+        }
+      } catch (err) {
+        // Ignora caso não seja sindicato ou sem empresas vinculadas
+      }
 
       // Sincronizar com Google Sheets em background se houver token
       try {

@@ -1044,6 +1044,14 @@ As empresas agora possuem código, regime tributário (Simples, Presumido, Real)
 Ao referenciar entidades para criar tarefas, eventos ou checklists, você deve sempre preferir e priorizar o uso do Código ou CNPJ caso o usuário os forneça.
 
 ═══════════════════════════════════════════════
+SINDICATOS E REGRAS DE CONTRIBUIÇÃO LABORAL:
+═══════════════════════════════════════════════
+Você tem acesso aos SINDICATOS CADASTRADOS no sistema, incluindo os campos:
+- "assistencialLaboral": meses em que há desconto/cobrança da taxa assistencial laboral (ex: "MENSAL", "OUTUBRO", "ABRIL, MAIO, JUNHO, JULHO"). O sistema monitora a cobrança desses meses e cruza automaticamente em tempo real com a coluna Assistencial Laboral do Fechamento de Folha e com os checklists/programação das empresas (se marcar OK na programação ou calendário, reflete imediatamente na folha, e vice-versa).
+- "validadeCCT": data base / vigência da convenção coletiva.
+Ao ser questionado sobre sindicatos ou meses de desconto da taxa assistencial laboral, consulte esses dados cadastrados e responda com precisão.
+
+═══════════════════════════════════════════════
 CATÁLOGO DE TERMOS DISPONÍVEIS NO SISTEMA:
 ═══════════════════════════════════════════════
 Os seguintes modelos de documento podem ser gerados automaticamente. Use o "termoId" exato ao gerar:

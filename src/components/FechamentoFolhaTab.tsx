@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../lib/firebase';
 import { collection, onSnapshot, query, setDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
-import { Empresa, CalendarEvent } from '../types';
+import { Empresa, CalendarEvent, Sindicato } from '../types';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Search, FileSpreadsheet, ArrowUp, ArrowDown, Printer } from 'lucide-react';
 import { getCompetenciaAtual } from '../utils/competenciaUtils';
+import { checkIsEventCompleted } from '../utils/eventSync';
+import { 
+  sincronizarSindicatosPadrao, 
+  getSindicatoParametrosPadrao, 
+  parseMesesTexto,
+  resolveSindicatoForEmpresa,
+  resolveGuiaLaboralStatus,
+  formatValidadeCCT
+} from '../utils/sindicatosPadrao';
 
 export { getCompetenciaAtual };
+
+const MESES_NOMES = [
+  'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+  'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
+];
 
 interface FechamentoFolhaTabProps {
   empresas: Empresa[];
@@ -18,12 +32,26 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
   const [searchTerm, setSearchTerm] = useState('');
   const [fechamentos, setFechamentos] = useState<Record<string, any>>({});
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [sindicatos, setSindicatos] = useState<Sindicato[]>([]);
   const [recurrentCompletions, setRecurrentCompletions] = useState<{ [key: string]: number }>({});
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [isMesesModalOpen, setIsMesesModalOpen] = useState(false);
   const [mesesModalData, setMesesModalData] = useState<{empresaId: string, tipo: 'LABORAL' | 'PATRONAL', selected: number[]}>({empresaId: '', tipo: 'LABORAL', selected: []});
+
+  const monthKey = format(currentMonth, 'yyyy-MM');
+  const padraoSindicato = sindicatos.find(s => s.nome.toUpperCase().includes('PADRÃO'));
+  const padraoId = padraoSindicato?.id;
+
+  // Garante parametrização e cadastro dos 19 sindicatos padrão de forma preventiva
+  const [hasParametrizadoSindicatos, setHasParametrizadoSindicatos] = useState(false);
+  useEffect(() => {
+    if (sindicatos.length > 0 && !hasParametrizadoSindicatos) {
+      setHasParametrizadoSindicatos(true);
+      sincronizarSindicatosPadrao(sindicatos);
+    }
+  }, [sindicatos, hasParametrizadoSindicatos]);
 
   useEffect(() => {
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -44,6 +72,11 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
       setCalendarEvents(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as CalendarEvent)));
     });
 
+    // Fetch Sindicatos
+    const unsubSindicatos = onSnapshot(collection(db, 'sindicatos'), (snapshot) => {
+      setSindicatos(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Sindicato)));
+    });
+
     // Fetch Completions
     const unsubCompletions = onSnapshot(query(collection(db, 'recurrentCompletions'), where('monthKey', '==', monthKey)), (snapshot) => {
       const comps: { [key: string]: number } = {};
@@ -57,6 +90,7 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
     return () => {
       unsubFechamentos();
       unsubEvents();
+      unsubSindicatos();
       unsubCompletions();
     };
   }, [currentMonth]);
@@ -76,85 +110,84 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
     
     const existing = fechamentos[empresaId] || {};
     const newData = { ...existing, [field]: value, monthKey, empresaId, updatedAt: Date.now() };
+    if (field === 'guiaSindicatoLaboral') {
+      newData.guiaSindicato = value;
+    } else if (field === 'guiaSindicato') {
+      newData.guiaSindicatoLaboral = value;
+    }
     
     await setDoc(doc(db, 'fechamentoFolha', docId), newData, { merge: true });
+
+    if (field === 'procuracao') {
+      const emp = empresas.find(e => e.id === empresaId);
+      if (emp) {
+        const newTemplate = { ...(emp.fechamentoTemplate || {}), procuracao: value };
+        updateDoc(doc(db, 'empresas', empresaId), { fechamentoTemplate: newTemplate }).catch(() => {});
+      }
+    }
 
     // Sync with Calendar Completions if applicable
     const syncFields = ['fgts', 'dctf', 'guiaSindicato', 'guiaSindicatoLaboral', 'guiaSindicatoPatronal', 'recibo', 'adiantamento', 'consignado', 'lancamento', 'verificarEnvio'];
     if (syncFields.includes(field)) {
-      let eventTitleMatch = '';
-      if (field === 'fgts') eventTitleMatch = 'FGTS';
-      else if (field === 'dctf') eventTitleMatch = 'DCTF';
-      else if (field === 'guiaSindicato' || field === 'guiaSindicatoLaboral' || field === 'guiaSindicatoPatronal') eventTitleMatch = 'SINDICATO';
-      else if (field === 'recibo') eventTitleMatch = 'RECIBO';
-      else if (field === 'adiantamento') eventTitleMatch = 'ADIANTAMENTO';
-      else if (field === 'consignado') eventTitleMatch = 'EMPRÉSTIMO';
-      else if (field === 'lancamento') eventTitleMatch = 'LANÇAMENTO';
-      else if (field === 'verificarEnvio') eventTitleMatch = 'VERIFICAR';
+      const emp = empresas.find(e => e.id === empresaId);
+      const sindicatoId = emp?.sindicatoId;
+      const padraoSindicato = sindicatos.find(s => s.nome.toUpperCase().includes('PADRÃO'));
+      const padraoId = padraoSindicato?.id;
 
-      if (eventTitleMatch) {
-        const emp = empresas.find(e => e.id === empresaId);
-        const sindicatoId = emp?.sindicatoId;
-
-        let matchingEvents = calendarEvents.filter(e => {
-          const isEntityMatch = e.empresaId === empresaId || (sindicatoId && e.empresaId === sindicatoId) || !e.empresaId || e.empresaId === 'GERAL' || e.empresaId === 'PADRAO';
-          if (!isEntityMatch) return false;
-          const upper = e.title.toUpperCase();
-          if (field === 'consignado') {
-            return upper.includes('EMPRÉSTIMO') || upper.includes('EMPRESTIMO') || upper.includes('CONSIGNADO');
-          }
-          if (field === 'lancamento') {
-            return upper.includes('LANÇAMENTO') || upper.includes('LANCAMENTO') || upper.includes('PONTO') || upper.includes('COMISSÃO') || upper.includes('COMISSAO');
-          }
-          if (field === 'verificarEnvio') {
-            return upper.includes('VERIFICAR ENVIO') || upper.includes('VERIFICAR');
-          }
-          return upper.includes(eventTitleMatch);
-        });
-
-        // Fallback: se não encontrar restrito à empresa/sindicato, busca por título global
-        if (matchingEvents.length === 0) {
-          matchingEvents = calendarEvents.filter(e => {
-            const upper = e.title.toUpperCase();
-            if (field === 'consignado') {
-              return upper.includes('EMPRÉSTIMO') || upper.includes('EMPRESTIMO') || upper.includes('CONSIGNADO');
-            }
-            if (field === 'lancamento') {
-              return upper.includes('LANÇAMENTO') || upper.includes('LANCAMENTO') || upper.includes('PONTO') || upper.includes('COMISSÃO') || upper.includes('COMISSAO');
-            }
-            if (field === 'verificarEnvio') {
-              return upper.includes('VERIFICAR ENVIO') || upper.includes('VERIFICAR');
-            }
-            return upper.includes(eventTitleMatch);
-          });
+      const isMatch = (eventTitle: string) => {
+        const upper = (eventTitle || '').toUpperCase();
+        if (field === 'guiaSindicato' || field === 'guiaSindicatoLaboral' || field === 'guiaSindicatoPatronal') {
+          return upper.includes('ASSISTENCIAL') || upper.includes('LABORAL') || upper.includes('SINDICATO') || upper.includes('SINDICAL') || upper.includes('NEGOCIAL') || upper.includes('CONFEDERATIVA');
         }
+        if (field === 'fgts') return upper.includes('FGTS');
+        if (field === 'dctf') return upper.includes('DCTF');
+        if (field === 'recibo') return upper.includes('RECIBO');
+        if (field === 'adiantamento') return upper.includes('ADIANTAMENTO');
+        if (field === 'consignado') return upper.includes('EMPRÉSTIMO') || upper.includes('EMPRESTIMO') || upper.includes('CONSIGNADO');
+        if (field === 'lancamento') return upper.includes('LANÇAMENTO') || upper.includes('LANCAMENTO') || upper.includes('PONTO') || upper.includes('COMISSÃO') || upper.includes('COMISSAO');
+        if (field === 'verificarEnvio') return upper.includes('VERIFICAR');
+        return false;
+      };
 
-        for (const event of matchingEvents) {
-          const compDocId = `${event.id}_${empresaId}_${monthKey}`;
-          if (value === 'OK') {
-            await setDoc(doc(db, 'recurrentCompletions', compDocId), {
-              eventId: event.id,
-              monthKey,
-              entityId: empresaId,
+      let matchingEvents = calendarEvents.filter(e => {
+        const isEntityMatch = e.empresaId === empresaId || (sindicatoId && e.empresaId === sindicatoId) || (padraoId && e.empresaId === padraoId) || !e.empresaId || e.empresaId === 'GERAL';
+        if (!isEntityMatch) return false;
+        return isMatch(e.title);
+      });
+
+      if (matchingEvents.length === 0) {
+        matchingEvents = calendarEvents.filter(e => isMatch(e.title));
+      }
+
+      for (const event of matchingEvents) {
+        const actualEventId = event.originalEventId || event.id;
+        const compDocId = `${actualEventId}_${empresaId}_${monthKey}`;
+        const altCompDocId = `${actualEventId}_${empresaId}`;
+
+        if (value === 'OK') {
+          await setDoc(doc(db, 'recurrentCompletions', compDocId), {
+            eventId: actualEventId,
+            monthKey,
+            entityId: empresaId,
+            completedAt: Date.now(),
+            createdAt: Date.now()
+          });
+          if (!event.isRecurrent) {
+            await updateDoc(doc(db, 'calendarEvents', actualEventId), {
+              status: 'CONCLUIDO',
               completedAt: Date.now(),
-              createdAt: Date.now()
-            });
-            if (!event.isRecurrent) {
-              await updateDoc(doc(db, 'calendarEvents', event.id), {
-                status: 'CONCLUIDO',
-                completedAt: Date.now(),
-                updatedAt: Date.now()
-              }).catch(() => {});
-            }
-          } else {
-            await deleteDoc(doc(db, 'recurrentCompletions', compDocId)).catch(() => {});
-            if (!event.isRecurrent) {
-              await updateDoc(doc(db, 'calendarEvents', event.id), {
-                status: 'ATIVO',
-                completedAt: null,
-                updatedAt: Date.now()
-              }).catch(() => {});
-            }
+              updatedAt: Date.now()
+            }).catch(() => {});
+          }
+        } else {
+          await deleteDoc(doc(db, 'recurrentCompletions', compDocId)).catch(() => {});
+          await deleteDoc(doc(db, 'recurrentCompletions', altCompDocId)).catch(() => {});
+          if (!event.isRecurrent) {
+            await updateDoc(doc(db, 'calendarEvents', actualEventId), {
+              status: 'ATIVO',
+              completedAt: null,
+              updatedAt: Date.now()
+            }).catch(() => {});
           }
         }
       }
@@ -269,19 +302,23 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
             <thead>
               <tr>
                 <th style="width: 20px;">#</th>
+                <th style="width: 40px;">COD</th>
                 <th>EMPRESA</th>
+                <th>CNPJ</th>
                 <th>INF. LANÇAMENTO</th>
                 <th>EMPRÉSTIMO</th>
                 <th>ADIANTAMENTO</th>
                 <th>RECIBO</th>
                 <th>FGTS</th>
                 <th>DCTF</th>
-                <th>GUIA SINDICATO LAB.</th>
-                <th>GUIA SINDICATO PATR.</th>
                 <th>VERIFICAR ENVIO</th>
+                <th>COD. SIND.</th>
+                <th>ASSISTENCIAL LABORAL</th>
+                <th>VENCIMENTO CCT</th>
                 <th>OBSERVAÇÕES</th>
-                <th>CONTATOS</th>
                 <th>PRO LABORE/FUNC</th>
+                <th>PROCURAÇÃO</th>
+                <th>CONTATOS</th>
               </tr>
             </thead>
             <tbody>
@@ -289,28 +326,55 @@ export default function FechamentoFolhaTab({ empresas }: FechamentoFolhaTabProps
                 const fDataRaw = fechamentos[emp.id] || {};
                 const tpl = emp.fechamentoTemplate || {};
                 
-    const mesAtualIdx = currentMonth.getMonth();
-    const labMeses = tpl.guiaSindicatoLaboralMeses ? tpl.guiaSindicatoLaboralMeses.split(',').map(Number) : [];
-    const isLabMes = labMeses.includes(mesAtualIdx);
-    const defaultLabStatus = isLabMes ? 'PENDENTE' : 'OK';
+                const sindInfo = resolveSindicatoForEmpresa(emp, sindicatos, currentMonth);
+                const codEmpresa = emp.codigo && emp.codigo !== '0' ? emp.codigo : '-';
+                const codSindicato = sindInfo.codigo;
+                const cctVencimento = formatValidadeCCT(sindInfo.validadeCCT);
+                const assistencialLaboralTexto = sindInfo.assistencialLaboralTexto || '-';
+                const isMesExigivel = sindInfo.isMesExigivel;
 
-    const patMeses = tpl.guiaSindicatoPatronalMeses ? tpl.guiaSindicatoPatronalMeses.split(',').map(Number) : [];
-    const isPatMes = patMeses.includes(mesAtualIdx);
-    const defaultPatStatus = isPatMes ? 'PENDENTE' : 'OK';
+                const isEventFieldCompleted = (fld: string) => {
+                  return calendarEvents.some(e => {
+                    const isEntityMatch = e.empresaId === emp.id || (emp.sindicatoId && e.empresaId === emp.sindicatoId) || (padraoId && e.empresaId === padraoId) || e.empresaId === 'GERAL';
+                    if (!isEntityMatch) return false;
+                    const upper = (e.title || '').toUpperCase();
+                    let match = false;
+                    if (fld === 'guiaSindicatoLaboral' || fld === 'guiaSindicato') {
+                      match = upper.includes('ASSISTENCIAL') || upper.includes('LABORAL') || upper.includes('SINDICATO') || upper.includes('SINDICAL') || upper.includes('NEGOCIAL') || upper.includes('CONFEDERATIVA');
+                    } else if (fld === 'fgts') match = upper.includes('FGTS');
+                    else if (fld === 'dctf') match = upper.includes('DCTF');
+                    else if (fld === 'recibo') match = upper.includes('RECIBO');
+                    else if (fld === 'adiantamento') match = upper.includes('ADIANTAMENTO');
+                    else if (fld === 'consignado') match = upper.includes('EMPRÉSTIMO') || upper.includes('EMPRESTIMO') || upper.includes('CONSIGNADO');
+                    else if (fld === 'lancamento') match = upper.includes('LANÇAMENTO') || upper.includes('LANCAMENTO') || upper.includes('PONTO') || upper.includes('COMISSÃO') || upper.includes('COMISSAO');
+                    else if (fld === 'verificarEnvio') match = upper.includes('VERIFICAR');
+                    if (!match) return false;
+                    return checkIsEventCompleted(e, emp.id, monthKey, recurrentCompletions).completed;
+                  });
+                };
 
-const fData = isEditMode ? tpl : {
-                  lancamento: fDataRaw.lancamento ?? tpl.lancamento,
-                  consignado: fDataRaw.consignado ?? tpl.consignado,
-                  adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
-                  recibo: fDataRaw.recibo ?? tpl.recibo,
-                  fgts: fDataRaw.fgts ?? tpl.fgts,
-                  dctf: fDataRaw.dctf ?? tpl.dctf,
-                  guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? (fDataRaw.guiaSindicato ?? defaultLabStatus),
-                  guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
-                  verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
+                const resolveFieldStatus = (fld: string, rawVal: string | undefined, defaultVal: string) => {
+                  if (isEventFieldCompleted(fld)) return 'OK';
+                  return rawVal ?? defaultVal;
+                };
+
+                const fData = isEditMode ? tpl : {
+                  lancamento: resolveFieldStatus('lancamento', fDataRaw.lancamento, tpl.lancamento || ''),
+                  consignado: resolveFieldStatus('consignado', fDataRaw.consignado, tpl.consignado || ''),
+                  adiantamento: resolveFieldStatus('adiantamento', fDataRaw.adiantamento, tpl.adiantamento || ''),
+                  recibo: resolveFieldStatus('recibo', fDataRaw.recibo, tpl.recibo || ''),
+                  fgts: resolveFieldStatus('fgts', fDataRaw.fgts, tpl.fgts || ''),
+                  dctf: resolveFieldStatus('dctf', fDataRaw.dctf, tpl.dctf || ''),
+                  guiaSindicatoLaboral: resolveGuiaLaboralStatus(
+                    isMesExigivel,
+                    isEventFieldCompleted('guiaSindicatoLaboral'),
+                    fDataRaw.guiaSindicatoLaboral ?? fDataRaw.guiaSindicato
+                  ),
+                  verificarEnvio: resolveFieldStatus('verificarEnvio', fDataRaw.verificarEnvio, tpl.verificarEnvio || ''),
                   observacoes: fDataRaw.observacoes ?? tpl.observacoes,
                   contatos: fDataRaw.contatos ?? tpl.contatos,
                   tipoFolha: fDataRaw.tipoFolha ?? tpl.tipoFolha,
+                  procuracao: fDataRaw.procuracao ?? tpl.procuracao,
                 };
                 
                 const getStatusClass = (val: string) => {
@@ -323,22 +387,23 @@ const fData = isEditMode ? tpl : {
                 return `
                   <tr>
                     <td>${i + 1}</td>
-                    <td>
-                      <strong>${emp.nome}</strong><br/>
-                      <span style="font-size: 8px; color: #666;">${emp.cnpj || ''}</span>
-                    </td>
+                    <td>${codEmpresa}</td>
+                    <td><strong>${emp.nome}</strong></td>
+                    <td style="font-family: monospace; font-size: 8px;">${emp.cnpj || ''}</td>
                     <td class="${getStatusClass(fData.lancamento)}">${fData.lancamento || ''}</td>
                     <td class="${getStatusClass(fData.consignado)}">${fData.consignado || ''}</td>
                     <td class="${getStatusClass(fData.adiantamento)}">${fData.adiantamento || ''}</td>
                     <td class="${getStatusClass(fData.recibo)}">${fData.recibo || ''}</td>
                     <td class="${getStatusClass(fData.fgts)}">${fData.fgts || ''}</td>
                     <td class="${getStatusClass(fData.dctf)}">${fData.dctf || ''}</td>
-                    <td class="${getStatusClass(fData.guiaSindicatoLaboral)}">${fData.guiaSindicatoLaboral || ''}</td>
-                    <td class="${getStatusClass(fData.guiaSindicatoPatronal)}">${fData.guiaSindicatoPatronal || ''}</td>
                     <td class="${getStatusClass(fData.verificarEnvio)}">${fData.verificarEnvio || ''}</td>
+                    <td>${codSindicato}</td>
+                    <td>${assistencialLaboralTexto} (${fData.guiaSindicatoLaboral || ''})</td>
+                    <td>${cctVencimento}</td>
                     <td>${fData.observacoes || ''}</td>
-                    <td>${fData.contatos || ''}</td>
                     <td>${fData.tipoFolha || ''}</td>
+                    <td>${fData.procuracao || ''}</td>
+                    <td>${fData.contatos || ''}</td>
                   </tr>
                 `;
               }).join('')}
@@ -447,7 +512,8 @@ const fData = isEditMode ? tpl : {
                           dctf: 'PENDENTE',
                           guiaSindicato: 'NÃO ENVIAMOS',
                           verificarEnvio: 'PENDENTE',
-                          tipoFolha: 'FUNCIONÁRIOS'
+                          tipoFolha: 'FUNCIONÁRIOS',
+                          procuracao: 'SIMPLES'
                         }
                       });
                     }
@@ -510,19 +576,23 @@ const fData = isEditMode ? tpl : {
           <thead className="bg-slate-950/80 text-slate-400 text-xs uppercase tracking-wider sticky top-0 z-10">
             <tr>
               <th className="px-2 py-3 font-medium border-b border-r border-slate-800 sticky left-0 bg-slate-950 z-20 w-10 text-center">#</th>
-              <th className="px-4 py-3 font-medium border-b border-r border-slate-800 sticky left-[40px] bg-slate-950 z-20">Empresa</th>
+              <th className="px-2 py-3 font-medium border-b border-r border-slate-800 sticky left-[40px] bg-slate-950 z-20 text-center w-16">COD</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800 sticky left-[104px] bg-slate-950 z-20 min-w-[200px]">Empresa</th>
+              <th className="px-3 py-3 font-medium border-b border-r border-slate-800">CNPJ</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Inf. Lançamento</th>
-              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Empréstimo</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Empréstimo Consignado</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Adiantamento</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Recibo</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">FGTS</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">DCTF</th>
-              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Guia Sindicato Laboral</th>
-              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Guia Sindicato Patronal</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Verificar Envio</th>
+              <th className="px-3 py-3 font-medium border-b border-r border-slate-800 text-center bg-slate-900/80">Cód. Sind.</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800 bg-slate-900/60 min-w-[220px]">Assistencial Laboral</th>
+              <th className="px-3 py-3 font-medium border-b border-r border-slate-800 text-center bg-slate-900/80">Vencimento CCT</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Observações</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Pro Labore / Funcionários</th>
+              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Procuração</th>
               <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Contatos</th>
-              <th className="px-4 py-3 font-medium border-b border-r border-slate-800">Pro Labore/Func</th>
               <th className="px-4 py-3 font-medium border-b border-slate-800">Últ. Atualização</th>
             </tr>
           </thead>
@@ -530,30 +600,56 @@ const fData = isEditMode ? tpl : {
             {filteredEmpresas.map((emp, index) => {
               const fDataRaw = fechamentos[emp.id] || {};
               const tpl = emp.fechamentoTemplate || {};
-              
-              
-    const mesAtualIdx = currentMonth.getMonth();
-    const labMeses = tpl.guiaSindicatoLaboralMeses ? tpl.guiaSindicatoLaboralMeses.split(',').map(Number) : [];
-    const isLabMes = labMeses.includes(mesAtualIdx);
-    const defaultLabStatus = isLabMes ? 'PENDENTE' : 'OK';
+              const sindInfo = resolveSindicatoForEmpresa(emp, sindicatos, currentMonth);
+              const sindicato = sindInfo.sindicato;
+              const codEmpresa = emp.codigo && emp.codigo !== '0' ? emp.codigo : '-';
+              const codSindicato = sindInfo.codigo;
+              const cctVencimento = formatValidadeCCT(sindInfo.validadeCCT);
+              const assistencialLaboralTexto = sindInfo.assistencialLaboralTexto;
+              const isMesExigivel = sindInfo.isMesExigivel;
 
-    const patMeses = tpl.guiaSindicatoPatronalMeses ? tpl.guiaSindicatoPatronalMeses.split(',').map(Number) : [];
-    const isPatMes = patMeses.includes(mesAtualIdx);
-    const defaultPatStatus = isPatMes ? 'PENDENTE' : 'OK';
+              const isEventFieldCompleted = (fld: string) => {
+                return calendarEvents.some(e => {
+                  const isEntityMatch = e.empresaId === emp.id || (emp.sindicatoId && e.empresaId === emp.sindicatoId) || (padraoId && e.empresaId === padraoId) || e.empresaId === 'GERAL';
+                  if (!isEntityMatch) return false;
+                  const upper = (e.title || '').toUpperCase();
+                  let match = false;
+                  if (fld === 'guiaSindicatoLaboral' || fld === 'guiaSindicato') {
+                    match = upper.includes('ASSISTENCIAL') || upper.includes('LABORAL') || upper.includes('SINDICATO') || upper.includes('SINDICAL') || upper.includes('NEGOCIAL') || upper.includes('CONFEDERATIVA');
+                  } else if (fld === 'fgts') match = upper.includes('FGTS');
+                  else if (fld === 'dctf') match = upper.includes('DCTF');
+                  else if (fld === 'recibo') match = upper.includes('RECIBO');
+                  else if (fld === 'adiantamento') match = upper.includes('ADIANTAMENTO');
+                  else if (fld === 'consignado') match = upper.includes('EMPRÉSTIMO') || upper.includes('EMPRESTIMO') || upper.includes('CONSIGNADO');
+                  else if (fld === 'lancamento') match = upper.includes('LANÇAMENTO') || upper.includes('LANCAMENTO') || upper.includes('PONTO') || upper.includes('COMISSÃO') || upper.includes('COMISSAO');
+                  else if (fld === 'verificarEnvio') match = upper.includes('VERIFICAR');
+                  if (!match) return false;
+                  return checkIsEventCompleted(e, emp.id, monthKey, recurrentCompletions).completed;
+                });
+              };
 
-const fData = isEditMode ? tpl : {
-                lancamento: fDataRaw.lancamento ?? tpl.lancamento,
-                consignado: fDataRaw.consignado ?? tpl.consignado,
-                adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
-                recibo: fDataRaw.recibo ?? tpl.recibo,
-                fgts: fDataRaw.fgts ?? tpl.fgts,
-                dctf: fDataRaw.dctf ?? tpl.dctf,
-                guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? (fDataRaw.guiaSindicato ?? defaultLabStatus),
-                guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
-                verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
+              const resolveFieldStatus = (fld: string, rawVal: string | undefined, defaultVal: string) => {
+                if (isEventFieldCompleted(fld)) return 'OK';
+                return rawVal ?? defaultVal;
+              };
+
+              const fData = isEditMode ? tpl : {
+                lancamento: resolveFieldStatus('lancamento', fDataRaw.lancamento, tpl.lancamento || ''),
+                consignado: resolveFieldStatus('consignado', fDataRaw.consignado, tpl.consignado || ''),
+                adiantamento: resolveFieldStatus('adiantamento', fDataRaw.adiantamento, tpl.adiantamento || ''),
+                recibo: resolveFieldStatus('recibo', fDataRaw.recibo, tpl.recibo || ''),
+                fgts: resolveFieldStatus('fgts', fDataRaw.fgts, tpl.fgts || ''),
+                dctf: resolveFieldStatus('dctf', fDataRaw.dctf, tpl.dctf || ''),
+                guiaSindicatoLaboral: resolveGuiaLaboralStatus(
+                  isMesExigivel,
+                  isEventFieldCompleted('guiaSindicatoLaboral'),
+                  fDataRaw.guiaSindicatoLaboral ?? fDataRaw.guiaSindicato
+                ),
+                verificarEnvio: resolveFieldStatus('verificarEnvio', fDataRaw.verificarEnvio, tpl.verificarEnvio || ''),
                 observacoes: fDataRaw.observacoes ?? tpl.observacoes,
                 contatos: fDataRaw.contatos ?? tpl.contatos,
                 tipoFolha: fDataRaw.tipoFolha ?? tpl.tipoFolha,
+                procuracao: fDataRaw.procuracao ?? tpl.procuracao,
                 updatedAt: fDataRaw.updatedAt
               };
               
@@ -579,9 +675,16 @@ const fData = isEditMode ? tpl : {
                     </div>
                   </td>
 
-                  <td className="px-4 py-2 border-r border-slate-800/50 sticky left-[40px] bg-slate-900 group-hover:bg-slate-800 transition-colors z-10 max-w-[250px] truncate" title={emp.nome}>
+                  <td className="px-2 py-2 border-r border-slate-800/50 sticky left-[40px] bg-slate-900 group-hover:bg-slate-800 transition-colors z-10 text-center font-mono text-xs font-bold text-indigo-300">
+                    {codEmpresa}
+                  </td>
+
+                  <td className="px-4 py-2 border-r border-slate-800/50 sticky left-[104px] bg-slate-900 group-hover:bg-slate-800 transition-colors z-10 max-w-[250px] truncate" title={emp.nome}>
                     <div className="font-bold text-slate-200 truncate">{emp.nome}</div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">{emp.cnpj}</div>
+                  </td>
+
+                  <td className="px-3 py-2 border-r border-slate-800/50 font-mono text-xs text-slate-400">
+                    {emp.cnpj || '-'}
                   </td>
                   
                   <td className="px-2 py-2 border-r border-slate-800/50">
@@ -663,58 +766,6 @@ const fData = isEditMode ? tpl : {
                   </td>
 
                   <td className="px-2 py-2 border-r border-slate-800/50">
-                    <div className="flex items-center gap-1">
-                      <select 
-                        value={fData.guiaSindicatoLaboral || ''}
-                        onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoLaboral', e.target.value)}
-                        className={`w-full text-xs font-bold rounded px-2 py-1.5 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoLaboral)}`}
-                      >
-                        <option value=""></option>
-                        <option value="PENDENTE">PENDENTE</option>
-                        <option value="OK">OK</option>
-                      </select>
-                      <button
-                        onClick={() => {
-                          const selStr = tpl.guiaSindicatoLaboralMeses || '';
-                          const selArr = selStr ? selStr.split(',').map(Number) : [];
-                          setMesesModalData({ empresaId: emp.id, tipo: 'LABORAL', selected: selArr });
-                          setIsMesesModalOpen(true);
-                        }}
-                        className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors"
-                        title="Configurar Meses"
-                      >
-                        ⚙️
-                      </button>
-                    </div>
-                  </td>
-
-                  <td className="px-2 py-2 border-r border-slate-800/50">
-                    <div className="flex items-center gap-1">
-                      <select 
-                        value={fData.guiaSindicatoPatronal || ''}
-                        onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoPatronal', e.target.value)}
-                        className={`w-full text-xs font-bold rounded px-2 py-1.5 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoPatronal)}`}
-                      >
-                        <option value=""></option>
-                        <option value="PENDENTE">PENDENTE</option>
-                        <option value="OK">OK</option>
-                      </select>
-                      <button
-                        onClick={() => {
-                          const selStr = tpl.guiaSindicatoPatronalMeses || '';
-                          const selArr = selStr ? selStr.split(',').map(Number) : [];
-                          setMesesModalData({ empresaId: emp.id, tipo: 'PATRONAL', selected: selArr });
-                          setIsMesesModalOpen(true);
-                        }}
-                        className="p-1.5 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors"
-                        title="Configurar Meses"
-                      >
-                        ⚙️
-                      </button>
-                    </div>
-                  </td>
-
-                  <td className="px-2 py-2 border-r border-slate-800/50">
                     <select 
                       value={fData.verificarEnvio || ''}
                       onChange={(e) => updateFechamento(emp.id, 'verificarEnvio', e.target.value)}
@@ -727,23 +778,74 @@ const fData = isEditMode ? tpl : {
                     </select>
                   </td>
 
+                  <td className="px-2 py-2 border-r border-slate-800/50 text-center font-mono text-xs font-bold text-amber-300 bg-slate-950/40">
+                    {codSindicato}
+                  </td>
+
+                  <td className="px-2.5 py-2 border-r border-slate-800/50 bg-slate-950/20">
+                    <div className="flex flex-col gap-1 min-w-[210px]">
+                      {assistencialLaboralTexto ? (
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span 
+                            title={`Regra do Sindicato: ${assistencialLaboralTexto}`}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold truncate max-w-[155px] ${
+                              isMesExigivel
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                                : 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                            }`}
+                          >
+                            {assistencialLaboralTexto}
+                          </span>
+                          {isMesExigivel && (
+                            <span className="text-[9px] uppercase px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 font-bold">
+                              Mês Ativo
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 italic">Sem regra cadastrada</span>
+                      )}
+                      
+                      <div className="flex items-center gap-1">
+                        <select 
+                          value={fData.guiaSindicatoLaboral || ''}
+                          onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoLaboral', e.target.value)}
+                          className={`w-full text-xs font-bold rounded px-2 py-1 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoLaboral)}`}
+                        >
+                          <option value=""></option>
+                          <option value="PENDENTE">PENDENTE</option>
+                          <option value="NÃO TEM">NÃO TEM</option>
+                          <option value="OK">OK</option>
+                        </select>
+                        <button
+                          onClick={() => {
+                            const selStr = tpl.guiaSindicatoLaboralMeses || (sindInfo.assistencialLaboralMeses.length > 0 ? sindInfo.assistencialLaboralMeses.join(',') : '');
+                            const selArr = selStr ? selStr.split(',').map(Number) : [];
+                            setMesesModalData({ empresaId: emp.id, tipo: 'LABORAL', selected: selArr });
+                            setIsMesesModalOpen(true);
+                          }}
+                          className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors shrink-0"
+                          title="Personalizar meses para esta empresa"
+                        >
+                          ⚙️
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="px-3 py-2 border-r border-slate-800/50 text-center text-xs font-medium text-slate-300 bg-slate-950/40">
+                    <span className={cctVencimento !== '-' && cctVencimento !== 'Não cadastrada' ? 'px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px]' : 'text-slate-500'}>
+                      {cctVencimento}
+                    </span>
+                  </td>
+
                   <td className="px-2 py-2 border-r border-slate-800/50">
                     <input 
                       type="text"
                       value={fData.observacoes || ''}
                       onChange={(e) => updateFechamento(emp.id, 'observacoes', e.target.value)}
                       placeholder="Obs..."
-                      className="w-48 bg-slate-900 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </td>
-
-                  <td className="px-2 py-2 border-r border-slate-800/50">
-                    <input 
-                      type="text"
-                      value={fData.contatos || ''}
-                      onChange={(e) => updateFechamento(emp.id, 'contatos', e.target.value)}
-                      placeholder="Contatos..."
-                      className="w-48 bg-slate-900 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                      className="w-48 bg-slate-900 border border-slate-700 text-slate-200 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
                     />
                   </td>
 
@@ -759,6 +861,27 @@ const fData = isEditMode ? tpl : {
                     </select>
                   </td>
 
+                  <td className="px-2 py-2 border-r border-slate-800/50">
+                    <input 
+                      type="text"
+                      list="procuracao-options"
+                      value={fData.procuracao || ''}
+                      onChange={(e) => updateFechamento(emp.id, 'procuracao', e.target.value)}
+                      placeholder="Procuração..."
+                      className="w-28 bg-slate-900 border border-slate-700 text-slate-200 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors uppercase font-medium"
+                    />
+                  </td>
+
+                  <td className="px-2 py-2 border-r border-slate-800/50">
+                    <input 
+                      type="text"
+                      value={fData.contatos || ''}
+                      onChange={(e) => updateFechamento(emp.id, 'contatos', e.target.value)}
+                      placeholder="Contatos..."
+                      className="w-56 bg-slate-900 border border-slate-700 text-slate-200 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
+                    />
+                  </td>
+
                   <td className="px-3 py-2 text-xs text-slate-500 font-mono whitespace-nowrap">
                     {(fData as any).updatedAt ? format((fData as any).updatedAt, "dd/MM 'às' HH:mm") : '-'}
                   </td>
@@ -767,6 +890,11 @@ const fData = isEditMode ? tpl : {
             })}
           </tbody>
         </table>
+        <datalist id="procuracao-options">
+          <option value="SIMPLES" />
+          <option value="NAYARA" />
+          <option value="SEM PROCURAÇÃO" />
+        </datalist>
       </div>
 
       {/* Mobile Card Layout */}
@@ -774,30 +902,56 @@ const fData = isEditMode ? tpl : {
         {filteredEmpresas.map((emp, index) => {
           const fDataRaw = fechamentos[emp.id] || {};
           const tpl = emp.fechamentoTemplate || {};
-          
-          
-    const mesAtualIdx = currentMonth.getMonth();
-    const labMeses = tpl.guiaSindicatoLaboralMeses ? tpl.guiaSindicatoLaboralMeses.split(',').map(Number) : [];
-    const isLabMes = labMeses.includes(mesAtualIdx);
-    const defaultLabStatus = isLabMes ? 'PENDENTE' : 'OK';
+          const sindInfo = resolveSindicatoForEmpresa(emp, sindicatos, currentMonth);
+          const sindicato = sindInfo.sindicato;
+          const codEmpresa = emp.codigo && emp.codigo !== '0' ? emp.codigo : '-';
+          const codSindicato = sindInfo.codigo;
+          const cctVencimento = formatValidadeCCT(sindInfo.validadeCCT);
+          const assistencialLaboralTexto = sindInfo.assistencialLaboralTexto;
+          const isMesExigivel = sindInfo.isMesExigivel;
 
-    const patMeses = tpl.guiaSindicatoPatronalMeses ? tpl.guiaSindicatoPatronalMeses.split(',').map(Number) : [];
-    const isPatMes = patMeses.includes(mesAtualIdx);
-    const defaultPatStatus = isPatMes ? 'PENDENTE' : 'OK';
+          const isEventFieldCompleted = (fld: string) => {
+            return calendarEvents.some(e => {
+              const isEntityMatch = e.empresaId === emp.id || (emp.sindicatoId && e.empresaId === emp.sindicatoId) || (padraoId && e.empresaId === padraoId) || e.empresaId === 'GERAL';
+              if (!isEntityMatch) return false;
+              const upper = (e.title || '').toUpperCase();
+              let match = false;
+              if (fld === 'guiaSindicatoLaboral' || fld === 'guiaSindicato') {
+                match = upper.includes('ASSISTENCIAL') || upper.includes('LABORAL') || upper.includes('SINDICATO') || upper.includes('SINDICAL') || upper.includes('NEGOCIAL') || upper.includes('CONFEDERATIVA');
+              } else if (fld === 'fgts') match = upper.includes('FGTS');
+              else if (fld === 'dctf') match = upper.includes('DCTF');
+              else if (fld === 'recibo') match = upper.includes('RECIBO');
+              else if (fld === 'adiantamento') match = upper.includes('ADIANTAMENTO');
+              else if (fld === 'consignado') match = upper.includes('EMPRÉSTIMO') || upper.includes('EMPRESTIMO') || upper.includes('CONSIGNADO');
+              else if (fld === 'lancamento') match = upper.includes('LANÇAMENTO') || upper.includes('LANCAMENTO') || upper.includes('PONTO') || upper.includes('COMISSÃO') || upper.includes('COMISSAO');
+              else if (fld === 'verificarEnvio') match = upper.includes('VERIFICAR');
+              if (!match) return false;
+              return checkIsEventCompleted(e, emp.id, monthKey, recurrentCompletions).completed;
+            });
+          };
 
-const fData = isEditMode ? tpl : {
-            lancamento: fDataRaw.lancamento ?? tpl.lancamento,
-            consignado: fDataRaw.consignado ?? tpl.consignado,
-            adiantamento: fDataRaw.adiantamento ?? tpl.adiantamento,
-            recibo: fDataRaw.recibo ?? tpl.recibo,
-            fgts: fDataRaw.fgts ?? tpl.fgts,
-            dctf: fDataRaw.dctf ?? tpl.dctf,
-            guiaSindicatoLaboral: fDataRaw.guiaSindicatoLaboral ?? (fDataRaw.guiaSindicato ?? defaultLabStatus),
-            guiaSindicatoPatronal: fDataRaw.guiaSindicatoPatronal ?? defaultPatStatus,
-            verificarEnvio: fDataRaw.verificarEnvio ?? tpl.verificarEnvio,
+          const resolveFieldStatus = (fld: string, rawVal: string | undefined, defaultVal: string) => {
+            if (isEventFieldCompleted(fld)) return 'OK';
+            return rawVal ?? defaultVal;
+          };
+
+          const fData = isEditMode ? tpl : {
+            lancamento: resolveFieldStatus('lancamento', fDataRaw.lancamento, tpl.lancamento || ''),
+            consignado: resolveFieldStatus('consignado', fDataRaw.consignado, tpl.consignado || ''),
+            adiantamento: resolveFieldStatus('adiantamento', fDataRaw.adiantamento, tpl.adiantamento || ''),
+            recibo: resolveFieldStatus('recibo', fDataRaw.recibo, tpl.recibo || ''),
+            fgts: resolveFieldStatus('fgts', fDataRaw.fgts, tpl.fgts || ''),
+            dctf: resolveFieldStatus('dctf', fDataRaw.dctf, tpl.dctf || ''),
+            guiaSindicatoLaboral: resolveGuiaLaboralStatus(
+              isMesExigivel,
+              isEventFieldCompleted('guiaSindicatoLaboral'),
+              fDataRaw.guiaSindicatoLaboral ?? fDataRaw.guiaSindicato
+            ),
+            verificarEnvio: resolveFieldStatus('verificarEnvio', fDataRaw.verificarEnvio, tpl.verificarEnvio || ''),
             observacoes: fDataRaw.observacoes ?? tpl.observacoes,
             contatos: fDataRaw.contatos ?? tpl.contatos,
             tipoFolha: fDataRaw.tipoFolha ?? tpl.tipoFolha,
+            procuracao: fDataRaw.procuracao ?? tpl.procuracao,
             updatedAt: fDataRaw.updatedAt
           };
 
@@ -819,8 +973,23 @@ const fData = isEditMode ? tpl : {
             <div key={emp.id} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex flex-col space-y-4">
               <div className="flex items-start justify-between border-b border-slate-700/50 pb-3">
                 <div className="flex-1 min-w-0 pr-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                      COD #{codEmpresa}
+                    </span>
+                    {codSindicato !== '-' && (
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/20">
+                        Sind #{codSindicato}
+                      </span>
+                    )}
+                  </div>
                   <h3 className="font-bold text-slate-200 text-sm truncate">{emp.nome}</h3>
                   <p className="text-xs text-slate-500 font-mono mt-0.5">{emp.cnpj}</p>
+                  {cctVencimento !== '-' && (
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Venc. CCT: <span className="text-emerald-400 font-medium">{cctVencimento}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-col items-center space-y-1 shrink-0 bg-slate-900/50 rounded-lg p-1 border border-slate-700/50">
                   <button 
@@ -848,61 +1017,64 @@ const fData = isEditMode ? tpl : {
                 {renderSelect('recibo', 'Recibo', ['PENDENTE', 'OK'])}
                 {renderSelect('fgts', 'FGTS', ['PENDENTE', 'OK'])}
                 {renderSelect('dctf', 'DCTF', ['PENDENTE', 'OK'])}
-                
-                <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Sind. Laboral</label>
-                  <div className="flex items-center gap-1">
-                    <select 
-                      value={fData.guiaSindicatoLaboral || ''}
-                      onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoLaboral', e.target.value)}
-                      className={`w-full text-xs font-bold rounded px-2 py-2 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoLaboral)}`}
-                    >
-                      <option value=""></option>
-                      <option value="PENDENTE">PENDENTE</option>
-                      <option value="OK">OK</option>
-                    </select>
-                    <button
-                      onClick={() => {
-                        const selStr = tpl.guiaSindicatoLaboralMeses || '';
-                        const selArr = selStr ? selStr.split(',').map(Number) : [];
-                        setMesesModalData({ empresaId: emp.id, tipo: 'LABORAL', selected: selArr });
-                        setIsMesesModalOpen(true);
-                      }}
-                      className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors"
-                    >
-                      ⚙️
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Sind. Patronal</label>
-                  <div className="flex items-center gap-1">
-                    <select 
-                      value={fData.guiaSindicatoPatronal || ''}
-                      onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoPatronal', e.target.value)}
-                      className={`w-full text-xs font-bold rounded px-2 py-2 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoPatronal)}`}
-                    >
-                      <option value=""></option>
-                      <option value="PENDENTE">PENDENTE</option>
-                      <option value="OK">OK</option>
-                    </select>
-                    <button
-                      onClick={() => {
-                        const selStr = tpl.guiaSindicatoPatronalMeses || '';
-                        const selArr = selStr ? selStr.split(',').map(Number) : [];
-                        setMesesModalData({ empresaId: emp.id, tipo: 'PATRONAL', selected: selArr });
-                        setIsMesesModalOpen(true);
-                      }}
-                      className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors"
-                    >
-                      ⚙️
-                    </button>
-                  </div>
-                </div>
-
                 {renderSelect('verificarEnvio', 'Verificar Envio', ['PENDENTE', 'NÃO ENVIAMOS', 'OK'])}
-                {renderSelect('tipoFolha', 'Tipo', ['FUNCIONÁRIOS', 'PRO LABORE'])}
+                {renderSelect('tipoFolha', 'Tipo Folha', ['FUNCIONÁRIOS', 'PRO LABORE'])}
+              </div>
+
+              {/* Assistencial Laboral no Card */}
+              <div className="bg-slate-900/70 p-3 rounded-lg border border-slate-700/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    Assistencial Laboral
+                  </label>
+                  {isMesExigivel && (
+                    <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Cobrança este mês
+                    </span>
+                  )}
+                </div>
+                {assistencialLaboralTexto && (
+                  <div className="text-xs text-indigo-300 font-semibold bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">
+                    Regra: {assistencialLaboralTexto}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <select 
+                    value={fData.guiaSindicatoLaboral || ''}
+                    onChange={(e) => updateFechamento(emp.id, 'guiaSindicatoLaboral', e.target.value)}
+                    className={`w-full text-xs font-bold rounded px-2 py-2 border appearance-none cursor-pointer focus:outline-none transition-colors ${getSelectClass(fData.guiaSindicatoLaboral)}`}
+                  >
+                    <option value=""></option>
+                    <option value="PENDENTE">PENDENTE</option>
+                    <option value="NÃO TEM">NÃO TEM</option>
+                    <option value="OK">OK</option>
+                  </select>
+                  <button
+                    onClick={() => {
+                      const selStr = tpl.guiaSindicatoLaboralMeses || (sindInfo.assistencialLaboralMeses.length > 0 ? sindInfo.assistencialLaboralMeses.join(',') : '');
+                      const selArr = selStr ? selStr.split(',').map(Number) : [];
+                      setMesesModalData({ empresaId: emp.id, tipo: 'LABORAL', selected: selArr });
+                      setIsMesesModalOpen(true);
+                    }}
+                    className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors border border-slate-700 shrink-0"
+                    title="Configurar Meses"
+                  >
+                    ⚙️
+                  </button>
+                </div>
+              </div>
+
+              {/* Procuração no Card */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Procuração</label>
+                <input 
+                  type="text"
+                  list="procuracao-options"
+                  value={fData.procuracao || ''}
+                  onChange={(e) => updateFechamento(emp.id, 'procuracao', e.target.value)}
+                  placeholder="Procuração (ex: SIMPLES, NAYARA...)"
+                  className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 transition-colors uppercase font-medium"
+                />
               </div>
 
               <div className="flex flex-col space-y-1">

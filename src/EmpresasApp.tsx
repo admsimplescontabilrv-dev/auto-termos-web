@@ -10,12 +10,43 @@ import {
 } from 'lucide-react';
 import { isCompanyInExcludedDprhList, EXCLUDED_DPRH_COMPANIES } from './data/excludedDprhCompanies';
 import { parseDateToTimestamp, sanitizeModulosResponsavel } from './utils/empresaUtils';
+import { sincronizarSindicatosPadrao } from './utils/sindicatosPadrao';
 
 interface EmpresasAppProps {
   entityToEdit?: { id: string, type: 'EMPRESA' | 'SINDICATO' } | null;
   clearEntityToEdit?: () => void;
   initialTab?: 'EMPRESAS' | 'SINDICATOS';
 }
+
+const MESES_NOMES = [
+  'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+  'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
+];
+
+const MESES_ABREV = [
+  'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN',
+  'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'
+];
+
+const SINDICATOS_PARAMETROS_PADRAO: Record<string, { assistencialLaboral: string }> = {
+  '1': { assistencialLaboral: 'ABRIL, MAIO, JUNHO, JULHO' },
+  '2': { assistencialLaboral: 'JANEIRO, MAIO, SETEMBRO' },
+  '3': { assistencialLaboral: 'JULHO, JANEIRO, MAIO' },
+  '5': { assistencialLaboral: 'AGOSTO, DEZEMBRO' },
+  '6': { assistencialLaboral: 'NOVEMBRO' },
+  '7': { assistencialLaboral: 'MENSAL' },
+  '8': { assistencialLaboral: 'MENSAL' },
+  '9': { assistencialLaboral: 'JULHO, JANEIRO, MAIO' },
+  '10': { assistencialLaboral: 'JUNHO, OUTUBRO' },
+  '11': { assistencialLaboral: 'FEVEREIRO, ABRIL, JUNHO, AGOSTO, OUTUBRO, DEZEMBRO' },
+  '12': { assistencialLaboral: 'ABRIL, JULHO' },
+  '13': { assistencialLaboral: 'ABRIL, JULHO, SETEMBRO, DEZEMBRO' },
+  '14': { assistencialLaboral: 'JUNHO, NOVEMBRO' },
+  '16': { assistencialLaboral: 'OUTUBRO' },
+  '17': { assistencialLaboral: 'OUTUBRO' },
+  '18': { assistencialLaboral: 'OUTUBRO, JUNHO' },
+  '19': { assistencialLaboral: 'JANEIRO, MAIO, SETEMBRO' },
+};
 
 export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTab = 'EMPRESAS' }: EmpresasAppProps) {
   const [activeTab, setActiveTab] = useState<'EMPRESAS' | 'SINDICATOS'>(initialTab);
@@ -61,6 +92,15 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
 
   // Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Auto-parametrização preventiva e sincronização dos 19 sindicatos padrão com base nas CCTs
+  const [hasParametrizadoSindicatos, setHasParametrizadoSindicatos] = useState(false);
+  useEffect(() => {
+    if (sindicatos.length > 0 && !hasParametrizadoSindicatos) {
+      setHasParametrizadoSindicatos(true);
+      sincronizarSindicatosPadrao(sindicatos);
+    }
+  }, [sindicatos, hasParametrizadoSindicatos]);
 
   // Auto-ajuste no banco de dados: empresas com código repetido têm o código alterado para '0'
   useEffect(() => {
@@ -383,9 +423,21 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
 
   const openSindicatoModal = (sindicato?: Sindicato) => {
     if (sindicato) {
-      setEditingSindicato(sindicato);
+      setEditingSindicato({
+        ...sindicato,
+        assistencialLaboral: sindicato.assistencialLaboral || '',
+        assistencialLaboralMeses: sindicato.assistencialLaboralMeses || []
+      });
     } else {
-      setEditingSindicato({ nome: '', cnpj: '', codigo: '', regiaoAtuacao: '' });
+      setEditingSindicato({
+        nome: '',
+        cnpj: '',
+        codigo: '',
+        regiaoAtuacao: '',
+        validadeCCT: '',
+        assistencialLaboral: '',
+        assistencialLaboralMeses: []
+      });
     }
     setIsModalOpen(true);
   };
@@ -533,6 +585,8 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
         cnpj: editingSindicato.cnpj || '',
         codigo: editingSindicato.codigo || '',
         validadeCCT: editingSindicato.validadeCCT || '',
+        assistencialLaboral: editingSindicato.assistencialLaboral || '',
+        assistencialLaboralMeses: editingSindicato.assistencialLaboralMeses || [],
         regiaoAtuacao: editingSindicato.regiaoAtuacao || '',
       };
 
@@ -1074,10 +1128,25 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 <div className="flex justify-between items-start w-full mb-3 gap-4">
                   <div className="min-w-0 flex-1">
                     <h3 className="font-bold text-slate-200 text-lg mb-1 break-words leading-tight">{s.nome}</h3>
-                    <div className="text-sm text-slate-400 space-y-1">
+                    <div className="text-sm text-slate-400 space-y-1.5">
                       <p className="truncate">CNPJ: <span className="text-slate-300">{s.cnpj || '-'}</span></p>
-                      <p className="truncate">Código: <span className="text-slate-300">{s.codigo || '-'}</span></p>
+                      <p className="truncate">Código: <span className="text-indigo-300 font-mono font-bold bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">{s.codigo || '-'}</span></p>
                       <p className="truncate">Região: <span className="text-slate-300">{s.regiaoAtuacao || '-'}</span></p>
+                      <p className="truncate">
+                        Vencimento CCT: <span className="text-slate-200 font-medium">{s.validadeCCT ? (s.validadeCCT.includes('-') ? s.validadeCCT.split('-').reverse().join('/') : s.validadeCCT) : 'Não cadastrada'}</span>
+                      </p>
+                      <div className="pt-1">
+                        <span className="text-xs text-slate-400 block mb-1">Assistencial Laboral:</span>
+                        <span className={`inline-block px-2.5 py-1 rounded text-xs font-semibold ${
+                          s.assistencialLaboral
+                            ? s.assistencialLaboral.toUpperCase().includes('MENSAL')
+                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                              : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-slate-800 text-slate-500 border border-slate-700'
+                        }`}>
+                          {s.assistencialLaboral || 'Não configurado'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex space-x-2 shrink-0">
@@ -1253,18 +1322,20 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSaveSindicato} className="p-6 space-y-4">
+            <form onSubmit={handleSaveSindicato} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Nome do Sindicato *</label>
                 <input type="text" required value={editingSindicato.nome || ''} onChange={e => setEditingSindicato({...editingSindicato, nome: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors" />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">CNPJ</label>
-                <input type="text" value={editingSindicato.cnpj || ''} onChange={e => setEditingSindicato({...editingSindicato, cnpj: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Código</label>
-                <input type="text" value={editingSindicato.codigo || ''} onChange={e => setEditingSindicato({...editingSindicato, codigo: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">CNPJ</label>
+                  <input type="text" value={editingSindicato.cnpj || ''} onChange={e => setEditingSindicato({...editingSindicato, cnpj: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Código</label>
+                  <input type="text" value={editingSindicato.codigo || ''} onChange={e => setEditingSindicato({...editingSindicato, codigo: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors" />
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Região de Atuação (Cidade)</label>
@@ -1274,6 +1345,103 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Validade CCT / Data Base</label>
                 <input type="date" value={editingSindicato.validadeCCT || ''} onChange={e => setEditingSindicato({...editingSindicato, validadeCCT: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors" />
               </div>
+
+              {/* Seletor de Contribuição Assistencial Laboral */}
+              <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Contribuição Assistencial Laboral
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const isMensal = (editingSindicato.assistencialLaboral || '').toUpperCase() === 'MENSAL';
+                      if (isMensal) {
+                        setEditingSindicato({
+                          ...editingSindicato,
+                          assistencialLaboral: '',
+                          assistencialLaboralMeses: []
+                        });
+                      } else {
+                        setEditingSindicato({
+                          ...editingSindicato,
+                          assistencialLaboral: 'MENSAL',
+                          assistencialLaboralMeses: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+                        });
+                      }
+                    }}
+                    className={`px-3 py-1 rounded text-xs font-bold transition-all border cursor-pointer ${
+                      (editingSindicato.assistencialLaboral || '').toUpperCase() === 'MENSAL'
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm'
+                        : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    {(editingSindicato.assistencialLaboral || '').toUpperCase() === 'MENSAL' ? '✓ MENSAL (ATIVO)' : 'Definir MENSAL'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                  {MESES_ABREV.map((abrev, idx) => {
+                    const mesesAtuais = editingSindicato.assistencialLaboralMeses || [];
+                    const isSelected = mesesAtuais.includes(idx);
+                    return (
+                      <button
+                        key={abrev}
+                        type="button"
+                        onClick={() => {
+                          let novosMeses: number[];
+                          if (isSelected) {
+                            novosMeses = mesesAtuais.filter(m => m !== idx);
+                          } else {
+                            novosMeses = [...mesesAtuais, idx].sort((a, b) => a - b);
+                          }
+                          const texto = novosMeses.length === 12
+                            ? 'MENSAL'
+                            : novosMeses.map(m => MESES_NOMES[m]).join(', ');
+                          setEditingSindicato({
+                            ...editingSindicato,
+                            assistencialLaboral: texto,
+                            assistencialLaboralMeses: novosMeses
+                          });
+                        }}
+                        className={`py-1.5 px-2 text-xs font-bold rounded transition-colors text-center border cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                            : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        {abrev}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div>
+                  <input
+                    type="text"
+                    value={editingSindicato.assistencialLaboral || ''}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const upper = val.toUpperCase();
+                      const mesesEncontrados: number[] = [];
+                      MESES_NOMES.forEach((nome, idx) => {
+                        if (upper.includes(nome)) mesesEncontrados.push(idx);
+                      });
+                      setEditingSindicato({
+                        ...editingSindicato,
+                        assistencialLaboral: val,
+                        assistencialLaboralMeses: upper.includes('MENSAL') ? [0,1,2,3,4,5,6,7,8,9,10,11] : mesesEncontrados
+                      });
+                    }}
+                    placeholder="Ex: OUTUBRO, ou ABRIL, MAIO, JUNHO, JULHO..."
+                    className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 font-mono font-medium"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Meses de cobrança da Contribuição Assistencial Laboral (ex: MENSAL, OUTUBRO, JUNHO, NOVEMBRO).
+                  </p>
+                </div>
+              </div>
+
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-400 hover:text-slate-200 font-medium transition-colors">Cancelar</button>
                 <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">Salvar</button>

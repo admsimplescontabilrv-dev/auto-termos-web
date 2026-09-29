@@ -4,6 +4,10 @@ export interface Sindicato {
   cnpj: string;
   codigo: string;
   validadeCCT?: string; // YYYY-MM-DD
+  assistencialLaboral?: string; // Ex: 'MENSAL', 'OUTUBRO', 'ABRIL, MAIO, JUNHO, JULHO'
+  assistencialLaboralMeses?: number[]; // Índices dos meses [0..11]
+  diaVencimentoLaboral?: string; // Ex: '10', '5º dia útil', '30/11'
+  regraVencimentoLaboral?: 'MES_SEGUINTE' | 'MES_VIGENTE' | 'DATA_FIXA' | string;
   regiaoAtuacao?: string;
   createdAt: number;
 }
@@ -26,11 +30,14 @@ export interface Empresa {
     recibo?: string;
     fgts?: string;
     dctf?: string;
-    guiaSindicato?: string; guiaSindicatoLaboral?: string; guiaSindicatoPatronal?: string;
+    guiaSindicato?: string;
+    guiaSindicatoLaboral?: string;
+    guiaSindicatoPatronal?: string;
     guiaSindicatoLaboralMeses?: string;
     guiaSindicatoPatronalMeses?: string;
     verificarEnvio?: string;
     tipoFolha?: string;
+    procuracao?: string;
     observacoes?: string;
     contatos?: string;
   };
