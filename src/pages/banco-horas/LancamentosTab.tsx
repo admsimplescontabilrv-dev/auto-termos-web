@@ -4,7 +4,7 @@ import { Colaborador, BancoHorasLancamento } from '../../types';
 import { timeToMinutes, minutesToTime } from '../../utils/timeFormat';
 import { collection, query, where, getDocs, updateDoc, doc, addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Loader2, ChevronLeft, ChevronRight, Calendar, Check, X, Info, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Calendar, Check, X, CheckCircle2 } from 'lucide-react';
 
 interface RowDraft {
   positivos: string;
@@ -22,12 +22,11 @@ export default function LancamentosTab() {
   const { data: colaboradores, loading: loadingColabs } = useFirestore<Colaborador>('colaboradores');
   const [lancamentos, setLancamentos] = useState<Record<string, BancoHorasLancamento>>({});
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
-  const [allAvailableMonths, setAllAvailableMonths] = useState<string[]>([]);
   const [loadingLancamentos, setLoadingLancamentos] = useState(false);
   const [savingStatus, setSavingStatus] = useState<Record<string, 'saving' | 'saved' | 'error'>>({});
   const hasCheckedInitialMonth = useRef(false);
 
-  // Carregar todos os meses que já possuem dados cadastrados
+  // Selecionar o mês com dados se o mês atual estiver zerado na inicialização
   useEffect(() => {
     const checkMonths = async () => {
       try {
@@ -40,9 +39,7 @@ export default function LancamentosTab() {
           }
         });
         const sorted = Array.from(monthsSet).sort().reverse();
-        setAllAvailableMonths(sorted);
 
-        // Se o mês atual não tiver nada e houver mês anterior com dados, sugerir ou ir para ele
         if (!hasCheckedInitialMonth.current && sorted.length > 0) {
           hasCheckedInitialMonth.current = true;
           const currentHasData = snap.docs.some(d => d.data().mesAno === mesAno);
@@ -145,18 +142,60 @@ export default function LancamentosTab() {
     });
   };
 
-  // Formatar saída de hora no blur (ex: '2932' -> '29:32', '5' -> '05:00', '29:32' -> '29:32')
+  // Máscara inteligente para digitação direta sem necessidade de digitar os dois pontos (:)
+  const handleDurationChange = (colabId: string, field: 'positivos' | 'negativos', value: string) => {
+    const digits = value.replace(/\D/g, '');
+
+    if (digits.length === 0) {
+      handleDraftChange(colabId, field, '');
+      return;
+    }
+
+    let masked = '';
+    if (digits.length <= 2) {
+      // 1 ou 2 dígitos (ex: "2", "29")
+      masked = digits;
+    } else if (digits.length <= 4) {
+      // 3 ou 4 dígitos (ex: "293" -> "29:3", "2932" -> "29:32", "0041" -> "00:41")
+      masked = `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
+    } else {
+      // Mais de 4 dígitos para centenas de horas (ex: 138:28 -> "138:28")
+      masked = `${digits.slice(0, digits.length - 2)}:${digits.slice(-2)}`;
+    }
+
+    handleDraftChange(colabId, field, masked);
+  };
+
+  // Ao sair do campo (blur), garante que fique sempre no formato padronizado 00:00
   const handleDurationBlur = (colabId: string, field: 'positivos' | 'negativos') => {
     const draft = drafts[colabId];
     if (!draft) return;
     const raw = draft[field].trim();
-    if (!raw) {
+
+    if (!raw || raw === '00:00' || raw === '0' || raw === '00') {
       handleDraftChange(colabId, field, '00:00');
       return;
     }
-    const minutes = timeToMinutes(raw);
-    const formatted = minutesToTime(minutes).replace('-', '');
-    handleDraftChange(colabId, field, formatted);
+
+    const digits = raw.replace(/\D/g, '');
+    let normalized = '';
+
+    if (raw.includes(':')) {
+      const [h, m] = raw.split(':');
+      const hPad = (h || '0').padStart(2, '0');
+      const mPad = (m || '0').padEnd(2, '0').slice(0, 2);
+      normalized = `${hPad}:${mPad}`;
+    } else {
+      if (digits.length <= 2) {
+        normalized = `00:${digits.padStart(2, '0')}`;
+      } else {
+        normalized = `${digits.slice(0, -2).padStart(2, '0')}:${digits.slice(-2)}`;
+      }
+    }
+
+    const minutes = timeToMinutes(normalized);
+    const finalFormatted = minutesToTime(minutes).replace('-', '');
+    handleDraftChange(colabId, field, finalFormatted);
   };
 
   // Cancelar alterações da linha (restaurar o que estava gravado)
@@ -245,16 +284,12 @@ export default function LancamentosTab() {
     return pos - neg;
   };
 
-  const hasDataThisMonth = Object.values(lancamentos).some(
-    l => (l.minutosPositivos || 0) > 0 || (l.minutosNegativos || 0) > 0
-  );
-
   if (loadingColabs) return <div className="text-slate-400 p-8 text-center">Carregando...</div>;
 
   return (
     <div className="space-y-6">
-      {/* SELETOR DE MÊS COM ALTO CONTRASTE E VISIBILIDADE MÁXIMA */}
-      <div className="bg-slate-900 border-2 border-indigo-500/70 p-5 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5">
+      {/* SELETOR DE MÊS LIMPO E COM ALTO CONTRASTE */}
+      <div className="bg-slate-900 border-2 border-indigo-500/70 p-5 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col gap-2">
           <label className="text-xs font-black text-amber-400 uppercase tracking-widest flex items-center gap-2">
             <Calendar className="w-4 h-4 text-amber-400" />
@@ -293,62 +328,20 @@ export default function LancamentosTab() {
           </div>
         </div>
 
-        <div className="flex flex-col md:items-end gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400">Visualizando:</span>
-            <span className="px-3.5 py-1.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded-lg text-sm font-black uppercase tracking-wide">
-              {formatMesAnoDisplay(mesAno)}
-            </span>
-          </div>
-
-          {allAvailableMonths.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
-              <span className="font-semibold text-slate-500">Meses com lançamentos:</span>
-              {allAvailableMonths.slice(0, 4).map(m => (
-                <button
-                  key={m}
-                  onClick={() => setMesAno(m)}
-                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all ${
-                    mesAno === m
-                      ? 'bg-amber-500 text-slate-950 shadow-md scale-105'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
-                  }`}
-                >
-                  {formatMesAnoDisplay(m)}
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-400">Visualizando:</span>
+          <span className="px-3.5 py-1.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded-lg text-sm font-black uppercase tracking-wide">
+            {formatMesAnoDisplay(mesAno)}
+          </span>
+          {loadingLancamentos && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin ml-2" />}
         </div>
       </div>
 
-      {!hasDataThisMonth && allAvailableMonths.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-slate-300 animate-in fade-in">
-          <div className="flex items-center gap-3">
-            <Info className="w-5 h-5 text-amber-400 shrink-0" />
-            <div>
-              <span>Nenhum lançamento efetuado ainda em <strong className="text-white capitalize">{formatMesAnoDisplay(mesAno)}</strong>.</span>
-              <p className="text-slate-400 text-xs mt-0.5">Se você deseja editar os dados anteriores, eles estão salvos em outros meses.</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setMesAno(allAvailableMonths[0])}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            Ver Lançamentos de {formatMesAnoDisplay(allAvailableMonths[0])}
-          </button>
-        </div>
-      )}
-
-      {/* TABELA DE LANÇAMENTOS COM CONFIRMAÇÃO POR LINHA (V e X) */}
+      {/* TABELA DE LANÇAMENTOS COM MÁSCARA AUTOMÁTICA E CONFIRMAÇÃO (V e X) */}
       <div className="bg-slate-900 border border-slate-700/60 rounded-2xl overflow-x-auto shadow-2xl">
         <div className="px-6 py-3.5 bg-slate-800/80 border-b border-slate-700/80 flex items-center justify-between">
-          <span className="text-xs font-black text-slate-300 uppercase tracking-widest flex items-center gap-2">
+          <span className="text-xs font-black text-slate-300 uppercase tracking-widest">
             Lançamento Mensal de Horas • {formatMesAnoDisplay(mesAno)}
-          </span>
-          <span className="text-xs text-slate-400 font-medium">
-            Dica: Digite as horas no formato <strong>HH:MM</strong> (suporta mais de 24h, ex: <strong>29:32</strong>) e clique no botão verde <strong>[V]</strong> para salvar.
           </span>
         </div>
 
@@ -388,12 +381,14 @@ export default function LancamentosTab() {
                     {colab.nome}
                   </td>
 
-                  {/* Input de Horas Positivas (Sem limite de 23h - aceita 29:32, etc.) */}
+                  {/* Input de Horas Extras com máscara automática (sem precisar digitar :) */}
                   <td className="px-6 py-4 text-center">
                     <input
                       type="text"
+                      inputMode="numeric"
                       value={draft.positivos}
-                      onChange={e => handleDraftChange(colab.id!, 'positivos', e.target.value)}
+                      onFocus={e => e.target.select()}
+                      onChange={e => handleDurationChange(colab.id!, 'positivos', e.target.value)}
                       onBlur={() => handleDurationBlur(colab.id!, 'positivos')}
                       onKeyDown={e => {
                         if (e.key === 'Enter') handleConfirmRow(colab.id!);
@@ -403,12 +398,14 @@ export default function LancamentosTab() {
                     />
                   </td>
 
-                  {/* Input de Horas Negativas (Sem limite de 23h - aceita 29:32, etc.) */}
+                  {/* Input de Faltas/Atrasos com máscara automática (sem precisar digitar :) */}
                   <td className="px-6 py-4 text-center">
                     <input
                       type="text"
+                      inputMode="numeric"
                       value={draft.negativos}
-                      onChange={e => handleDraftChange(colab.id!, 'negativos', e.target.value)}
+                      onFocus={e => e.target.select()}
+                      onChange={e => handleDurationChange(colab.id!, 'negativos', e.target.value)}
                       onBlur={() => handleDurationBlur(colab.id!, 'negativos')}
                       onKeyDown={e => {
                         if (e.key === 'Enter') handleConfirmRow(colab.id!);

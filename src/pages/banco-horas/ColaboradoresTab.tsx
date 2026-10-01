@@ -96,13 +96,6 @@ export default function ColaboradoresTab() {
 
   return (
     <div className="space-y-6">
-      {syncFeedback && (
-        <div className="bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 p-4 rounded-xl flex items-center gap-3 animate-in fade-in">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
-          <span className="text-sm font-medium">{syncFeedback}</span>
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <form onSubmit={handleAdd} className="flex gap-4 items-end flex-1 max-w-xl">
           <div className="flex-1">
@@ -124,15 +117,6 @@ export default function ColaboradoresTab() {
             Adicionar
           </button>
         </form>
-
-        <button
-          onClick={handleSyncOfficialNames}
-          className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors whitespace-nowrap"
-          title="Verificar e aplicar os nomes completos oficiais da empresa"
-        >
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          Padronizar Nomes Oficiais
-        </button>
       </div>
 
       <div className="bg-slate-900 border border-slate-700/50 rounded-xl overflow-x-auto">

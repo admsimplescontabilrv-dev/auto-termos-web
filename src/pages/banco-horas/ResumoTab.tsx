@@ -162,34 +162,6 @@ export default function ResumoTab() {
         </div>
       )}
 
-      {/* Aviso informativo caso o mês selecionado não possua lançamentos */}
-      {!mesAtualTemDados && mesesDisponiveis.length > 0 && (
-        <div className="bg-indigo-950/40 border border-indigo-500/30 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden animate-in fade-in">
-          <div className="flex items-center gap-3">
-            <Info className="w-5 h-5 text-amber-400 shrink-0" />
-            <div className="text-sm">
-              <span className="text-slate-300">
-                A competência de <strong className="text-white capitalize">{formatMesAnoDisplay(mesAno)}</strong> não possui horas lançadas.
-              </span>
-              <p className="text-slate-400 text-xs mt-0.5">
-                Seus lançamentos anteriores estão salvos e disponíveis no histórico.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {mesesDisponiveis.map(m => (
-              <button
-                key={m}
-                onClick={() => setMesAno(m)}
-                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 capitalize"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                Ir para {formatMesAnoDisplay(m)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* SELETOR DE MÊS COM ALTO CONTRASTE E VISIBILIDADE MÁXIMA */}
       <div className="bg-slate-900 border-2 border-indigo-500/70 p-5 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-5 print:hidden">
