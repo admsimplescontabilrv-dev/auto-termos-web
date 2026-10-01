@@ -11,3 +11,12 @@ export const minutesToTime = (totalMinutes: number): string => {
   const minutes = absMinutes % 60;
   return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
+
+export const formatMinutesToPdfTime = (totalMinutes: number): string => {
+  const sign = totalMinutes < 0 ? '-' : '';
+  const absMinutes = Math.abs(totalMinutes);
+  const hours = Math.floor(absMinutes / 60);
+  const minutes = absMinutes % 60;
+  return `${sign}${hours}:${String(minutes).padStart(2, '0')}`;
+};
+

@@ -1,7 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFirestore } from '../../hooks/useFirestore';
 import { Colaborador } from '../../types';
-import { Plus, UserMinus, UserCheck, Trash2, Pencil, Check, X, AlertTriangle } from 'lucide-react';
+import { Plus, UserMinus, UserCheck, Trash2, Pencil, Check, X, Sparkles, CheckCircle2 } from 'lucide-react';
+
+export const OFFICIAL_NAMES_MAP: Record<string, string> = {
+  'ANA CLARA': 'ANA CLARA MIRANDA REIS',
+  'ANA CLARA MIRANDA': 'ANA CLARA MIRANDA REIS',
+  'ANA LAURA': 'ANA LAURA PONCIANO MORAES',
+  'ANA LAURA PONCIANO': 'ANA LAURA PONCIANO MORAES',
+  'JOSÉ GABRIEL': 'JOSÉ GABRIEL MANÇO DANTAS',
+  'JOSE GABRIEL': 'JOSÉ GABRIEL MANÇO DANTAS',
+  'NARIANE': 'NARIANE APOLINARIO DA COSTA',
+  'STANISLÉIA': 'STANISLEIA GONCALVES DA SILVA MELLO',
+  'STANISLEIA': 'STANISLEIA GONCALVES DA SILVA MELLO',
+};
 
 export default function ColaboradoresTab() {
   const { data: colaboradores, add, update, remove, loading } = useFirestore<Colaborador>('colaboradores');
@@ -10,12 +22,48 @@ export default function ColaboradoresTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNome, setEditNome] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
+  // Auto-atualização de nomes curtos para os nomes completos oficiais da Simples Assessoria
+  useEffect(() => {
+    if (!loading && colaboradores.length > 0) {
+      colaboradores.forEach(async (colab) => {
+        const key = colab.nome?.trim().toUpperCase();
+        const official = OFFICIAL_NAMES_MAP[key];
+        if (official && colab.nome !== official && colab.id) {
+          try {
+            await update(colab.id, { nome: official });
+          } catch (e) {
+            console.error('Erro ao atualizar nome oficial:', e);
+          }
+        }
+      });
+    }
+  }, [loading, colaboradores]);
+
+  const handleSyncOfficialNames = async () => {
+    let updatedCount = 0;
+    for (const colab of colaboradores) {
+      const key = colab.nome?.trim().toUpperCase();
+      const official = OFFICIAL_NAMES_MAP[key];
+      if (official && colab.nome !== official && colab.id) {
+        await update(colab.id, { nome: official });
+        updatedCount++;
+      }
+    }
+    setSyncFeedback(
+      updatedCount > 0
+        ? `${updatedCount} colaborador(es) atualizado(s) com os nomes completos!`
+        : 'Todos os colaboradores já estão com os nomes oficiais!'
+    );
+    setTimeout(() => setSyncFeedback(null), 4000);
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!novoNome.trim()) return;
     await add({
-      nome: novoNome.trim(),
+      nome: novoNome.trim().toUpperCase(),
       ativo: true,
       createdAt: Date.now()
     });
@@ -40,7 +88,7 @@ export default function ColaboradoresTab() {
 
   const saveEdit = async (id: string) => {
     if (!editNome.trim()) return;
-    await update(id, { nome: editNome.trim() });
+    await update(id, { nome: editNome.trim().toUpperCase() });
     setEditingId(null);
   };
 
@@ -48,26 +96,44 @@ export default function ColaboradoresTab() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleAdd} className="flex gap-4 items-end">
-        <div className="flex-1 max-w-md">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Novo Colaborador</label>
-          <input
-            type="text"
-            value={novoNome}
-            onChange={e => setNovoNome(e.target.value)}
-            placeholder="Nome completo"
-            className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
-          />
+      {syncFeedback && (
+        <div className="bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 p-4 rounded-xl flex items-center gap-3 animate-in fade-in">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <span className="text-sm font-medium">{syncFeedback}</span>
         </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <form onSubmit={handleAdd} className="flex gap-4 items-end flex-1 max-w-xl">
+          <div className="flex-1">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Novo Colaborador</label>
+            <input
+              type="text"
+              value={novoNome}
+              onChange={e => setNovoNome(e.target.value)}
+              placeholder="Ex: ANA CLARA MIRANDA REIS"
+              className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors uppercase"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!novoNome.trim()}
+            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Adicionar
+          </button>
+        </form>
+
         <button
-          type="submit"
-          disabled={!novoNome.trim()}
-          className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors"
+          onClick={handleSyncOfficialNames}
+          className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors whitespace-nowrap"
+          title="Verificar e aplicar os nomes completos oficiais da empresa"
         >
-          <Plus className="w-4 h-4" />
-          Adicionar
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          Padronizar Nomes Oficiais
         </button>
-      </form>
+      </div>
 
       <div className="bg-slate-900 border border-slate-700/50 rounded-xl overflow-x-auto">
         <table className="w-full text-left text-sm text-slate-300 min-w-[600px]">
@@ -79,81 +145,84 @@ export default function ColaboradoresTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
-            {colaboradores.map(colab => (
-              <tr key={colab.id} className="hover:bg-slate-800/20 transition-colors">
-                <td className="px-6 py-4 font-medium text-slate-200">
-                  {editingId === colab.id ? (
-                    <input
-                      type="text"
-                      value={editNome}
-                      onChange={e => setEditNome(e.target.value)}
-                      className="w-full bg-slate-950 border border-indigo-500 text-slate-200 rounded px-2 py-1 focus:outline-none"
-                      autoFocus
-                    />
-                  ) : (
-                    <span className={!colab.ativo ? 'line-through text-slate-500' : ''}>{colab.nome}</span>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                    colab.ativo ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                  }`}>
-                    {colab.ativo ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 flex justify-end gap-2 items-center">
-                  {deleteConfirmId === colab.id ? (
-                    <div className="flex items-center gap-2 text-red-400 font-medium text-xs bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
-                      <span>Excluir?</span>
-                      <button onClick={() => handleDelete(colab.id!)} className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">Sim</button>
-                      <button onClick={() => setDeleteConfirmId(null)} className="px-2 py-1 bg-slate-700 text-slate-200 rounded hover:bg-slate-600 transition-colors">Não</button>
-                    </div>
-                  ) : editingId === colab.id ? (
-                    <>
-                      <button
-                        onClick={() => saveEdit(colab.id!)}
-                        className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-colors"
-                        title="Salvar"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="p-2 text-slate-400 hover:bg-slate-400/10 rounded-lg transition-colors"
-                        title="Cancelar"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => toggleAtivo(colab)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          colab.ativo ? 'text-amber-400 hover:bg-amber-400/10' : 'text-emerald-400 hover:bg-emerald-400/10'
-                        }`}
-                        title={colab.ativo ? 'Desativar' : 'Ativar'}
-                      >
-                        {colab.ativo ? <UserMinus className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => startEditing(colab)}
-                        className="p-2 text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirmId(colab.id!)}
-                        className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
+            {colaboradores
+              .slice()
+              .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+              .map(colab => (
+                <tr key={colab.id} className="hover:bg-slate-800/20 transition-colors">
+                  <td className="px-6 py-4 font-medium text-slate-200">
+                    {editingId === colab.id ? (
+                      <input
+                        type="text"
+                        value={editNome}
+                        onChange={e => setEditNome(e.target.value)}
+                        className="w-full bg-slate-950 border border-indigo-500 text-slate-200 rounded px-2 py-1 focus:outline-none uppercase"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className={!colab.ativo ? 'line-through text-slate-500' : ''}>{colab.nome}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                      colab.ativo ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                    }`}>
+                      {colab.ativo ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 flex justify-end gap-2 items-center">
+                    {deleteConfirmId === colab.id ? (
+                      <div className="flex items-center gap-2 text-red-400 font-medium text-xs bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
+                        <span>Excluir?</span>
+                        <button onClick={() => handleDelete(colab.id!)} className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">Sim</button>
+                        <button onClick={() => setDeleteConfirmId(null)} className="px-2 py-1 bg-slate-700 text-slate-200 rounded hover:bg-slate-600 transition-colors">Não</button>
+                      </div>
+                    ) : editingId === colab.id ? (
+                      <>
+                        <button
+                          onClick={() => saveEdit(colab.id!)}
+                          className="p-2 text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-colors"
+                          title="Salvar"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="p-2 text-slate-400 hover:bg-slate-400/10 rounded-lg transition-colors"
+                          title="Cancelar"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => toggleAtivo(colab)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            colab.ativo ? 'text-amber-400 hover:bg-amber-400/10' : 'text-emerald-400 hover:bg-emerald-400/10'
+                          }`}
+                          title={colab.ativo ? 'Desativar' : 'Ativar'}
+                        >
+                          {colab.ativo ? <UserMinus className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => startEditing(colab)}
+                          className="p-2 text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(colab.id!)}
+                          className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
             ))}
             {colaboradores.length === 0 && (
               <tr>

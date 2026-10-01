@@ -260,6 +260,7 @@ export default function App() {
     useState<string>("tpl-custom");
   // Templates selected for batch generation
   const [batchTemplateIds, setBatchTemplateIds] = useState<string[]>([]);
+  const [templateFilter, setTemplateFilter] = useState("");
 
   const [templateName, setTemplateName] = useState("Novo Modelo");
   const [templateCode, setTemplateCode] = useState(INITIAL_TEMPLATE);
@@ -408,12 +409,32 @@ export default function App() {
     const savedTemplates = localStorage.getItem("@app:templates");
     if (savedTemplates) {
       try {
-        setTemplates(JSON.parse(savedTemplates));
+        const parsed = JSON.parse(savedTemplates);
+        if (Array.isArray(parsed)) {
+          const existingIds = new Set(parsed.map((t: SavedTemplate) => t.id));
+          const missingDefaults = DEFAULT_TEMPLATES.filter((dt) => !existingIds.has(dt.id));
+          // Atualiza o conteúdo de tpl-epi com o modelo atual de data.ts
+          const updatedParsed = parsed.map((t: SavedTemplate) => {
+            if (t.id === 'tpl-epi') {
+              const defaultEpi = DEFAULT_TEMPLATES.find(d => d.id === 'tpl-epi');
+              if (defaultEpi) return { ...t, content: defaultEpi.content, name: defaultEpi.name };
+            }
+            return t;
+          });
+          const merged = [...updatedParsed, ...missingDefaults];
+          setTemplates(merged);
+          localStorage.setItem("@app:templates", JSON.stringify(merged));
+        } else {
+          setTemplates(DEFAULT_TEMPLATES);
+          localStorage.setItem("@app:templates", JSON.stringify(DEFAULT_TEMPLATES));
+        }
       } catch {
         setTemplates(DEFAULT_TEMPLATES);
+        localStorage.setItem("@app:templates", JSON.stringify(DEFAULT_TEMPLATES));
       }
     } else {
       setTemplates(DEFAULT_TEMPLATES);
+      localStorage.setItem("@app:templates", JSON.stringify(DEFAULT_TEMPLATES));
     }
 
     const savedCustom = localStorage.getItem("@app:customTemplate");
@@ -585,6 +606,17 @@ export default function App() {
     }
     setTemplates(newTemplates);
     localStorage.setItem("@app:templates", JSON.stringify(newTemplates));
+  };
+
+  const handleResetDefaultTemplates = () => {
+    setTemplates(DEFAULT_TEMPLATES);
+    localStorage.setItem("@app:templates", JSON.stringify(DEFAULT_TEMPLATES));
+    setNotification({
+      type: "success",
+      message: "Modelos padrão restaurados com sucesso!",
+      visible: true,
+    });
+    setTimeout(() => setNotification((prev) => ({ ...prev, visible: false })), 4000);
   };
 
   const generateFinalDocument = () => {
@@ -1747,7 +1779,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
       {/* SIDEBAR OVERLAY FOR MOBILE */}
       {sidebarOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          className="md:hidden fixed inset-0 bg-black/50 z-40 print:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -1874,7 +1906,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 overflow-auto bg-slate-950 relative flex flex-col print:overflow-visible print:bg-white w-full max-w-full">
         {/* Mobile Header */}
-        <div className="md:hidden sticky top-0 z-40 flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900 shrink-0 shadow-sm">
+        <div className="md:hidden sticky top-0 z-40 flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900 shrink-0 shadow-sm print:hidden">
           <div className="flex items-center gap-3">
             <img
               src="/logo.png?v=2"
@@ -1997,15 +2029,32 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                       <input
                         type="text"
                         placeholder="Buscar modelo..."
+                        value={templateFilter}
+                        onChange={(e) => setTemplateFilter(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-700/50 text-sm text-slate-200 rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-indigo-500 placeholder:text-slate-600"
                       />
                     </div>
 
                     <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                      <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-3 mt-4">
-                        SUGERIDOS
-                      </h3>
-                      {templates.map((tpl, index) => (
+                      <div className="flex items-center justify-between mb-3 mt-4">
+                        <h3 className="text-xs text-slate-500 font-semibold tracking-wider">
+                          SUGERIDOS
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={handleResetDefaultTemplates}
+                          className="text-[11px] text-indigo-400 hover:text-indigo-300 hover:underline font-medium"
+                          title="Restaurar lista de modelos padrão"
+                        >
+                          Restaurar Padrões
+                        </button>
+                      </div>
+                      {templates
+                        .filter((tpl) =>
+                          !templateFilter ||
+                          tpl.name.toLowerCase().includes(templateFilter.toLowerCase())
+                        )
+                        .map((tpl, index) => (
                         <div
                           key={tpl.id}
                           className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
@@ -2793,7 +2842,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
         }
 
         @media print {
-          @page { margin: 0; size: A4 portrait; }
+          ${modulo === "banco-horas" ? "@page { margin: 8mm; size: A4 landscape; }" : "@page { margin: 0; size: A4 portrait; }"}
           body { 
             background-color: white !important; 
             margin: 0 !important; 

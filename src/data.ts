@@ -331,6 +331,58 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p>EMPREGADORA</p>
 </div>`,
     lastUsed: Date.now()
+  },
+  {
+    id: 'tpl-epi',
+    name: 'Termo de Responsabilidade e Recebimento de EPI',
+    content: `<div style="text-align: center;"><h2><b>TERMO DE RESPONSABILIDADE E RECEBIMENTO DE EQUIPAMENTO DE PROTEÇÃO INDIVIDUAL (EPI)</b></h2></div>
+<br>
+<p><b>EMPREGADOR:</b> <b>[NOME DA EMPRESA]</b>, inscrita no CNPJ sob o nº <b>[CNPJ DA EMPRESA]</b>.</p>
+<p><b>EMPREGADO(A):</b> <b>[NOME DO COLABORADOR]</b>, inscrito(a) no CPF sob o nº <b>[CPF DO COLABORADOR]</b>.</p>
+<br>
+<p>Pelo presente instrumento, o(a) <b>EMPREGADO(A)</b> acima qualificado(a) declara haver recebido gratuitamente da <b>EMPREGADORA</b> os Equipamentos de Proteção Individual (EPI) abaixo relacionados, adequados aos riscos de sua atividade e em perfeito estado de conservação e funcionamento.</p>
+<br>
+<p><b>Relação de EPIs Entregues:</b></p>
+<p>1. __________________________________________________________________</p>
+<p>2. __________________________________________________________________</p>
+<p>3. __________________________________________________________________</p>
+<p>4. __________________________________________________________________</p>
+<p>5. __________________________________________________________________</p>
+<br>
+<p><b>DAS OBRIGAÇÕES DO(A) EMPREGADO(A)</b></p>
+<p>Nos termos do artigo 158 da Consolidação das Leis do Trabalho (CLT) e da Norma Regulamentadora nº 06 (NR-6) do Ministério do Trabalho e Emprego, o(a) <b>EMPREGADO(A)</b> compromete-se expressamente a:</p>
+<p><b>1. Uso Obrigatório:</b> Utilizar os EPIs fornecidos de forma OBRIGATÓRIA e contínua durante toda a execução de suas atividades profissionais e permanência nas áreas de risco, conforme as orientações transmitidas pela empresa e pelo Técnico de Segurança do Trabalho.</p>
+<p><b>2. Finalidade:</b> Utilizar os equipamentos única e exclusivamente para a finalidade a que se destinam (proteção no ambiente de trabalho).</p>
+<p><b>3. Guarda e Conservação:</b> Responsabilizar-se integralmente pela guarda, conservação e correta higienização dos EPIs sob sua posse.</p>
+
+[QUEBRA]
+
+<p><b>4. Comunicação de Danos ou Extravio:</b> Comunicar imediatamente à chefia direta ou ao setor de Segurança do Trabalho qualquer alteração, dano, desgaste ou extravio que torne o EPI impróprio para uso, solicitando sua substituição.</p>
+<p><b>5. Devolução:</b> Devolver os equipamentos ao término do contrato de trabalho ou quando da sua substituição, sob pena de desconto em rescisão (conforme art. 462, § 1º, da CLT).</p>
+<br>
+<p><b>DAS PENALIDADES (MEDIDAS DISCIPLINARES)</b></p>
+<p>O(A) <b>EMPREGADO(A)</b> declara estar ciente de que a recusa injustificada ao uso dos EPIs fornecidos, o seu uso inadequado, ou a inobservância das normas de segurança constitui ato faltoso (Art. 158, Parágrafo Único, alínea 'b', da CLT), sujeitando o infrator a sanções disciplinares, que incluem:</p>
+<ul style="list-style-type: disc; padding-left: 25px;">
+  <li>Advertência verbal;</li>
+  <li>Advertência escrita;</li>
+  <li>Suspensão disciplinar (sem remuneração);</li>
+  <li>Rescisão do contrato de trabalho por <b>Justa Causa</b> (Art. 482, alínea 'h', da CLT - ato de indisciplina ou insubordinação), em caso de reincidência ou gravidade da conduta.</li>
+</ul>
+<br>
+<p>Por ser a expressão da verdade e por estar de pleno acordo com as obrigações de segurança, o(a) <b>EMPREGADO(A)</b> assina o presente termo em 2 (duas) vias de igual teor.</p>
+<br>
+<div style="text-align: center;">
+  <p><b>[CIDADE/UF]</b>, <b>[DATA]</b>.</p>
+  <br><br>
+  <p>___________________________________________________</p>
+  <p><b>[NOME DO COLABORADOR]</b></p>
+  <p>Assinatura do(a) Empregado(a)</p>
+  <br><br>
+  <p>___________________________________________________</p>
+  <p><b>[NOME DA EMPRESA]</b></p>
+  <p>Assinatura da Empregadora</p>
+</div>`,
+    lastUsed: Date.now()
   }
 ];
 
