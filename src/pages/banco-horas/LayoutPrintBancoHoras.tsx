@@ -15,6 +15,18 @@ export default function LayoutPrintBancoHoras({
   allLancamentos,
   modoExibicao = 'mes'
 }: LayoutPrintBancoHorasProps) {
+  const [ano, mes] = mesAno.split('-');
+  const mesFormatado = new Date(parseInt(ano), parseInt(mes) - 1, 1).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric'
+  });
+
+  const dataEmissao = new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+
   const getColabStats = (colabId: string) => {
     const colabRecords = allLancamentos.filter(l => l.colaboradorId === colabId);
     
@@ -49,9 +61,21 @@ export default function LayoutPrintBancoHoras({
     };
   };
 
-  const sortedColaboradores = [...colaboradores].sort((a, b) =>
-    a.nome.localeCompare(b.nome, 'pt-BR')
-  );
+  const sortedColaboradores = [...colaboradores]
+    .filter(c => c.ativo !== false)
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  // Totais consolidados da empresa
+  let somaPositivas = 0;
+  let somaNegativas = 0;
+
+  sortedColaboradores.forEach(c => {
+    const stats = getColabStats(c.id!);
+    somaPositivas += stats.horasPositivas;
+    somaNegativas += stats.horasNegativas;
+  });
+
+  const saldoConsolidado = somaPositivas - somaNegativas;
 
   return (
     <>
@@ -59,11 +83,12 @@ export default function LayoutPrintBancoHoras({
         @media print {
           @page {
             size: A4 landscape;
-            margin: 10mm;
+            margin: 8mm 10mm;
           }
           html, body {
             background-color: #ffffff !important;
-            color: #000000 !important;
+            color: #0f172a !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -71,51 +96,131 @@ export default function LayoutPrintBancoHoras({
       `}</style>
 
       <div
-        className="hidden print:block w-full bg-white text-black font-sans"
+        className="hidden print:block w-full bg-white text-slate-900 font-sans"
         style={{
           backgroundColor: '#ffffff',
-          color: '#000000',
+          color: '#0f172a',
           pageBreakInside: 'avoid',
           breakInside: 'avoid',
+          width: '100%',
+          maxWidth: '100%',
+          margin: '0 auto',
+          boxSizing: 'border-box'
         }}
       >
-        {/* Moldura externa única estilo recibo oficial de banco de horas */}
+        {/* Moldura Executiva com Identidade Visual da Simples Assessoria */}
         <div
-          className="w-full border border-black box-border"
           style={{
-            borderColor: '#000000',
-            borderWidth: '1px',
-            borderStyle: 'solid',
-            backgroundColor: '#ffffff'
+            border: '2px solid #1e293b',
+            borderRadius: '6px',
+            backgroundColor: '#ffffff',
+            overflow: 'hidden'
           }}
         >
-          {/* Cabeçalho superior */}
+          {/* CABEÇALHO OFICIAL COM BRANDING SIMPLES ASSESSORIA */}
           <div
-            className="text-center py-2.5 px-4 font-bold uppercase tracking-wide border-b border-black"
             style={{
-              fontSize: '13px',
-              borderBottom: '1px solid #000000',
-              letterSpacing: '0.02em',
+              padding: '12px 18px',
               backgroundColor: '#ffffff',
-              color: '#000000'
+              borderBottom: '2px solid #1e293b',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px'
             }}
           >
-            Controle de Banco de horas - SIMPLES ASSESSORIA CONTÁBIL E EMPRESARIAL
+            {/* Lado Esquerdo: Logo e Dados da Empresa */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <img
+                src="/logo.png?v=2"
+                alt="Logo Simples Assessoria"
+                style={{
+                  height: '42px',
+                  width: '42px',
+                  objectFit: 'contain'
+                }}
+              />
+              <div>
+                <h1
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: '900',
+                    color: '#0f172a',
+                    margin: 0,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    lineHeight: '1.2'
+                  }}
+                >
+                  SIMPLES ASSESSORIA CONTÁBIL E EMPRESARIAL
+                </h1>
+                <p
+                  style={{
+                    fontSize: '10px',
+                    color: '#475569',
+                    margin: '2px 0 0 0',
+                    fontWeight: '600',
+                    letterSpacing: '0.02em'
+                  }}
+                >
+                  CNPJ: 27.205.802/0001-94 • DEPARTAMENTO PESSOAL & RH
+                </p>
+              </div>
+            </div>
+
+            {/* Lado Direito: Identificador do Documento e Competência */}
+            <div style={{ textAlign: 'right' }}>
+              <div
+                style={{
+                  display: 'inline-block',
+                  backgroundColor: '#1e3a8a',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  padding: '3px 10px',
+                  borderRadius: '4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}
+              >
+                CONTROLE DE BANCO DE HORAS
+              </div>
+              <p
+                style={{
+                  fontSize: '10px',
+                  color: '#334155',
+                  margin: '4px 0 0 0',
+                  fontWeight: '600'
+                }}
+              >
+                Competência: <strong style={{ color: '#0f172a', textTransform: 'capitalize' }}>{mesFormatado}</strong>
+                {modoExibicao === 'acumulado' && ' (Acumulado Geral)'} • Emissão: {dataEmissao}
+              </p>
+            </div>
           </div>
 
-          {/* Tabela de Lançamentos */}
+          {/* Faixa decorativa nobre dourada / corporativa da marca */}
+          <div
+            style={{
+              height: '3px',
+              backgroundColor: '#D1A751',
+              width: '100%'
+            }}
+          />
+
+          {/* TABELA DE BANCO DE HORAS COM LAYOUT EXECUTIVO */}
           <table
-            className="w-full border-collapse"
             style={{
               width: '100%',
               borderCollapse: 'collapse',
-              borderSpacing: 0
+              borderSpacing: 0,
+              fontSize: '11px'
             }}
           >
             <thead>
               <tr
                 style={{
-                  backgroundColor: '#3b82f6',
+                  backgroundColor: '#1e3a8a',
                   color: '#ffffff',
                   WebkitPrintColorAdjust: 'exact',
                   printColorAdjust: 'exact'
@@ -123,13 +228,14 @@ export default function LayoutPrintBancoHoras({
               >
                 <th
                   style={{
-                    width: '36%',
-                    padding: '6px 12px',
+                    width: '34%',
+                    padding: '7px 12px',
                     textAlign: 'left',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderRight: '1px solid #000000',
-                    borderBottom: '1px solid #000000',
+                    fontWeight: '800',
+                    fontSize: '11px',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    borderRight: '1px solid #334155',
                     color: '#ffffff'
                   }}
                 >
@@ -138,12 +244,13 @@ export default function LayoutPrintBancoHoras({
                 <th
                   style={{
                     width: '16%',
-                    padding: '6px 8px',
+                    padding: '7px 8px',
                     textAlign: 'center',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderRight: '1px solid #000000',
-                    borderBottom: '1px solid #000000',
+                    fontWeight: '800',
+                    fontSize: '11px',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    borderRight: '1px solid #334155',
                     color: '#ffffff'
                   }}
                 >
@@ -152,12 +259,13 @@ export default function LayoutPrintBancoHoras({
                 <th
                   style={{
                     width: '16%',
-                    padding: '6px 8px',
+                    padding: '7px 8px',
                     textAlign: 'center',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderRight: '1px solid #000000',
-                    borderBottom: '1px solid #000000',
+                    fontWeight: '800',
+                    fontSize: '11px',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    borderRight: '1px solid #334155',
                     color: '#ffffff'
                   }}
                 >
@@ -166,12 +274,13 @@ export default function LayoutPrintBancoHoras({
                 <th
                   style={{
                     width: '16%',
-                    padding: '6px 8px',
+                    padding: '7px 8px',
                     textAlign: 'center',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderRight: '1px solid #000000',
-                    borderBottom: '1px solid #000000',
+                    fontWeight: '800',
+                    fontSize: '11px',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    borderRight: '1px solid #334155',
                     color: '#ffffff'
                   }}
                 >
@@ -179,12 +288,13 @@ export default function LayoutPrintBancoHoras({
                 </th>
                 <th
                   style={{
-                    width: '16%',
-                    padding: '6px 12px',
+                    width: '18%',
+                    padding: '7px 12px',
                     textAlign: 'left',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderBottom: '1px solid #000000',
+                    fontWeight: '800',
+                    fontSize: '11px',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
                     color: '#ffffff'
                   }}
                 >
@@ -193,39 +303,30 @@ export default function LayoutPrintBancoHoras({
               </tr>
             </thead>
             <tbody>
-              {sortedColaboradores.map((colab) => {
+              {sortedColaboradores.map((colab, idx) => {
                 const stats = getColabStats(colab.id!);
-
-                // Ocultar inativos apenas se não tiverem saldo e nem horas no período
-                if (
-                  colab.ativo === false &&
-                  stats.horasPositivas === 0 &&
-                  stats.horasNegativas === 0 &&
-                  stats.saldoGeral === 0
-                ) {
-                  return null;
-                }
+                const isEven = idx % 2 === 0;
 
                 return (
                   <tr
                     key={colab.id}
                     style={{
-                      height: '28px',
+                      height: '27px',
+                      backgroundColor: isEven ? '#ffffff' : '#f8fafc',
+                      borderBottom: '1px solid #cbd5e1',
                       pageBreakInside: 'avoid',
-                      breakInside: 'avoid',
-                      backgroundColor: '#ffffff'
+                      breakInside: 'avoid'
                     }}
                   >
                     <td
                       style={{
                         padding: '5px 12px',
                         textAlign: 'left',
-                        fontSize: '11px',
-                        fontWeight: 'normal',
-                        borderRight: '1px solid #000000',
-                        borderBottom: '1px solid #000000',
-                        textTransform: 'uppercase',
-                        color: '#000000'
+                        fontWeight: '700',
+                        fontSize: '10.5px',
+                        borderRight: '1px solid #cbd5e1',
+                        color: '#0f172a',
+                        textTransform: 'uppercase'
                       }}
                     >
                       {colab.nome}
@@ -235,9 +336,10 @@ export default function LayoutPrintBancoHoras({
                         padding: '5px 8px',
                         textAlign: 'center',
                         fontSize: '11px',
-                        borderRight: '1px solid #000000',
-                        borderBottom: '1px solid #000000',
-                        color: '#000000'
+                        fontFamily: 'monospace',
+                        fontWeight: '600',
+                        borderRight: '1px solid #cbd5e1',
+                        color: stats.horasPositivas > 0 ? '#15803d' : '#475569'
                       }}
                     >
                       {formatMinutesToPdfTime(stats.horasPositivas)}
@@ -247,9 +349,10 @@ export default function LayoutPrintBancoHoras({
                         padding: '5px 8px',
                         textAlign: 'center',
                         fontSize: '11px',
-                        borderRight: '1px solid #000000',
-                        borderBottom: '1px solid #000000',
-                        color: '#000000'
+                        fontFamily: 'monospace',
+                        fontWeight: '600',
+                        borderRight: '1px solid #cbd5e1',
+                        color: stats.horasNegativas > 0 ? '#b91c1c' : '#475569'
                       }}
                     >
                       {formatMinutesToPdfTime(stats.horasNegativas)}
@@ -259,56 +362,212 @@ export default function LayoutPrintBancoHoras({
                         padding: '5px 8px',
                         textAlign: 'center',
                         fontSize: '11px',
-                        borderRight: '1px solid #000000',
-                        borderBottom: '1px solid #000000',
-                        fontWeight: stats.saldoGeral !== 0 ? 'bold' : 'normal',
-                        color: '#000000'
+                        fontFamily: 'monospace',
+                        fontWeight: '800',
+                        borderRight: '1px solid #cbd5e1',
+                        color:
+                          stats.saldoGeral > 0
+                            ? '#15803d'
+                            : stats.saldoGeral < 0
+                            ? '#b91c1c'
+                            : '#475569'
                       }}
                     >
                       {formatMinutesToPdfTime(stats.saldoGeral)}
                     </td>
                     <td
                       style={{
-                        padding: '5px 12px',
-                        borderBottom: '1px solid #000000'
+                        padding: '5px 12px'
                       }}
-                    ></td>
+                    />
                   </tr>
                 );
               })}
+
+              {/* LINHA DE TOTAIS CONSOLIDADOS DA EMPRESA */}
+              <tr
+                style={{
+                  backgroundColor: '#f1f5f9',
+                  borderTop: '2px solid #1e293b',
+                  borderBottom: '1px solid #1e293b',
+                  fontWeight: '800',
+                  height: '28px'
+                }}
+              >
+                <td
+                  style={{
+                    padding: '5px 12px',
+                    textAlign: 'left',
+                    fontSize: '10.5px',
+                    textTransform: 'uppercase',
+                    color: '#0f172a',
+                    borderRight: '1px solid #cbd5e1',
+                    letterSpacing: '0.03em'
+                  }}
+                >
+                  TOTAIS DA EMPRESA
+                </td>
+                <td
+                  style={{
+                    padding: '5px 8px',
+                    textAlign: 'center',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    color: '#15803d',
+                    borderRight: '1px solid #cbd5e1'
+                  }}
+                >
+                  {formatMinutesToPdfTime(somaPositivas)}
+                </td>
+                <td
+                  style={{
+                    padding: '5px 8px',
+                    textAlign: 'center',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    color: '#b91c1c',
+                    borderRight: '1px solid #cbd5e1'
+                  }}
+                >
+                  {formatMinutesToPdfTime(somaNegativas)}
+                </td>
+                <td
+                  style={{
+                    padding: '5px 8px',
+                    textAlign: 'center',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    borderRight: '1px solid #cbd5e1',
+                    color:
+                      saldoConsolidado > 0
+                        ? '#15803d'
+                        : saldoConsolidado < 0
+                        ? '#b91c1c'
+                        : '#0f172a'
+                  }}
+                >
+                  {formatMinutesToPdfTime(saldoConsolidado)}
+                </td>
+                <td
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '9px',
+                    color: '#64748b',
+                    fontStyle: 'italic'
+                  }}
+                >
+                  Apuração Consolidada
+                </td>
+              </tr>
             </tbody>
           </table>
 
-          {/* Área de Assinatura do Empregador dentro da moldura */}
+          {/* TERMO FORMAL E ÁREA DE ASSINATURA DUPLA (RESPONSÁVEL DP + EMPREGADOR) */}
           <div
             style={{
-              paddingTop: '65px',
-              paddingBottom: '35px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
+              padding: '24px 20px 18px 20px',
               backgroundColor: '#ffffff'
             }}
           >
-            <div
+            <p
               style={{
-                width: '260px',
-                borderTop: '1px solid #000000',
+                fontSize: '9.5px',
+                color: '#64748b',
                 textAlign: 'center',
-                paddingTop: '6px'
+                margin: '0 0 35px 0',
+                lineHeight: '1.4'
               }}
             >
-              <span
+              Declaramos para os devidos fins que o controle e os saldos apurados acima refletem com fidelidade os registros de espelho de ponto e banco de horas dos colaboradores do período.
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-around',
+                alignItems: 'center',
+                gap: '40px'
+              }}
+            >
+              {/* Assinatura Responsável DP */}
+              <div
                 style={{
-                  fontSize: '12px',
-                  fontWeight: 'normal',
-                  color: '#000000'
+                  width: '280px',
+                  textAlign: 'center'
                 }}
               >
-                Empregador
-              </span>
+                <div style={{ borderTop: '1px solid #0f172a', paddingTop: '5px' }}>
+                  <p
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      textTransform: 'uppercase',
+                      color: '#0f172a',
+                      margin: 0
+                    }}
+                  >
+                    Departamento Pessoal & RH
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '9.5px',
+                      color: '#64748b',
+                      margin: '2px 0 0 0'
+                    }}
+                  >
+                    Simples Assessoria Contábil
+                  </p>
+                </div>
+              </div>
+
+              {/* Assinatura Empregador */}
+              <div
+                style={{
+                  width: '280px',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ borderTop: '1px solid #0f172a', paddingTop: '5px' }}>
+                  <p
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      textTransform: 'uppercase',
+                      color: '#0f172a',
+                      margin: 0
+                    }}
+                  >
+                    SIMPLES ASSESSORIA CONTÁBIL E EMPRESARIAL
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '9.5px',
+                      color: '#64748b',
+                      margin: '2px 0 0 0'
+                    }}
+                  >
+                    CNPJ: 27.205.802/0001-94 — Empregador
+                  </p>
+                </div>
+              </div>
             </div>
+          </div>
+
+          {/* RODAPÉ DO DOCUMENTO */}
+          <div
+            style={{
+              padding: '6px 16px',
+              backgroundColor: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: '8.5px',
+              color: '#64748b'
+            }}
+          >
+            <span>Sistema DP • Simples Assessoria Contábil e Empresarial</span>
+            <span>Documento Emitido Eletronicamente • Página 1 de 1</span>
           </div>
         </div>
       </div>
