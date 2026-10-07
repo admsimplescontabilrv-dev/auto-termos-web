@@ -342,6 +342,11 @@ export default function App() {
     id: string;
     name: string;
   } | null>(null);
+  const [templateToRename, setTemplateToRename] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [renameModelInput, setRenameModelInput] = useState("");
 
   const [isSaveCopyModalOpen, setIsSaveCopyModalOpen] = useState(false);
   const [copyModelName, setCopyModelName] = useState("");
@@ -604,8 +609,7 @@ export default function App() {
         targetTpl &&
         (templateName === "Novo Modelo" ||
           !templateCode ||
-          templateCode === INITIAL_TEMPLATE ||
-          (targetTpl.subgrupo === "GERAL" && templateName !== targetTpl.name))
+          templateCode === INITIAL_TEMPLATE)
       ) {
         setTemplateName(targetTpl.name);
         setTemplateCode(targetTpl.content);
@@ -654,7 +658,9 @@ export default function App() {
   const handleSaveOrUpdateTemplate = async () => {
     if (isDefaultTemplate) {
       // SALVAR CÓPIA de modelo padrão (Abre modal in-app)
-      setCopyModelName(`${templateName} - Cópia`);
+      const defaultTpl = DEFAULT_TEMPLATES.find((t) => t.id === activeTemplateId);
+      const isRenamed = defaultTpl && templateName.trim() && templateName.trim() !== defaultTpl.name;
+      setCopyModelName(isRenamed ? templateName.trim() : `${templateName} - Cópia`);
       setIsSaveCopyModalOpen(true);
       return;
     }
@@ -776,6 +782,70 @@ export default function App() {
       setNotification({
         type: "error",
         message: "Erro ao salvar cópia no Firestore.",
+        visible: true,
+      });
+      setTimeout(
+        () => setNotification((prev) => ({ ...prev, visible: false })),
+        4000
+      );
+    }
+  };
+
+  const handleOpenRenameModal = (tpl: { id: string; name: string }) => {
+    setTemplateToRename(tpl);
+    setRenameModelInput(tpl.name);
+  };
+
+  const confirmRenameTemplate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!templateToRename) return;
+    const finalName = renameModelInput.trim();
+    if (!finalName) return;
+
+    const { id } = templateToRename;
+
+    if (id === "tpl-custom") {
+      setTemplateName(finalName);
+      setCustomTemplate((prev) => ({ ...prev, name: finalName }));
+      setTemplateToRename(null);
+      setNotification({
+        type: "success",
+        message: "Nome do rascunho atualizado com sucesso!",
+        visible: true,
+      });
+      setTimeout(
+        () => setNotification((prev) => ({ ...prev, visible: false })),
+        4000
+      );
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "custom_templates", id), {
+        name: finalName,
+        updatedAt: Date.now(),
+      });
+
+      if (activeTemplateId === id) {
+        setTemplateName(finalName);
+      }
+
+      setTemplateToRename(null);
+      setNotification({
+        type: "success",
+        message: `Modelo renomeado para "${finalName}" com sucesso!`,
+        visible: true,
+      });
+      setTimeout(
+        () => setNotification((prev) => ({ ...prev, visible: false })),
+        4000
+      );
+    } catch (err) {
+      console.error("Erro ao renomear modelo:", err);
+      setTemplateToRename(null);
+      setNotification({
+        type: "error",
+        message: "Erro ao renomear modelo no Firestore.",
         visible: true,
       });
       setTimeout(
@@ -2689,6 +2759,21 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                                     PADRÃO DP & RH
                                   </span>
                                 </button>
+                                <div className="flex items-center pr-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleTemplateSelect(tpl.id);
+                                      setCopyModelName(`${tpl.name} - Cópia`);
+                                      setIsSaveCopyModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-slate-700/50 transition-colors rounded cursor-pointer"
+                                    title="Criar cópia personalizada deste modelo"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                         </div>
@@ -2752,6 +2837,21 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                                     ESCRITÓRIO & EMPRESAS
                                   </span>
                                 </button>
+                                <div className="flex items-center pr-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleTemplateSelect(tpl.id);
+                                      setCopyModelName(`${tpl.name} - Cópia`);
+                                      setIsSaveCopyModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-slate-500 hover:text-emerald-400 hover:bg-slate-700/50 transition-colors rounded cursor-pointer"
+                                    title="Criar cópia personalizada deste modelo"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                         </div>
@@ -2800,7 +2900,21 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                                 NOVO RASCUNHO (NÃO SALVO)
                               </span>
                             </button>
-                            <div className="flex items-center pr-2">
+                            <div className="flex items-center pr-2 gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenRenameModal({
+                                    id: "tpl-custom",
+                                    name: templateName || "Rascunho Personalizado",
+                                  });
+                                }}
+                                className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-slate-700/50 transition-colors rounded cursor-pointer"
+                                title="Editar nome do rascunho"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -2810,7 +2924,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                                     name: templateName || "Rascunho Personalizado",
                                   });
                                 }}
-                                className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors rounded cursor-pointer"
+                                className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-700/50 transition-colors rounded cursor-pointer"
                                 title="Descartar rascunho"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -2854,21 +2968,32 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                                 onClick={() => handleTemplateSelect(tpl.id)}
                                 className="flex-1 text-left p-3 min-w-0"
                               >
-                                <p className="text-sm font-medium truncate">
+                                <p className="text-sm font-medium truncate" title={tpl.name}>
                                   {tpl.name}
                                 </p>
                                 <span className="text-[10px] text-indigo-400/80 tracking-widest mt-1 block">
                                   SALVO NO FIRESTORE
                                 </span>
                               </button>
-                              <div className="flex items-center pr-2">
+                              <div className="flex items-center pr-2 gap-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenRenameModal(tpl);
+                                  }}
+                                  className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-slate-700/50 transition-colors rounded cursor-pointer"
+                                  title="Editar nome do modelo"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDeleteCustomTemplate(tpl.id, tpl.name);
                                   }}
-                                  className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors rounded"
+                                  className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-700/50 transition-colors rounded cursor-pointer"
                                   title="Excluir modelo customizado"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -2976,16 +3101,56 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                 {/* Center: Editor */}
                 <div className="flex-1 flex flex-col space-y-4">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0">
-                    <input
-                      type="text"
-                      value={templateName}
-                      onChange={(e) => setTemplateName(e.target.value)}
-                      className="bg-transparent border-b border-slate-700/50 focus:border-indigo-500 focus:outline-none text-slate-400 font-serif text-lg py-1 px-1 w-full md:w-1/2 placeholder:text-slate-600"
-                      placeholder="Nome do Modelo (Opcional)"
-                    />
+                    <div className="w-full md:w-2/3 max-w-lg">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
+                          <Pencil className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>Nome do Modelo</span>
+                        </label>
+                        {isCustomTemplate ? (
+                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full font-medium">
+                            Salvo no Firestore
+                          </span>
+                        ) : isDefaultTemplate ? (
+                          <span className="text-[10px] text-slate-400 bg-slate-800 border border-slate-700/50 px-2 py-0.5 rounded-full font-medium">
+                            Modelo Padrão
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-amber-400 bg-amber-950/60 border border-amber-800/40 px-2 py-0.5 rounded-full font-medium">
+                            Rascunho
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={templateName}
+                          onChange={(e) => setTemplateName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleSaveOrUpdateTemplate();
+                            }
+                          }}
+                          className="bg-slate-900/80 border border-slate-700 focus:border-indigo-500 focus:outline-none text-slate-100 font-medium text-base py-1.5 px-3 rounded-lg w-full placeholder:text-slate-600 shadow-inner transition-colors"
+                          placeholder="Digite o nome do modelo..."
+                        />
+                        {isCustomTemplate && (
+                          <button
+                            type="button"
+                            onClick={handleSaveOrUpdateTemplate}
+                            className="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                            title="Salvar alterações no modelo"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Salvar</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <button
                       onClick={handleSaveOrUpdateTemplate}
-                      className="text-indigo-400 text-xs font-bold tracking-widest uppercase flex items-center space-x-2 hover:text-white transition-colors w-full md:w-auto justify-end"
+                      className="text-indigo-400 text-xs font-bold tracking-widest uppercase flex items-center space-x-2 hover:text-white transition-colors w-full md:w-auto justify-end cursor-pointer"
                     >
                       <Download className="w-4 h-4" />
                       <span>{saveButtonText}</span>
@@ -3959,6 +4124,69 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                 <span>Excluir Modelo</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Renomear Modelo */}
+      {templateToRename && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl max-w-md w-full p-6 text-slate-200">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-indigo-400" />
+                <span>Renomear Modelo</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setTemplateToRename(null)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={confirmRenameTemplate}>
+              <p className="text-sm text-slate-400 mb-4 leading-relaxed">
+                Digite o novo nome para o modelo selecionado.
+              </p>
+
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Nome do Modelo
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={renameModelInput}
+                onChange={(e) => setRenameModelInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setTemplateToRename(null);
+                  }
+                }}
+                placeholder="Ex: Contrato de Prestação - Específico..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 mb-6 text-sm"
+              />
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTemplateToRename(null)}
+                  className="px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!renameModelInput.trim()}
+                  className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-950/40"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Salvar Nome</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
