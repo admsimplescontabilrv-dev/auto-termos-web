@@ -157,7 +157,9 @@ app.set('trust proxy', 1);
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: false,
-    frameguard: false // <-- DESATIVE AQUI
+    crossOriginOpenerPolicy: false,
+    originAgentCluster: false,
+    frameguard: false // Permite renderização dentro do iframe do AI Studio
   }));
 
   // 2. PROTEÇÃO CONTRA DoS: Limite do body para 5mb

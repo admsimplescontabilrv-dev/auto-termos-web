@@ -6,14 +6,59 @@ export const initAuth = (
   onAuthSuccess?: (user: any, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  return onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      const token = await user.getIdToken();
-      if (onAuthSuccess) onAuthSuccess({ name: 'Admin' }, token);
-    } else {
+  let resolved = false;
+
+  // Timeout de segurança: em iframes ou restrições de cookies do navegador,
+  // evita que o app fique congelado na tela de carregamento indefinidamente.
+  const timeoutId = setTimeout(() => {
+    if (!resolved) {
+      resolved = true;
       if (onAuthFailure) onAuthFailure();
     }
-  });
+  }, 2000);
+
+  try {
+    const unsub = onAuthStateChanged(
+      auth,
+      async (user) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timeoutId);
+        try {
+          if (user) {
+            const token = await user.getIdToken();
+            if (onAuthSuccess) onAuthSuccess({ name: 'Admin' }, token);
+          } else {
+            if (onAuthFailure) onAuthFailure();
+          }
+        } catch (e) {
+          console.warn('Erro ao obter token do usuário:', e);
+          if (onAuthFailure) onAuthFailure();
+        }
+      },
+      (error) => {
+        console.warn('Erro na verificação de autenticação do Firebase:', error);
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          if (onAuthFailure) onAuthFailure();
+        }
+      }
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+      unsub();
+    };
+  } catch (err) {
+    console.error('Falha ao iniciar listener do Firebase Auth:', err);
+    if (!resolved) {
+      resolved = true;
+      clearTimeout(timeoutId);
+      if (onAuthFailure) onAuthFailure();
+    }
+    return () => clearTimeout(timeoutId);
+  }
 };
 
 export const loginWithPassword = async (password: string): Promise<any> => {

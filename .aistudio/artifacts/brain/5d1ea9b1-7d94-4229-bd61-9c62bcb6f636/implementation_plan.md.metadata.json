@@ -1,6 +1,6 @@
 {
-  "summary":  "Plano de implementação detalhado para parametrizar a data de pagamento da Contribuição Assistencial Laboral no Cadastro de Sindicatos (com dia de vencimento e regra de mês subsequente) e exibir a data/vencimento calculada diretamente na coluna Assistencial Laboral da tabela de Fechamento de Folha.",
-  "updatedAt":  "2026-09-29T13:26:57.069639191Z",
+  "summary":  "Plano de resolução para o problema de carregamento e tela em branco no preview do AI Studio. Inclui a desativação de cabeçalhos conflitantes de isolamento de origem (COOP) no Helmet em server.ts e a inclusão de timeout de segurança e tratamento de erro no ciclo de autenticação inicial do Firebase em auth.ts/App.tsx.",
+  "updatedAt":  "2026-10-07T16:44:33.426705925Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

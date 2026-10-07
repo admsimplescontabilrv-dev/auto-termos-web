@@ -1982,8 +1982,21 @@ ${error instanceof Error ? error.stack : "N/A"}`,
   // UI Components per step
   if (isCheckingAuth) {
     return (
-      <div className="flex h-screen w-screen bg-slate-950 items-center justify-center text-slate-200">
-        Carregando...
+      <div className="flex flex-col h-screen w-screen bg-slate-950 items-center justify-center text-slate-200">
+        <div className="flex items-center gap-3 mb-4">
+          <img
+            src="/logo.png?v=2"
+            alt="Simples Assessoria"
+            className="h-10 w-10 object-contain animate-pulse"
+          />
+          <span className="text-base font-bold text-white uppercase tracking-tight">
+            Simples Assessoria
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+          <span>Iniciando sistema...</span>
+        </div>
       </div>
     );
   }

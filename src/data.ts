@@ -523,12 +523,12 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <p>2) abertura de empresa ou filial e inscrições cadastrais;</p>
 <p>3) emissão de certidões negativas e de regularidade;</p>
 <p>4) Declaração de Imposto de Renda Pessoa Física;</p>
-<p>5) DECORE, declarações de faturamento e documentos para instituições financeiras;</p>
-<p>6) preenchimento de fichas cadastrais e questionários (IBGE, bancos, fornecedores e licitações);</p>
-<p>7) parcelamentos, transações tributárias e regularização de pendências fiscais;</p>
 
 [QUEBRA]
 
+<p>5) DECORE, declarações de faturamento e documentos para instituições financeiras;</p>
+<p>6) preenchimento de fichas cadastrais e questionários (IBGE, bancos, fornecedores e licitações);</p>
+<p>7) parcelamentos, transações tributárias e regularização de pendências fiscais;</p>
 <p>8) defesa em autos de infração, impugnações e recursos administrativos;</p>
 <p>9) retificação de obrigações de períodos anteriores ao contrato ou decorrentes de informações incorretas fornecidas pela CONTRATANTE;</p>
 <p>10) levantamento e recuperação de serviços em atraso;</p>
@@ -618,15 +618,15 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p>_______________________________________________</p>
   <p>Contratante: [NOME DA EMPRESA]</p>
   <p>Representante legal: [NOME DO REPRESENTANTE]</p>
-  <br><br>
+  <br>
   <p>_______________________________________________</p>
   <p>Fiador: [NOME DO FIADOR]</p>
   <p>CPF: [CPF DO FIADOR]</p>
-  <br><br>
+  <br>
   <p>_______________________________________________</p>
   <p>Cônjuge: [NOME DO CÔNJUGE DO FIADOR]</p>
   <p>CPF: [CPF DO CÔNJUGE DO FIADOR]</p>
-  <br><br>
+  <br>
   <p>_______________________________________________</p>
   <p>SIMPLES ASSESSORIA CONTÁBIL E EMPRESARIAL</p>
   <p>CNPJ 27.205.802/0001-94</p>
@@ -635,7 +635,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p>TESTEMUNHA 1</p>
   <p>Nome: __________________________________________</p>
   <p>CPF: ___________________________________________</p>
-  <br><br>
+  <br>
   <p>TESTEMUNHA 2</p>
   <p>Nome: __________________________________________</p>
   <p>CPF: ___________________________________________</p>

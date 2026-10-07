@@ -1,66 +1,78 @@
-# Plano de Implementação: Parametrização da Data de Pagamento da Assistencial Laboral
+# Correção do Carregamento e Desbloqueio da Visualização no Preview
 
-Parametrização da regra e data de pagamento da **Contribuição Assistencial Laboral** no Cadastro de Sindicatos e exibição contextualizada do vencimento na coluna **ASSISTENCIAL LABORAL** da planilha de Fechamento de Folha.
-
----
-
-## 1. Decisões Alinhadas com o Usuário
-
-- **Exibição na Folha**:
-  - Exibir a data/dia de pagamento integrada **diretamente na coluna "Assistencial Laboral"** como detalhe informativo (badge com a data ou dia de recolhimento, ex: `📅 Venc: 10/10` ou `📅 Dia 10 do mês seguinte`), sem criar colunas extras.
-- **Configuração no Cadastro de Sindicatos**:
-  - Campo no Sindicato para o **Dia de Vencimento / Pagamento** (ex: `10`, `5º dia útil`, `30`, etc.).
-  - Seletor da regra do vencimento: **Mês seguinte ao desconto (subsequente)** ou **Mesmo mês**.
-- **Comportamento Padrão**:
-  - Quando não houver regra estipulada em CCT ou cadastrada para o sindicato, deixar o campo **em branco**, respeitando a particularidade de cada categoria.
+Correção definitiva para o travamento de carregamento e tela em branco no preview do AI Studio, ajustando as políticas de cabeçalhos de iframe e implementando timeout de segurança na inicialização do Firebase Auth.
 
 ---
 
-## 2. Dados Identificados nas CCTs da Base
-
-A partir da leitura dos instrumentos coletivos (CCTs vigentes na base do projeto):
-- **Metalúrgica Rio Verde (SIMESGO)**: Até o **dia 10 do mês subsequente** ao desconto.
-- **SINDCOB (Comerciários Oeste BA)**: Até o **dia 10 de cada mês subsequente**.
-- **SINAT (Comércio Atacadista Distribuidor)**: Até o **dia 10 de cada mês subsequente**.
-- **SECOVI (Imobiliárias e Condomínios)**: Até o **10º dia do mês subsequente**.
-- **Construção Civil Goiás**: Até o **5º dia útil do mês subsequente**.
-- **Comércio de Itapema / Porto Belo**: Até o **dia 30 de novembro**.
+> [!IMPORTANT]
+> **Decisões e Diagnóstico Confirmado**:
+> - O servidor de desenvolvimento (Node.js/Express + Vite) está ativo na porta 3000, porém o preview do AI Studio roda em um **iframe cross-origin**.
+> - O middleware `helmet` em `server.ts` estava enviando o cabeçalho `Cross-Origin-Opener-Policy: same-origin` (COOP), o que instrui o navegador a isolar a janela e impedir a renderização correta dentro de iframes externos.
+> - O ciclo de `initAuth` em `src/auth.ts` dependia unicamente da resposta assíncrona do `onAuthStateChanged`. Se o IndexedDB ou os cookies de terceiros fossem particionados pelo navegador dentro do iframe, o estado `isCheckingAuth: true` ficava preso indefinidamente.
 
 ---
 
-## 3. Alterações Técnicas e Arquitetura
+### 1. Visão Geral e Causa Raiz
 
-### A. Tipos TypeScript (`src/types.ts`)
-- Estender `Sindicato`:
-  ```ts
-  export interface Sindicato {
-    // ...
-    diaVencimentoLaboral?: string; // Ex: '10', '5º dia útil', '30'
-    regraVencimentoLaboral?: 'MES_SEGUINTE' | 'MESMO_MES'; // Padrão MES_SEGUINTE
-  }
-  ```
-
-### B. Cadastro de Sindicatos (`src/EmpresasApp.tsx`)
-- **No Modal de Sindicato**:
-  - Inserir campo para "Dia de Vencimento / Pagamento da Guia" (com atalhos rápidos: `Dia 10`, `Dia 20`, `5º dia útil`, ou valor numérico/texto livre).
-  - Seletor de período: "Mês Subsequente" (padrão CCT) ou "Mesmo Mês".
-  - Resumo legível em tempo real (ex: `Vencimento: até dia 10 do mês seguinte ao desconto`).
-- **Nos Cards de Sindicato**:
-  - Exibir a data/dia de pagamento configurada no resumo do sindicato.
-
-### C. Fechamento de Folha (`src/components/FechamentoFolhaTab.tsx`)
-- Na coluna **ASSISTENCIAL LABORAL**:
-  - Para a competência atual (ex: 09/2026), se o sindicato possui data de pagamento configurada:
-    - Se for numérico (ex: `10`) e `MES_SEGUINTE`: calcula a data exata daquele vencimento (ex: `10/10/2026`).
-    - Exibe um badge de detalhe abaixo do seletor de status: `📅 Venc: 10/10` (ou o texto configurado, ex: `📅 5º dia útil`).
-  - No relatório de impressão (`handlePrint`) e no layout mobile, incluir o vencimento calculado como detalhe da linha/card.
+- **O que aconteceu**: O preview exibia tela preta/vazia devido a uma combinação de cabeçalhos de segurança restritivos (COOP no Helmet) e a ausência de um mecanismo de fail-safe/timeout no carregamento inicial de credenciais do Firebase Auth no navegador.
+- **Resultado Esperado**: O app carregará instantaneamente. Caso a autenticação persistida demore mais de 2 segundos para responder dentro do iframe, o sistema libera a interface imediatamente para a tela de login ("Acesso Restrito") com total interatividade.
 
 ---
 
-## 4. Critérios de Aceite e Verificação
+### 2. Experiência do Usuário (UX)
 
-- [x] Campo de data/dia de pagamento disponível no modal de Sindicato.
-- [x] O valor persiste corretamente no Firestore e é exibido nos cards de sindicato.
-- [x] Na planilha de Fechamento de Folha, a coluna **ASSISTENCIAL LABORAL** exibe o vencimento da guia de forma compacta e legível.
-- [x] Sindicatos sem data definida permanecem em branco sem erros visuais.
-- [x] Compilação (`compile_applet`) e checagem de tipos (`tsc`) aprovadas com sucesso.
+- **Fluxo de Carregamento**:
+  1. Ao abrir o preview, o sistema exibe indicador visual sutil caso necessário.
+  2. Em no máximo 2 segundos, se o usuário já possuir sessão ativa no Firebase, o Dashboard é exibido de imediato.
+  3. Caso a sessão não seja recuperada ou haja bloqueio de cookies no iframe, a tela de autenticação ("Acesso Restrito") é renderizada normalmente para login por senha em um único clique.
+- **Feedback Visual**: Fim do estado de tela congelada ("Carregando..." permanente ou tela preta sem resposta).
+
+---
+
+### 3. Decisões Técnicas e Arquitetura
+
+```
+┌────────────────────────────────────────────────────────┐
+│             Navegador / AI Studio Preview              │
+│                (Iframe Cross-Origin)                   │
+└──────────────────────────┬─────────────────────────────┘
+                           │ HTTP Request
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                   server.ts (Express)                  │
+│  - Helmet: crossOriginOpenerPolicy: false              │
+│  - Helmet: originAgentCluster: false                   │
+│  - Vite Middlewares (SPA)                              │
+└──────────────────────────┬─────────────────────────────┘
+                           │ Transmite HTML/JS
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                   src/auth.ts & App.tsx                │
+│  - initAuth com Timeout Fail-Safe (2.5s)               │
+│  - Captura de erro em onAuthStateChanged               │
+│  - Transição garantida: isAuthenticated || Login Form  │
+└────────────────────────────────────────────────────────┘
+```
+
+#### Alterações Planejadas:
+1. **Ajuste no Helmet (`server.ts`)**:
+   - Adicionar `crossOriginOpenerPolicy: false` e `originAgentCluster: false` às opções do `helmet()`.
+   - Garantir que as diretivas de iframe do AI Studio e do proxy do Cloud Run não sejam bloqueadas.
+   - **Preservar intacta** toda a esteira de fallback dos modelos Gemini (regra inegociável).
+
+2. **Blindagem de Inicialização do Auth (`src/auth.ts` e `src/App.tsx`)**:
+   - Adicionar timer de resguardo (2.5s) na função `initAuth`: caso o Firebase Auth demore ou sofra restrição de cookies no iframe, libera o estado de `isCheckingAuth` chamando o fallback de desautenticado.
+   - Adicionar callback de tratamento de erro no `onAuthStateChanged` e blocos `try/catch` para evitar Promises não tratadas.
+
+3. **Verificação**:
+   - Validação da compilação com `compile_applet`.
+   - Teste de resposta HTTP com `curl` nas rotas do servidor e assets do Vite.
+
+---
+
+### 4. Critérios de Aceite e Verificação
+
+- [ ] Cabeçalho `Cross-Origin-Opener-Policy` removido/desativado para permitir funcionamento fluido em iframe.
+- [ ] `initAuth` possui fail-safe e não permite travamento indefinido na tela "Carregando...".
+- [ ] O app compila perfeitamente sem erros de TypeScript (`tsc --noEmit`).
+- [ ] Ao recarregar a visualização no preview (botão ⟳), a tela do sistema é exibida normalmente.
