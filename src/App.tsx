@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "./lib/firebase";
-import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc, onSnapshot, writeBatch } from "firebase/firestore";
+import { collection, addDoc, updateDoc, deleteDoc, getDocs, query, where, doc, getDoc, setDoc, onSnapshot, writeBatch } from "firebase/firestore";
 import {
   Search,
   Menu,
@@ -169,15 +169,11 @@ export default function App() {
           setBatchTemplateIds([termoId]);
           if (termoId !== "tpl-custom") {
             setActiveTemplateId(termoId);
-            const savedTpls = localStorage.getItem("@app:templates");
-            let tpls = DEFAULT_TEMPLATES;
-            if (savedTpls) {
-              try { tpls = JSON.parse(savedTpls); } catch (e) {}
-            }
-            const selectedTpl = tpls.find(t => t.id === termoId) || DEFAULT_TEMPLATES.find(t => t.id === termoId);
+            const selectedTpl = DEFAULT_TEMPLATES.find(t => t.id === termoId) || customTemplatesRef.current.find(t => t.id === termoId);
             if (selectedTpl) {
               setTemplateName(selectedTpl.name);
               setTemplateCode(selectedTpl.content);
+              editorContentRef.current = selectedTpl.content;
               if (selectedTpl.subgrupo) {
                 setSelectedSubgrupo(selectedTpl.subgrupo);
               }
@@ -241,8 +237,31 @@ export default function App() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  const [templates, setTemplates] = useState<SavedTemplate[]>([]);
+  const [customTemplates, setCustomTemplates] = useState<SavedTemplate[]>([]);
+  const customTemplatesRef = useRef<SavedTemplate[]>([]);
+  const editorContentRef = useRef<string>(INITIAL_TEMPLATE);
+  const editorDivRef = useRef<HTMLDivElement>(null);
   const [empresas, setEmpresas] = useState<any[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "custom_templates"), (snapshot) => {
+      const list: SavedTemplate[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          name: data.name || "Modelo Customizado",
+          content: data.content || "",
+          lastUsed: data.updatedAt || data.createdAt || Date.now(),
+          subgrupo: data.subgrupo || "DP & RH",
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        };
+      });
+      setCustomTemplates(list);
+      customTemplatesRef.current = list;
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "empresas"), (snap) => {
@@ -298,6 +317,34 @@ export default function App() {
     name: string;
     content: string;
   }>({ name: "Novo Modelo", content: INITIAL_TEMPLATE });
+  const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
+  const [newDocName, setNewDocName] = useState("");
+
+  const handleCreateNewDoc = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = newDocName.trim();
+    if (!trimmedName) return;
+
+    setActiveTemplateId("tpl-custom");
+    setTemplateName(trimmedName);
+    setTemplateCode("");
+    editorContentRef.current = "";
+    if (editorDivRef.current) {
+      editorDivRef.current.innerHTML = "";
+    }
+    setCustomTemplate({ name: trimmedName, content: "" });
+    setBatchTemplateIds(["tpl-custom"]);
+    setIsNewDocModalOpen(false);
+    setNewDocName("");
+  };
+
+  const [templateToDelete, setTemplateToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  const [isSaveCopyModalOpen, setIsSaveCopyModalOpen] = useState(false);
+  const [copyModelName, setCopyModelName] = useState("");
 
   const [variables, setVariables] = useState<string[]>([]);
   const [globalVariables, setGlobalVariables] = useState<string[]>([]);
@@ -435,91 +482,43 @@ export default function App() {
   const letterheadImage = "/timbrado.png?v=2";
 
   useEffect(() => {
-    const savedTemplates = localStorage.getItem("@app:templates");
-    if (savedTemplates) {
-      try {
-        const parsed = JSON.parse(savedTemplates);
-        if (Array.isArray(parsed)) {
-          // Filtrar modelos e remover qualquer modelo de GERAL antigo ou corrompido
-          const nonGeral = parsed.filter((t: SavedTemplate) => 
-            t.subgrupo !== 'GERAL' && 
-            t.id !== 'tpl-contrato-servicos' && 
-            t.id !== 'tpl-carta-responsabilidade' && 
-            t.id !== 'tpl-contrato-contabil'
-          );
-          const geralDefaults = DEFAULT_TEMPLATES.filter(dt => dt.subgrupo === 'GERAL');
-          const updatedNonGeral = nonGeral.map((t: SavedTemplate) => {
-            const defaultMatch = DEFAULT_TEMPLATES.find(d => d.id === t.id);
-            if (defaultMatch) {
-              return {
-                ...t,
-                subgrupo: defaultMatch.subgrupo || 'DP & RH',
-                content: t.id === 'tpl-epi' ? defaultMatch.content : t.content,
-                name: defaultMatch.name
-              };
-            }
-            return {
-              ...t,
-              subgrupo: t.subgrupo || 'DP & RH'
-            };
-          });
-          const missingNonGeralDefaults = DEFAULT_TEMPLATES.filter(dt => dt.subgrupo !== 'GERAL' && !updatedNonGeral.some(t => t.id === dt.id));
-          const merged = [...updatedNonGeral, ...missingNonGeralDefaults, ...geralDefaults];
-          setTemplates(merged);
-          localStorage.setItem("@app:templates", JSON.stringify(merged));
-        } else {
-          setTemplates(DEFAULT_TEMPLATES);
-          localStorage.setItem("@app:templates", JSON.stringify(DEFAULT_TEMPLATES));
-        }
-      } catch {
-        setTemplates(DEFAULT_TEMPLATES);
-        localStorage.setItem("@app:templates", JSON.stringify(DEFAULT_TEMPLATES));
-      }
-    } else {
-      setTemplates(DEFAULT_TEMPLATES);
-      localStorage.setItem("@app:templates", JSON.stringify(DEFAULT_TEMPLATES));
-    }
+    editorContentRef.current = templateCode;
+  }, [templateCode, activeTemplateId]);
 
-    const savedCustom = localStorage.getItem("@app:customTemplate");
-    if (savedCustom) {
-      try {
-        const parsed = JSON.parse(savedCustom);
-        setCustomTemplate(parsed);
-        // We only set templateCode if we're on the custom template initially
-        setTemplateCode(parsed.content);
-        setTemplateName(parsed.name);
-      } catch {
-        // do nothing
-      }
+  const getCurrentEditorContent = () => {
+    if (editorDivRef.current) {
+      return editorDivRef.current.innerHTML;
     }
-  }, []);
+    return editorContentRef.current || templateCode;
+  };
 
-  // Quando estiver na aba GERAL (Contratos Contábeis), assegura que o modelo oficial está carregado no editor
+  // Quando estiver na aba GERAL (Contratos Contábeis), assegura que o modelo oficial está carregado no editor se estiver no tpl-contrato-contabil
   useEffect(() => {
     if (selectedSubgrupo === "GERAL") {
       const contabilTpl = DEFAULT_TEMPLATES.find(t => t.id === "tpl-contrato-contabil");
-      if (contabilTpl && (activeTemplateId === "tpl-contrato-contabil" || activeTemplateId === "tpl-custom")) {
-        if (templateName === "Novo Modelo" || !templateCode || templateCode === INITIAL_TEMPLATE || templateName !== contabilTpl.name) {
-          setActiveTemplateId("tpl-contrato-contabil");
-          setBatchTemplateIds(["tpl-contrato-contabil"]);
+      if (contabilTpl && activeTemplateId === "tpl-contrato-contabil") {
+        if (!templateCode || templateCode === INITIAL_TEMPLATE) {
           setTemplateName(contabilTpl.name);
           setTemplateCode(contabilTpl.content);
+          editorContentRef.current = contabilTpl.content;
         }
       }
     }
-  }, [selectedSubgrupo, activeTemplateId, templateName, templateCode]);
+  }, [selectedSubgrupo, activeTemplateId]);
 
   // Compute variables dynamically based on batch selection and active editor content
   useEffect(() => {
     const currentCustomContent =
-      activeTemplateId === "tpl-custom" ? templateCode : customTemplate.content;
+      activeTemplateId === "tpl-custom" ? getCurrentEditorContent() : customTemplate.content;
+
+    const allTemplates = [...DEFAULT_TEMPLATES, ...customTemplates];
 
     // Aggregate contents of all selected templates
     const allContents = batchTemplateIds
       .map((id) => {
-        if (id === activeTemplateId) return templateCode;
+        if (id === activeTemplateId) return getCurrentEditorContent();
         if (id === "tpl-custom") return currentCustomContent;
-        const tpl = templates.find((t) => t.id === id);
+        const tpl = allTemplates.find((t) => t.id === id);
         return tpl ? tpl.content : "";
       })
       .join(" ");
@@ -534,9 +533,11 @@ export default function App() {
     const globals: string[] = [];
     const collabs: string[] = [];
 
+    const isContratos = selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS";
+
     uniqueVars.forEach((v) => {
       const upper = v.toUpperCase();
-      if (selectedSubgrupo === "GERAL") {
+      if (isContratos) {
         globals.push(v);
       } else if (
         (upper.includes("COLABORADOR") ||
@@ -583,41 +584,40 @@ export default function App() {
     batchTemplateIds,
     activeTemplateId,
     templateCode,
-    templates,
+    customTemplates,
     customTemplate.content,
     selectedSubgrupo,
   ]);
 
   const handleContentChange = (content: string) => {
+    editorContentRef.current = content;
     setTemplateCode(content);
   };
 
   const handleTemplateSelect = (tplId: string) => {
-    const targetTpl = DEFAULT_TEMPLATES.find((t) => t.id === tplId) || templates.find((t) => t.id === tplId);
+    const targetTpl =
+      DEFAULT_TEMPLATES.find((t) => t.id === tplId) ||
+      customTemplates.find((t) => t.id === tplId);
 
     if (tplId === activeTemplateId) {
-      if (targetTpl && (templateName === "Novo Modelo" || !templateCode || templateCode === INITIAL_TEMPLATE || (targetTpl.subgrupo === 'GERAL' && templateName !== targetTpl.name))) {
+      if (
+        targetTpl &&
+        (templateName === "Novo Modelo" ||
+          !templateCode ||
+          templateCode === INITIAL_TEMPLATE ||
+          (targetTpl.subgrupo === "GERAL" && templateName !== targetTpl.name))
+      ) {
         setTemplateName(targetTpl.name);
         setTemplateCode(targetTpl.content);
+        editorContentRef.current = targetTpl.content;
       }
       return;
     }
 
-    // Salvar template ativo anterior APENAS se for personalizado e não for sobrescrita acidental
+    // Salvar rascunho ativo anterior APENAS se for tpl-custom
     if (activeTemplateId === "tpl-custom") {
-      setCustomTemplate({ name: templateName, content: templateCode });
-    } else {
-      const defaultMatch = DEFAULT_TEMPLATES.find(d => d.id === activeTemplateId);
-      // NUNCA permita que modelos oficiais de GERAL sejam sobrescritos por "Novo Modelo"
-      if (!defaultMatch || defaultMatch.subgrupo !== "GERAL") {
-        setTemplates((prev) =>
-          prev.map((t) =>
-            t.id === activeTemplateId && templateName !== "Novo Modelo"
-              ? { ...t, content: templateCode, name: templateName }
-              : t,
-          ),
-        );
-      }
+      const currentText = getCurrentEditorContent();
+      setCustomTemplate({ name: templateName, content: currentText });
     }
 
     setActiveTemplateId(tplId);
@@ -626,9 +626,11 @@ export default function App() {
     if (tplId === "tpl-custom") {
       setTemplateName(customTemplate.name);
       setTemplateCode(customTemplate.content);
+      editorContentRef.current = customTemplate.content;
     } else if (targetTpl) {
       setTemplateName(targetTpl.name);
       setTemplateCode(targetTpl.content);
+      editorContentRef.current = targetTpl.content;
     }
   };
 
@@ -640,64 +642,311 @@ export default function App() {
     );
   };
 
-  const handleSaveTemplate = () => {
-    let updatedTemplates = [...templates];
-    if (activeTemplateId === "tpl-custom") {
-      const updatedCustom = { name: templateName, content: templateCode };
-      setCustomTemplate(updatedCustom);
-      localStorage.setItem(
-        "@app:customTemplate",
-        JSON.stringify(updatedCustom),
-      );
+  const isDefaultTemplate = DEFAULT_TEMPLATES.some((t) => t.id === activeTemplateId);
+  const isCustomTemplate = customTemplates.some((t) => t.id === activeTemplateId);
+
+  const saveButtonText = isDefaultTemplate
+    ? "SALVAR CÓPIA"
+    : isCustomTemplate
+    ? "ATUALIZAR MODELO"
+    : "SALVAR MODELO";
+
+  const handleSaveOrUpdateTemplate = async () => {
+    if (isDefaultTemplate) {
+      // SALVAR CÓPIA de modelo padrão (Abre modal in-app)
+      setCopyModelName(`${templateName} - Cópia`);
+      setIsSaveCopyModalOpen(true);
+      return;
+    }
+
+    const currentContent = getCurrentEditorContent();
+
+    if (isCustomTemplate) {
+      // ATUALIZAR MODELO existente no Firestore
+      try {
+        await updateDoc(doc(db, "custom_templates", activeTemplateId), {
+          name: templateName.trim() || "Modelo Sem Nome",
+          content: currentContent,
+          updatedAt: Date.now(),
+        });
+        setTemplateCode(currentContent);
+        editorContentRef.current = currentContent;
+        setNotification({
+          type: "success",
+          message: "Modelo atualizado no Firestore!",
+          visible: true,
+        });
+        setTimeout(
+          () => setNotification((prev) => ({ ...prev, visible: false })),
+          4000
+        );
+      } catch (err) {
+        console.error("Erro ao atualizar modelo:", err);
+        setNotification({
+          type: "error",
+          message: "Erro ao atualizar modelo no Firestore.",
+          visible: true,
+        });
+        setTimeout(
+          () => setNotification((prev) => ({ ...prev, visible: false })),
+          4000
+        );
+      }
     } else {
-      updatedTemplates = templates.map((t) =>
-        t.id === activeTemplateId
-          ? { ...t, content: templateCode, name: templateName }
-          : t,
+      // Novo rascunho ("tpl-custom")
+      const nameToSave = templateName.trim() || "Novo Modelo";
+      try {
+        const docRef = await addDoc(collection(db, "custom_templates"), {
+          name: nameToSave,
+          content: currentContent,
+          subgrupo: selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS" ? "GERAL" : "DP & RH",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        setActiveTemplateId(docRef.id);
+        setTemplateName(nameToSave);
+        setTemplateCode(currentContent);
+        editorContentRef.current = currentContent;
+        setBatchTemplateIds((prev) =>
+          prev.includes("tpl-custom")
+            ? [...prev.filter((id) => id !== "tpl-custom"), docRef.id]
+            : [...prev, docRef.id]
+        );
+        setNotification({
+          type: "success",
+          message: "Modelo salvo no Firestore!",
+          visible: true,
+        });
+        setTimeout(
+          () => setNotification((prev) => ({ ...prev, visible: false })),
+          4000
+        );
+      } catch (err) {
+        console.error("Erro ao salvar novo modelo:", err);
+        setNotification({
+          type: "error",
+          message: "Erro ao salvar modelo no Firestore.",
+          visible: true,
+        });
+        setTimeout(
+          () => setNotification((prev) => ({ ...prev, visible: false })),
+          4000
+        );
+      }
+    }
+  };
+
+  const confirmSaveCopy = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const finalName = copyModelName.trim();
+    if (!finalName) return;
+
+    const currentContent = getCurrentEditorContent();
+    try {
+      const docRef = await addDoc(collection(db, "custom_templates"), {
+        name: finalName,
+        content: currentContent,
+        subgrupo: selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS" ? "GERAL" : "DP & RH",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      setActiveTemplateId(docRef.id);
+      setTemplateName(finalName);
+      setTemplateCode(currentContent);
+      editorContentRef.current = currentContent;
+      setBatchTemplateIds((prev) =>
+        prev.includes(activeTemplateId)
+          ? [...prev.filter((id) => id !== activeTemplateId), docRef.id]
+          : [...prev, docRef.id]
       );
-      setTemplates(updatedTemplates);
-      localStorage.setItem("@app:templates", JSON.stringify(updatedTemplates));
+      setIsSaveCopyModalOpen(false);
+      setCopyModelName("");
+      setNotification({
+        type: "success",
+        message: "Cópia criada e salva no Firestore!",
+        visible: true,
+      });
+      setTimeout(
+        () => setNotification((prev) => ({ ...prev, visible: false })),
+        4000
+      );
+    } catch (err) {
+      console.error("Erro ao salvar cópia:", err);
+      setIsSaveCopyModalOpen(false);
+      setNotification({
+        type: "error",
+        message: "Erro ao salvar cópia no Firestore.",
+        visible: true,
+      });
+      setTimeout(
+        () => setNotification((prev) => ({ ...prev, visible: false })),
+        4000
+      );
+    }
+  };
+
+  const handleDeleteCustomTemplate = (id: string, name: string) => {
+    setTemplateToDelete({ id, name });
+  };
+
+  const confirmDeleteTemplate = async () => {
+    if (!templateToDelete) return;
+    const { id, name } = templateToDelete;
+    try {
+      if (id !== "tpl-custom") {
+        await deleteDoc(doc(db, "custom_templates", id));
+      }
+      if (activeTemplateId === id) {
+        const fallback =
+          DEFAULT_TEMPLATES.find((t) =>
+            selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS"
+              ? t.subgrupo === "GERAL"
+              : !t.subgrupo || t.subgrupo === "DP & RH"
+          ) || DEFAULT_TEMPLATES[0];
+        if (fallback) {
+          setActiveTemplateId(fallback.id);
+          setTemplateName(fallback.name);
+          setTemplateCode(fallback.content);
+          editorContentRef.current = fallback.content;
+          setBatchTemplateIds([fallback.id]);
+        }
+      }
+      setBatchTemplateIds((prev) => prev.filter((bId) => bId !== id));
+      if (id === "tpl-custom") {
+        setCustomTemplate({ name: "", content: "" });
+      }
+      setTemplateToDelete(null);
+      setNotification({
+        type: "success",
+        message: `Modelo "${name}" excluído com sucesso!`,
+        visible: true,
+      });
+      setTimeout(
+        () => setNotification((prev) => ({ ...prev, visible: false })),
+        4000
+      );
+    } catch (err) {
+      console.error("Erro ao excluir modelo:", err);
+      setTemplateToDelete(null);
+      setNotification({
+        type: "error",
+        message: "Erro ao excluir modelo.",
+        visible: true,
+      });
+      setTimeout(
+        () => setNotification((prev) => ({ ...prev, visible: false })),
+        4000
+      );
+    }
+  };
+
+  const handleDiscardDraft = () => {
+    const fallback =
+      DEFAULT_TEMPLATES.find((t) =>
+        selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS"
+          ? t.subgrupo === "GERAL"
+          : !t.subgrupo || t.subgrupo === "DP & RH"
+      ) || DEFAULT_TEMPLATES[0];
+    if (fallback) {
+      setActiveTemplateId(fallback.id);
+      setTemplateName(fallback.name);
+      setTemplateCode(fallback.content);
+      editorContentRef.current = fallback.content;
+      setBatchTemplateIds([fallback.id]);
     }
     setNotification({
       type: "success",
-      message: "Modelo salvo com sucesso!",
+      message: "Rascunho descartado.",
       visible: true,
     });
     setTimeout(
       () => setNotification((prev) => ({ ...prev, visible: false })),
-      4000,
+      3000
     );
   };
 
-  const moveTemplate = (index, direction) => {
-    const newTemplates = [...templates];
-    if (direction === 'up' && index > 0) {
-      [newTemplates[index], newTemplates[index - 1]] = [newTemplates[index - 1], newTemplates[index]];
-    } else if (direction === 'down' && index < newTemplates.length - 1) {
-      [newTemplates[index], newTemplates[index + 1]] = [newTemplates[index + 1], newTemplates[index]];
-    } else {
-      return;
-    }
-    setTemplates(newTemplates);
-    localStorage.setItem("@app:templates", JSON.stringify(newTemplates));
-  };
+  const getExportPdfFileName = () => {
+    const isContratos = selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS";
 
-  const handleResetDefaultTemplates = () => {
-    setTemplates(DEFAULT_TEMPLATES);
-    localStorage.setItem("@app:templates", JSON.stringify(DEFAULT_TEMPLATES));
-    setNotification({
-      type: "success",
-      message: "Modelos padrão restaurados com sucesso!",
-      visible: true,
-    });
-    setTimeout(() => setNotification((prev) => ({ ...prev, visible: false })), 4000);
+    const selectedTemplateNames: string[] = batchTemplateIds
+      .map((id) => {
+        if (id === "tpl-custom") return templateName || "Modelo Personalizado";
+        const found =
+          DEFAULT_TEMPLATES.find((t) => t.id === id) ||
+          customTemplates.find((t) => t.id === id);
+        return found ? found.name : templateName || "Documento";
+      })
+      .filter(Boolean);
+
+    if (isContratos) {
+      const contractName =
+        selectedTemplateNames[0] ||
+        templateName ||
+        "Contrato de Prestação de Serviços Contábeis";
+      const company = (
+        globalFormData["RAZÃO SOCIAL DA CONTRATANTE"] ||
+        globalFormData["RAZÃO SOCIAL"] ||
+        globalFormData["RAZAO SOCIAL"] ||
+        globalFormData["NOME DA EMPRESA"] ||
+        globalFormData["EMPRESA"] ||
+        globalFormData["CONTRATANTE"] ||
+        ""
+      ).trim();
+
+      if (company) {
+        return `${contractName} [${company}].pdf`;
+      }
+      return `${contractName}.pdf`;
+    }
+
+    // DP & RH
+    const collabNames: string[] = collaboratorsData
+      .map((collabData, index) => {
+        const nameKey = collaboratorVariables.find((v) =>
+          v.toUpperCase().includes("NOME")
+        );
+        if (nameKey && collabData[nameKey] && collabData[nameKey].trim() !== "") {
+          return collabData[nameKey].trim();
+        }
+        for (const key of Object.keys(collabData)) {
+          const uk = key.toUpperCase();
+          if (
+            (uk.includes("COLABORADOR") ||
+              uk.includes("FUNCIONARIO") ||
+              uk.includes("FUNCIONÁRIO") ||
+              uk.includes("EMPREGADO")) &&
+            collabData[key]?.trim()
+          ) {
+            return collabData[key].trim();
+          }
+        }
+        const firstVal = Object.values(collabData).find(
+          (val) => typeof val === "string" && val.trim() !== ""
+        );
+        if (firstVal) return firstVal.trim();
+        return `Colaborador ${index + 1}`;
+      })
+      .filter(Boolean);
+
+    const isMultiple = selectedTemplateNames.length > 1 || collabNames.length > 1;
+
+    if (isMultiple) {
+      const termsStr = selectedTemplateNames.join(", ") || "Termos";
+      const collabsStr = collabNames.join(", ") || "Colaboradores";
+      return `[${termsStr}] - [${collabsStr}].pdf`;
+    }
+
+    const termName = selectedTemplateNames[0] || templateName || "Termo";
+    const collabName = collabNames[0] || "Colaborador";
+    return `${termName} - ${collabName}.pdf`;
   };
 
   const generateFinalDocument = () => {
-    // Triggering new commit for GitHub
     // Generate concatenated document
     const currentCustomContent =
-      activeTemplateId === "tpl-custom" ? templateCode : customTemplate.content;
+      activeTemplateId === "tpl-custom" ? getCurrentEditorContent() : customTemplate.content;
+
+    const allTemplates = [...DEFAULT_TEMPLATES, ...customTemplates];
 
     const finalContentsData = batchTemplateIds
       .map((id) => {
@@ -705,16 +954,16 @@ export default function App() {
         let name = "Documento";
 
         if (id === activeTemplateId) {
-          content = templateCode;
+          content = getCurrentEditorContent();
           name =
             activeTemplateId === "tpl-custom"
               ? templateName
-              : templates.find((t) => t.id === id)?.name || "Documento";
+              : allTemplates.find((t) => t.id === id)?.name || templateName || "Documento";
         } else if (id === "tpl-custom") {
           content = currentCustomContent;
           name = customTemplate.name;
         } else {
-          const tpl = templates.find((t) => t.id === id);
+          const tpl = allTemplates.find((t) => t.id === id);
           if (tpl) {
             content = tpl.content;
             name = tpl.name;
@@ -859,7 +1108,22 @@ export default function App() {
     termName: string;
     content: string;
   }) => {
-    const printTitle = `${doc.termName} - ${doc.collabName}`.toUpperCase();
+    const isContratos = selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS";
+    let printTitle = "";
+    if (isContratos) {
+      const company = (
+        globalFormData["RAZÃO SOCIAL DA CONTRATANTE"] ||
+        globalFormData["RAZÃO SOCIAL"] ||
+        globalFormData["RAZAO SOCIAL"] ||
+        globalFormData["NOME DA EMPRESA"] ||
+        globalFormData["EMPRESA"] ||
+        globalFormData["CONTRATANTE"] ||
+        ""
+      ).trim();
+      printTitle = company ? `${doc.termName} [${company}].pdf` : `${doc.termName}.pdf`;
+    } else {
+      printTitle = `${doc.termName} - ${doc.collabName}.pdf`;
+    }
     const printWindow = window.open("about:blank", "_blank");
     if (!printWindow) {
       alert("Por favor, permita pop-ups no seu navegador para gerar o PDF.");
@@ -980,12 +1244,7 @@ export default function App() {
     if (!element) return;
     setIsGeneratingPdf(true);
     try {
-      let printTitle = "DOCUMENTOS EM LOTE";
-      if (batchTemplateIds.length > 0) {
-        const numTerms = batchTemplateIds.length;
-        const numCollabs = collaboratorsData.length;
-        printTitle = `${numTerms} TERMO${numTerms > 1 ? 'S' : ''} - ${numCollabs} COLABORADOR${numCollabs > 1 ? 'ES' : ''}`.toUpperCase();
-      }
+      const printTitle = getExportPdfFileName();
 
       const printWindow = window.open("about:blank", "_blank");
       if (!printWindow) {
@@ -2287,11 +2546,6 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-sans font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                    DP & RH • TERMOS DE COLABORADORES
-                  </span>
-                </div>
               </div>
             )}
             {/* === STEP 1: MODELO === */}
@@ -2320,14 +2574,6 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                         <span className="text-[11px] text-slate-500 font-semibold tracking-wider uppercase">
                           BIBLIOTECA DE MODELOS
                         </span>
-                        <button
-                          type="button"
-                          onClick={handleResetDefaultTemplates}
-                          className="text-[11px] text-indigo-400 hover:text-indigo-300 hover:underline font-medium"
-                          title="Restaurar lista de modelos padrão"
-                        >
-                          Restaurar Padrões
-                        </button>
                       </div>
 
                       {/* TABS DE SUBGRUPOS */}
@@ -2336,7 +2582,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                           type="button"
                           onClick={() => {
                             setSelectedSubgrupo("DP & RH");
-                            const firstDp = templates.find(t => !t.subgrupo || t.subgrupo === 'DP & RH');
+                            const firstDp = DEFAULT_TEMPLATES.find(t => !t.subgrupo || t.subgrupo === 'DP & RH');
                             if (firstDp) handleTemplateSelect(firstDp.id);
                           }}
                           className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold tracking-wider transition-all flex items-center justify-center gap-1.5 ${
@@ -2358,6 +2604,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                               setBatchTemplateIds([firstGeral.id]);
                               setTemplateName(firstGeral.name);
                               setTemplateCode(firstGeral.content);
+                              editorContentRef.current = firstGeral.content;
                             }
                           }}
                           className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold tracking-wider transition-all flex items-center justify-center gap-1.5 ${
@@ -2379,55 +2626,58 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                               <Briefcase className="w-3.5 h-3.5" />
                               <span>DP & RH (COLABORADORES)</span>
                             </h3>
-                            <span className="text-[10px] text-slate-500 font-medium bg-slate-800 px-2 py-0.5 rounded-full">
-                              {templates.filter(tpl => !tpl.subgrupo || tpl.subgrupo === 'DP & RH').length} modelos
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewDocName("");
+                                  setIsNewDocModalOpen(true);
+                                }}
+                                className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                                title="Criar novo termo em branco"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>NOVO</span>
+                              </button>
+                              <span className="text-[10px] text-slate-500 font-medium bg-slate-800 px-2 py-0.5 rounded-full">
+                                {DEFAULT_TEMPLATES.filter(tpl => !tpl.subgrupo || tpl.subgrupo === 'DP & RH').length} modelos
+                              </span>
+                            </div>
                           </div>
 
-                          {templates
+                          {DEFAULT_TEMPLATES
                             .filter(tpl => !tpl.subgrupo || tpl.subgrupo === 'DP & RH')
                             .filter(tpl => !templateFilter || tpl.name.toLowerCase().includes(templateFilter.toLowerCase()))
-                            .map((tpl) => {
-                              const globalIndex = templates.findIndex(t => t.id === tpl.id);
-                              return (
-                                <div
-                                  key={tpl.id}
-                                  className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
-                                    activeTemplateId === tpl.id
-                                      ? "bg-slate-800 border-indigo-500 text-slate-200"
-                                      : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
-                                  }`}
-                                >
-                                  <div className="flex flex-col justify-center px-1 border-r border-slate-700/50">
-                                    <button onClick={() => moveTemplate(globalIndex, 'up')} className="p-1 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={globalIndex === 0}>
-                                      <ChevronUp className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => moveTemplate(globalIndex, 'down')} className="p-1 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={globalIndex === templates.length - 1}>
-                                      <ChevronDown className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                  <div className="flex items-center pl-3">
-                                    <input
-                                      type="checkbox"
-                                      checked={batchTemplateIds.includes(tpl.id)}
-                                      onChange={() => toggleBatchTemplate(tpl.id)}
-                                      className="w-4 h-4 accent-[#D1A751] cursor-pointer"
-                                    />
-                                  </div>
-                                  <button
-                                    onClick={() => handleTemplateSelect(tpl.id)}
-                                    className="flex-1 text-left p-3"
-                                  >
-                                    <p className="text-sm font-medium">
-                                      {tpl.name}
-                                    </p>
-                                    <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
-                                      PADRÃO DP & RH
-                                    </span>
-                                  </button>
+                            .map((tpl) => (
+                              <div
+                                key={tpl.id}
+                                className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
+                                  activeTemplateId === tpl.id
+                                    ? "bg-slate-800 border-indigo-500 text-slate-200"
+                                    : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                                }`}
+                              >
+                                <div className="flex items-center pl-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={batchTemplateIds.includes(tpl.id)}
+                                    onChange={() => toggleBatchTemplate(tpl.id)}
+                                    className="w-4 h-4 accent-[#D1A751] cursor-pointer"
+                                  />
                                 </div>
-                              );
-                            })}
+                                <button
+                                  onClick={() => handleTemplateSelect(tpl.id)}
+                                  className="flex-1 text-left p-3 min-w-0"
+                                >
+                                  <p className="text-sm font-medium">
+                                    {tpl.name}
+                                  </p>
+                                  <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
+                                    PADRÃO DP & RH
+                                  </span>
+                                </button>
+                              </div>
+                            ))}
                         </div>
                       )}
 
@@ -2439,168 +2689,272 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                               <FileSignature className="w-3.5 h-3.5" />
                               <span>CONTRATOS DO ESCRITÓRIO (GERAL)</span>
                             </h3>
-                            <span className="text-[10px] text-slate-500 font-medium bg-slate-800 px-2 py-0.5 rounded-full">
-                              {templates.filter(tpl => tpl.subgrupo === 'GERAL').length} modelos
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewDocName("");
+                                  setIsNewDocModalOpen(true);
+                                }}
+                                className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                                title="Criar novo contrato em branco"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>NOVO</span>
+                              </button>
+                              <span className="text-[10px] text-slate-500 font-medium bg-slate-800 px-2 py-0.5 rounded-full">
+                                {DEFAULT_TEMPLATES.filter(tpl => tpl.subgrupo === 'GERAL').length} modelos
+                              </span>
+                            </div>
                           </div>
 
-                          {templates
+                          {DEFAULT_TEMPLATES
                             .filter(tpl => tpl.subgrupo === 'GERAL')
                             .filter(tpl => !templateFilter || tpl.name.toLowerCase().includes(templateFilter.toLowerCase()))
-                            .map((tpl) => {
-                              const globalIndex = templates.findIndex(t => t.id === tpl.id);
-                              return (
-                                <div
-                                  key={tpl.id}
-                                  className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
-                                    activeTemplateId === tpl.id
-                                      ? "bg-slate-800 border-emerald-500 text-slate-200"
-                                      : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
-                                  }`}
-                                >
-                                  <div className="flex flex-col justify-center px-1 border-r border-slate-700/50">
-                                    <button onClick={() => moveTemplate(globalIndex, 'up')} className="p-1 hover:text-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={globalIndex === 0}>
-                                      <ChevronUp className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => moveTemplate(globalIndex, 'down')} className="p-1 hover:text-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={globalIndex === templates.length - 1}>
-                                      <ChevronDown className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                  <div className="flex items-center pl-3">
-                                    <input
-                                      type="checkbox"
-                                      checked={batchTemplateIds.includes(tpl.id)}
-                                      onChange={() => toggleBatchTemplate(tpl.id)}
-                                      className="w-4 h-4 accent-emerald-500 cursor-pointer"
-                                    />
-                                  </div>
-                                  <button
-                                    onClick={() => handleTemplateSelect(tpl.id)}
-                                    className="flex-1 text-left p-3"
-                                  >
-                                    <p className="text-sm font-medium">
-                                      {tpl.name}
-                                    </p>
-                                    <span className="text-[10px] text-emerald-400/80 tracking-widest mt-1 block">
-                                      ESCRITÓRIO & EMPRESAS
-                                    </span>
-                                  </button>
+                            .map((tpl) => (
+                              <div
+                                key={tpl.id}
+                                className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
+                                  activeTemplateId === tpl.id
+                                    ? "bg-slate-800 border-emerald-500 text-slate-200"
+                                    : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                                }`}
+                              >
+                                <div className="flex items-center pl-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={batchTemplateIds.includes(tpl.id)}
+                                    onChange={() => toggleBatchTemplate(tpl.id)}
+                                    className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                                  />
                                 </div>
-                              );
-                            })}
+                                <button
+                                  onClick={() => handleTemplateSelect(tpl.id)}
+                                  className="flex-1 text-left p-3 min-w-0"
+                                >
+                                  <p className="text-sm font-medium">
+                                    {tpl.name}
+                                  </p>
+                                  <span className="text-[10px] text-emerald-400/80 tracking-widest mt-1 block">
+                                    ESCRITÓRIO & EMPRESAS
+                                  </span>
+                                </button>
+                              </div>
+                            ))}
                         </div>
                       )}
 
-                      {/* SEUS MODELOS */}
+                      {/* SEUS MODELOS (FIRESTORE) */}
                       <div>
-                        <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-2 mt-4 px-1">
-                          SEUS MODELOS
-                        </h3>
-                        <div
-                          className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
-                            activeTemplateId === "tpl-custom"
-                              ? "bg-slate-800 border-indigo-500 text-slate-200"
-                              : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          <div className="flex items-center pl-3">
-                            <input
-                              type="checkbox"
-                              checked={batchTemplateIds.includes("tpl-custom")}
-                              onChange={() => toggleBatchTemplate("tpl-custom")}
-                              className="w-4 h-4 accent-[#D1A751] cursor-pointer"
-                            />
-                          </div>
+                        <div className="flex items-center justify-between mb-2 mt-4 px-1">
+                          <h3 className="text-xs text-slate-500 font-semibold tracking-wider">
+                            SEUS MODELOS ({customTemplates.length})
+                          </h3>
                           <button
-                            onClick={() => handleTemplateSelect("tpl-custom")}
-                            className="flex-1 text-left p-3"
+                            type="button"
+                            onClick={() => {
+                              setNewDocName("");
+                              setIsNewDocModalOpen(true);
+                            }}
+                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                            title="Criar novo modelo do zero"
                           >
-                            <p className="text-sm font-medium line-clamp-1">
-                              {activeTemplateId === "tpl-custom"
-                                ? templateName
-                                : customTemplate.name}
-                            </p>
-                            <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
-                              RASCUNHO PERSONALIZADO
-                            </span>
+                            <Plus className="w-3 h-3" />
+                            <span>NOVO</span>
                           </button>
                         </div>
+
+                        {activeTemplateId === "tpl-custom" && (
+                          <div
+                            className="flex items-stretch w-full mb-2 rounded-lg border bg-slate-800 border-indigo-500 text-slate-200 transition-all"
+                          >
+                            <div className="flex items-center pl-3">
+                              <input
+                                type="checkbox"
+                                checked={batchTemplateIds.includes("tpl-custom")}
+                                onChange={() => toggleBatchTemplate("tpl-custom")}
+                                className="w-4 h-4 accent-[#D1A751] cursor-pointer"
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleTemplateSelect("tpl-custom")}
+                              className="flex-1 text-left p-3 min-w-0"
+                            >
+                              <p className="text-sm font-medium line-clamp-1">
+                                {templateName || "Rascunho Personalizado"}
+                              </p>
+                              <span className="text-[10px] text-indigo-400 tracking-widest mt-1 block">
+                                NOVO RASCUNHO (NÃO SALVO)
+                              </span>
+                            </button>
+                            <div className="flex items-center pr-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTemplateToDelete({
+                                    id: "tpl-custom",
+                                    name: templateName || "Rascunho Personalizado",
+                                  });
+                                }}
+                                className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors rounded cursor-pointer"
+                                title="Descartar rascunho"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {customTemplates
+                          .filter((tpl) => {
+                            if (selectedSubgrupo === "GERAL") {
+                              return tpl.subgrupo === "GERAL" || tpl.subgrupo === "CONTRATOS";
+                            }
+                            return !tpl.subgrupo || tpl.subgrupo === "DP & RH";
+                          })
+                          .filter(
+                            (tpl) =>
+                              !templateFilter ||
+                              tpl.name.toLowerCase().includes(templateFilter.toLowerCase())
+                          )
+                          .map((tpl) => (
+                            <div
+                              key={tpl.id}
+                              className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
+                                activeTemplateId === tpl.id
+                                  ? selectedSubgrupo === "GERAL"
+                                    ? "bg-slate-800 border-emerald-500 text-slate-200"
+                                    : "bg-slate-800 border-indigo-500 text-slate-200"
+                                  : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                              }`}
+                            >
+                              <div className="flex items-center pl-3">
+                                <input
+                                  type="checkbox"
+                                  checked={batchTemplateIds.includes(tpl.id)}
+                                  onChange={() => toggleBatchTemplate(tpl.id)}
+                                  className={`w-4 h-4 cursor-pointer ${selectedSubgrupo === "GERAL" ? "accent-emerald-500" : "accent-[#D1A751]"}`}
+                                />
+                              </div>
+                              <button
+                                onClick={() => handleTemplateSelect(tpl.id)}
+                                className="flex-1 text-left p-3 min-w-0"
+                              >
+                                <p className="text-sm font-medium truncate">
+                                  {tpl.name}
+                                </p>
+                                <span className="text-[10px] text-indigo-400/80 tracking-widest mt-1 block">
+                                  SALVO NO FIRESTORE
+                                </span>
+                              </button>
+                              <div className="flex items-center pr-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteCustomTemplate(tpl.id, tpl.name);
+                                  }}
+                                  className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors rounded"
+                                  title="Excluir modelo customizado"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                        {customTemplates.filter((tpl) =>
+                          selectedSubgrupo === "GERAL"
+                            ? tpl.subgrupo === "GERAL" || tpl.subgrupo === "CONTRATOS"
+                            : !tpl.subgrupo || tpl.subgrupo === "DP & RH"
+                        ).length === 0 &&
+                          activeTemplateId !== "tpl-custom" && (
+                            <p className="text-[11px] text-slate-500 italic px-1 py-2">
+                              Nenhum modelo personalizado nesta categoria. Edite um modelo acima e clique em "Salvar Cópia".
+                            </p>
+                          )}
                       </div>
                       
-                      <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-3 mt-8">
-                        OUTROS DOCUMENTOS (PDF/DOCX)
-                      </h3>
-                      <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
-                        <a 
-                          href="/CHECKLIST VEICULOS.pdf" 
-                          download="CHECKLIST VEICULOS.pdf"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            try {
-                              const res = await fetch("/CHECKLIST VEICULOS.pdf");
-                              const blob = await res.blob();
-                              const blobUrl = window.URL.createObjectURL(blob);
-                              const a = document.createElement("a");
-                              a.href = blobUrl;
-                              a.download = "CHECKLIST VEICULOS.pdf";
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              window.URL.revokeObjectURL(blobUrl);
-                            } catch (err) {
-                              window.location.href = "/CHECKLIST VEICULOS.pdf";
-                            }
-                          }}
-                          className="flex-1 flex items-center justify-between text-left p-3"
-                          title="Baixar Checklist Veículos"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">
-                              CHECKLIST VEÍCULOS
-                            </p>
-                            <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
-                              PDF ESTÁTICO
-                            </span>
+                      {/* OUTROS DOCUMENTOS (PDF/DOCX) - Renderiza APENAS se categoria for DP & RH */}
+                      {selectedSubgrupo !== "GERAL" && selectedSubgrupo !== "CONTRATOS" && (
+                        <div>
+                          <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-3 mt-8">
+                            OUTROS DOCUMENTOS (PDF/DOCX)
+                          </h3>
+                          <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
+                            <a 
+                              href="/CHECKLIST VEICULOS.pdf" 
+                              download="CHECKLIST VEICULOS.pdf"
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  const res = await fetch("/CHECKLIST VEICULOS.pdf");
+                                  const blob = await res.blob();
+                                  const blobUrl = window.URL.createObjectURL(blob);
+                                  const a = document.createElement("a");
+                                  a.href = blobUrl;
+                                  a.download = "CHECKLIST VEICULOS.pdf";
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  window.URL.revokeObjectURL(blobUrl);
+                                } catch (err) {
+                                  window.location.href = "/CHECKLIST VEICULOS.pdf";
+                                }
+                              }}
+                              className="flex-1 flex items-center justify-between text-left p-3"
+                              title="Baixar Checklist Veículos"
+                            >
+                              <div>
+                                <p className="text-sm font-medium">
+                                  CHECKLIST VEÍCULOS
+                                </p>
+                                <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
+                                  PDF ESTÁTICO
+                                </span>
+                              </div>
+                              <Download className="w-4 h-4 text-indigo-400" />
+                            </a>
                           </div>
-                          <Download className="w-4 h-4 text-indigo-400" />
-                        </a>
-                      </div>
-                      
-                      <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
-                        <a 
-                          href="/Modelo_Aviso_de_Advertencia.docx" 
-                          download="Modelo_Aviso_de_Advertencia.docx"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            try {
-                              const res = await fetch("/Modelo_Aviso_de_Advertencia.docx");
-                              const blob = await res.blob();
-                              const blobUrl = window.URL.createObjectURL(blob);
-                              const a = document.createElement("a");
-                              a.href = blobUrl;
-                              a.download = "Modelo_Aviso_de_Advertencia.docx";
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              window.URL.revokeObjectURL(blobUrl);
-                            } catch (err) {
-                              window.location.href = "/Modelo_Aviso_de_Advertencia.docx";
-                            }
-                          }}
-                          className="flex-1 flex items-center justify-between text-left p-3"
-                          title="Baixar Modelo de Aviso de Advertência"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">
-                              MODELO AVISO DE ADVERTÊNCIA
-                            </p>
-                            <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
-                              DOCX ESTÁTICO
-                            </span>
+                          
+                          <div className="flex items-stretch w-full mb-2 rounded-lg border bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">
+                            <a 
+                              href="/Modelo_Aviso_de_Advertencia.docx" 
+                              download="Modelo_Aviso_de_Advertencia.docx"
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  const res = await fetch("/Modelo_Aviso_de_Advertencia.docx");
+                                  const blob = await res.blob();
+                                  const blobUrl = window.URL.createObjectURL(blob);
+                                  const a = document.createElement("a");
+                                  a.href = blobUrl;
+                                  a.download = "Modelo_Aviso_de_Advertencia.docx";
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  window.URL.revokeObjectURL(blobUrl);
+                                } catch (err) {
+                                  window.location.href = "/Modelo_Aviso_de_Advertencia.docx";
+                                }
+                              }}
+                              className="flex-1 flex items-center justify-between text-left p-3"
+                              title="Baixar Modelo de Aviso de Advertência"
+                            >
+                              <div>
+                                <p className="text-sm font-medium">
+                                  MODELO AVISO DE ADVERTÊNCIA
+                                </p>
+                                <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
+                                  DOCX ESTÁTICO
+                                </span>
+                              </div>
+                              <Download className="w-4 h-4 text-indigo-400" />
+                            </a>
                           </div>
-                          <Download className="w-4 h-4 text-indigo-400" />
-                        </a>
-                      </div>
+                        </div>
+                      )}
 
                     </div>
                   </div>
@@ -2617,11 +2971,11 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                       placeholder="Nome do Modelo (Opcional)"
                     />
                     <button
-                      onClick={handleSaveTemplate}
+                      onClick={handleSaveOrUpdateTemplate}
                       className="text-indigo-400 text-xs font-bold tracking-widest uppercase flex items-center space-x-2 hover:text-white transition-colors w-full md:w-auto justify-end"
                     >
                       <Download className="w-4 h-4" />
-                      <span>SALVAR MODELO</span>
+                      <span>{saveButtonText}</span>
                     </button>
                   </div>
 
@@ -2702,88 +3056,57 @@ ${error instanceof Error ? error.stack : "N/A"}`,
 
                     <div
                       key={activeTemplateId}
+                      ref={editorDivRef}
                       contentEditable
                       suppressContentEditableWarning
                       className="flex-1 w-full bg-transparent p-10 focus:outline-none font-serif text-[15px] leading-relaxed text-[#2C2114] overflow-y-auto"
                       dangerouslySetInnerHTML={{
                         __html: DOMPurify.sanitize(templateCode),
                       }}
-                      onBlur={(e) =>
-                        handleContentChange(e.currentTarget.innerHTML)
-                      }
+                      onInput={(e) => {
+                        editorContentRef.current = e.currentTarget.innerHTML;
+                      }}
+                      onBlur={(e) => {
+                        editorContentRef.current = e.currentTarget.innerHTML;
+                        handleContentChange(e.currentTarget.innerHTML);
+                      }}
                     />
                   </div>
                 </div>
 
-                {/* Sidebar Right: Instruções */}
-                <aside className="w-full lg:w-[300px] flex flex-col space-y-6 flex-shrink-0">
-                  <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6 flex-1 flex flex-col justify-between">
+                {/* Sidebar Right: Resumo do Lote & Ação (Fixa e sempre visível ao rolar a tela) */}
+                <aside className="w-full lg:w-[300px] flex flex-col space-y-6 flex-shrink-0 lg:sticky lg:top-6 self-start z-10">
+                  <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-6 flex flex-col justify-between">
                     <div>
-                      <h2 className="text-indigo-400 text-sm tracking-widest mb-6 flex items-center space-x-2 font-serif">
+                      <h3 className="text-xs text-indigo-400 font-bold tracking-widest mb-4 flex items-center space-x-2 font-serif">
                         <FileText className="w-4 h-4" />
-                        <span>INSTRUÇÕES</span>
-                      </h2>
-                      <ul className="text-sm text-slate-400 space-y-4 list-disc pl-5 marker:text-indigo-400">
-                        <li className="pl-1">
-                          <span className="leading-relaxed">
-                            Marque <b className="text-slate-200">checkboxes</b>{" "}
-                            para gerar vários documentos de um só lote.
-                          </span>
-                        </li>
-                        <li className="pl-1">
-                          <span className="leading-relaxed">
-                            Use{" "}
-                            <strong className="text-slate-200 font-mono font-normal tracking-wide mx-1">
-                              [colchetes]
-                            </strong>{" "}
-                            no texto para criar variáveis customizadas.
-                          </span>
-                        </li>
-                        <li className="pl-1">
-                          <span className="leading-relaxed">
-                            <b className="text-emerald-400">Automação IA:</b>{" "}
-                            Variáveis como{" "}
-                            <b className="text-slate-200">[DATA DE ADMISSAO]</b>{" "}
-                            e{" "}
-                            <b className="text-slate-200">
-                              [DIAS DE EXPERIENCIA]
-                            </b>{" "}
-                            irão gerar lembretes automaticamente no calendário
-                            se lidas via relatório!
-                          </span>
-                        </li>
-                      </ul>
-
-                      <div className="mt-10 border-t border-slate-700/50 pt-6">
-                        <h3 className="text-[10px] text-slate-500 font-bold tracking-widest mb-4">
-                          RESUMO DO LOTE
-                        </h3>
-                        <div className="flex justify-between items-center text-sm text-slate-400 mb-3">
-                          <span>Documentos</span>
-                          <span className="bg-slate-700 text-indigo-400 font-bold px-3 py-1 rounded">
-                            {batchTemplateIds.length}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm text-slate-400">
-                          <span>Variáveis (Total)</span>
-                          <span className="bg-slate-200 text-white font-bold px-3 py-1 rounded">
-                            {variables.length}
-                          </span>
-                        </div>
+                        <span>RESUMO DO LOTE</span>
+                      </h3>
+                      <div className="flex justify-between items-center text-sm text-slate-400 mb-3">
+                        <span>Documentos</span>
+                        <span className="bg-slate-800 text-indigo-400 font-bold px-3 py-1 rounded border border-slate-700/60">
+                          {batchTemplateIds.length}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm text-slate-400">
+                        <span>Variáveis (Total)</span>
+                        <span className="bg-slate-800 text-slate-200 font-bold px-3 py-1 rounded border border-slate-700/60">
+                          {variables.length}
+                        </span>
                       </div>
                     </div>
 
                     <button
-                      onClick={() => setStep(2)}
-                      disabled={
-                        batchTemplateIds.length === 0 || variables.length === 0
-                      }
-                      className="w-full bg-indigo-600 hover:bg-slate-200 text-white font-bold tracking-wider py-4 rounded-lg shadow-lg shadow-black/20 transition-all active:scale-[0.98] mt-6 flex justify-between items-center px-6 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => {
+                        if (batchTemplateIds.length === 0 && activeTemplateId) {
+                          setBatchTemplateIds([activeTemplateId]);
+                        }
+                        setStep(2);
+                      }}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold tracking-wider py-4 rounded-lg shadow-lg shadow-black/20 transition-all active:scale-[0.98] mt-6 flex justify-between items-center px-6 cursor-pointer"
                     >
                       <span className="text-sm">
-                        COMEÇAR
-                        <br />
-                        PREENCHIMENTO
+                        SEGUIR
                       </span>
                       <ArrowRight className="w-5 h-5" />
                     </button>
@@ -3129,25 +3452,27 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                     Exportar
                   </h2>
 
-                  <button
-                    onClick={() => {
-                      setGroupingMode("select");
-                      setIsIndividualModalOpen(true);
-                    }}
-                    className="bg-indigo-600 border border-indigo-500 hover:bg-indigo-500 rounded-xl p-5 flex items-center space-x-4 transition-all group shadow-black/20 shadow-lg text-left"
-                  >
-                    <div className="p-3 border border-indigo-300 rounded-lg text-white group-hover:bg-indigo-700 transition-colors">
-                      <Download className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold tracking-wide">
-                        BAIXAR SEPARADOS
-                      </h3>
-                      <p className="text-[10px] text-indigo-200 tracking-widest uppercase mt-1">
-                        Por Empregado/Termo
-                      </p>
-                    </div>
-                  </button>
+                  {!(selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS") && (
+                    <button
+                      onClick={() => {
+                        setGroupingMode("select");
+                        setIsIndividualModalOpen(true);
+                      }}
+                      className="bg-indigo-600 border border-indigo-500 hover:bg-indigo-500 rounded-xl p-5 flex items-center space-x-4 transition-all group shadow-black/20 shadow-lg text-left"
+                    >
+                      <div className="p-3 border border-indigo-300 rounded-lg text-white group-hover:bg-indigo-700 transition-colors">
+                        <Download className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-bold tracking-wide">
+                          BAIXAR SEPARADOS
+                        </h3>
+                        <p className="text-[10px] text-indigo-200 tracking-widest uppercase mt-1">
+                          Por Empregado/Termo
+                        </p>
+                      </div>
+                    </button>
+                  )}
 
                   <button
                     id="btn-download-pdf"
@@ -3174,22 +3499,24 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                     </div>
                   </button>
 
-                  <button
-                    onClick={copyToClipboard}
-                    className="bg-slate-900 border border-slate-700/50 hover:bg-slate-800 hover:border-indigo-500 rounded-xl p-5 flex items-center space-x-4 transition-all group shadow-lg text-left"
-                  >
-                    <div className="p-3 border border-slate-700/50 rounded-lg text-slate-400 group-hover:text-indigo-400 group-hover:border-indigo-500 transition-colors">
-                      <Copy className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold tracking-wide text-sm">
-                        COPIAR TEXTO
-                      </h3>
-                      <p className="text-[10px] text-slate-400 tracking-widest uppercase mt-1">
-                        Clipboard
-                      </p>
-                    </div>
-                  </button>
+                  {!(selectedSubgrupo === "GERAL" || selectedSubgrupo === "CONTRATOS") && (
+                    <button
+                      onClick={copyToClipboard}
+                      className="bg-slate-900 border border-slate-700/50 hover:bg-slate-800 hover:border-indigo-500 rounded-xl p-5 flex items-center space-x-4 transition-all group shadow-lg text-left"
+                    >
+                      <div className="p-3 border border-slate-700/50 rounded-lg text-slate-400 group-hover:text-indigo-400 group-hover:border-indigo-500 transition-colors">
+                        <Copy className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-bold tracking-wide text-sm">
+                          COPIAR TEXTO
+                        </h3>
+                        <p className="text-[10px] text-slate-400 tracking-widest uppercase mt-1">
+                          Clipboard
+                        </p>
+                      </div>
+                    </button>
+                  )}
 
                   <div className="flex-1" />
 
@@ -3448,6 +3775,176 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Criação de Novo Documento em Branco */}
+      {isNewDocModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl max-w-md w-full p-6 text-slate-200">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-400" />
+                <span>Novo Documento em Branco</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsNewDocModalOpen(false)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewDoc}>
+              <p className="text-sm text-slate-400 mb-4 leading-relaxed">
+                Informe o nome do documento. Um novo modelo em branco será aberto no editor para você redigir.
+              </p>
+
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Nome do Documento
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={newDocName}
+                onChange={(e) => setNewDocName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setIsNewDocModalOpen(false);
+                  }
+                }}
+                placeholder="Ex: Termo de Entrega ou Novo Contrato..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 mb-6 text-sm"
+              />
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsNewDocModalOpen(false)}
+                  className="px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newDocName.trim()}
+                  className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Criar Documento</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Salvar Cópia do Modelo */}
+      {isSaveCopyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl max-w-md w-full p-6 text-slate-200">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <FileSignature className="w-5 h-5 text-indigo-400" />
+                <span>Salvar Cópia do Modelo</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsSaveCopyModalOpen(false)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={confirmSaveCopy}>
+              <p className="text-sm text-slate-400 mb-4 leading-relaxed">
+                Informe o nome para salvar uma nova cópia personalizada deste modelo no Firestore.
+              </p>
+
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Nome da Cópia
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={copyModelName}
+                onChange={(e) => setCopyModelName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setIsSaveCopyModalOpen(false);
+                  }
+                }}
+                placeholder="Ex: Contrato de Prestação - Modelo Específico..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 mb-6 text-sm"
+              />
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSaveCopyModalOpen(false)}
+                  className="px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!copyModelName.trim()}
+                  className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Salvar Cópia</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação para Excluir Modelo (Lixeira) */}
+      {templateToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl max-w-md w-full p-6 text-slate-200">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-rose-400 flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-rose-400" />
+                <span>Excluir Modelo</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setTemplateToDelete(null)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+              Tem certeza que deseja excluir o modelo <span className="font-bold text-white">"{templateToDelete.name}"</span>? Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setTemplateToDelete(null)}
+                className="px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTemplate}
+                className="px-5 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-950/40"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Excluir Modelo</span>
+              </button>
             </div>
           </div>
         </div>
