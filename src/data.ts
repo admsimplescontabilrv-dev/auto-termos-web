@@ -412,7 +412,6 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 [QUEBRA]
 
 <br>
-<br>
 <p><b>1.1 - ÁREA CONTÁBIL:</b></p>
 <p>1.1.1 - Escrituração contábil das operações da CONTRATANTE, com base na documentação por ela fornecida, em conformidade com as Normas Brasileiras de Contabilidade;</p>
 <p>1.1.2 - Elaboração de balancetes e das demonstrações contábeis anuais (Balanço Patrimonial e Demonstração do Resultado do Exercício, e demais exigidas para o porte e regime da CONTRATANTE);</p>
@@ -507,7 +506,6 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 [QUEBRA]
 
 <br>
-<br>
 <p>4.2.5 - O valor dos honorários previstos no item 4.2 foi estabelecido com base nos parâmetros de volume de serviço relacionados no item 4.2.6. Se a média trimestral de qualquer desses parâmetros superar em 20% (vinte por cento) ou mais o valor de referência, ou se houver alteração do regime tributário, abertura de filial ou inclusão de nova atividade, os honorários serão revistos na mesma proporção do aumento do volume de serviço, passando o novo valor a vigorar a partir do mês seguinte à comunicação escrita da CONTRATADA, com antecedência mínima de 10 (dez) dias.</p>
 <p>4.2.6 - Os parâmetros de fixação dos honorários, informados pela CONTRATANTE na data de assinatura, são os seguintes:</p>
 <p>a) Faturamento médio mensal: R$ [FATURAMENTO MÉDIO MENSAL]</p>
@@ -549,7 +547,6 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 
 [QUEBRA]
 
-<br>
 <br>
 <p>se for o caso. Nas hipóteses de inadimplência de honorários, aplicam-se exclusivamente os prazos, procedimentos e a multa específica previstos no item 4.2.3.</p>
 <p>5.4 - A CONTRATADA poderá rescindir este contrato de imediato, mediante comunicação escrita, sem pré-aviso e sem incidência de qualquer multa a seu cargo, permanecendo devidos os honorários até a data da rescisão, caso a CONTRATANTE:</p>
@@ -636,12 +633,10 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p>CNPJ 27.205.802/0001-94</p>
   <p>Nayara Ponciano Rocha — CRC-GO 025404</p>
   <br><br>
-  <p>_______________________________________________</p>
   <p>TESTEMUNHA 1</p>
   <p>Nome: __________________________________________</p>
   <p>CPF: ___________________________________________</p>
   <br><br>
-  <p>_______________________________________________</p>
   <p>TESTEMUNHA 2</p>
   <p>Nome: __________________________________________</p>
   <p>CPF: ___________________________________________</p>
