@@ -451,7 +451,6 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 [QUEBRA]
 
 <br>
-<br>
 <p>2.3.1 - A entrega das guias de recolhimento de tributos e encargos trabalhistas à CONTRATANTE se fará com antecedência mínima de 2 (dois) dias do vencimento da obrigação;</p>
 <p>2.3.2 - A entrega da folha de pagamento, recibos de pagamento salarial, de férias e demais documentos trabalhistas far-se-á até 72 (setenta e duas) horas após o recebimento dos documentos mencionados no item 2.1.2;</p>
 <p>2.3.3 - A entrega de balancete se fará até o dia 20 (vinte) do 2º (segundo) mês subsequente ao período a que se referir;</p>
@@ -526,10 +525,10 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <p>4) Declaração de Imposto de Renda Pessoa Física;</p>
 <p>5) DECORE, declarações de faturamento e documentos para instituições financeiras;</p>
 <p>6) preenchimento de fichas cadastrais e questionários (IBGE, bancos, fornecedores e licitações);</p>
+<p>7) parcelamentos, transações tributárias e regularização de pendências fiscais;</p>
 
 [QUEBRA]
 
-<p>7) parcelamentos, transações tributárias e regularização de pendências fiscais;</p>
 <p>8) defesa em autos de infração, impugnações e recursos administrativos;</p>
 <p>9) retificação de obrigações de períodos anteriores ao contrato ou decorrentes de informações incorretas fornecidas pela CONTRATANTE;</p>
 <p>10) levantamento e recuperação de serviços em atraso;</p>
@@ -632,7 +631,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p>SIMPLES ASSESSORIA CONTÁBIL E EMPRESARIAL</p>
   <p>CNPJ 27.205.802/0001-94</p>
   <p>Nayara Ponciano Rocha — CRC-GO 025404</p>
-  <br><br>
+  <br>
   <p>TESTEMUNHA 1</p>
   <p>Nome: __________________________________________</p>
   <p>CPF: ___________________________________________</p>
