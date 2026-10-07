@@ -121,6 +121,7 @@ export interface SavedTemplate {
   name: string;
   content: string;
   lastUsed: number;
+  subgrupo?: string;
 }
 
 export interface Rubrica {

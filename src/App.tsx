@@ -117,8 +117,30 @@ export default function App() {
     );
   };
 
-  const handleNavigate = (mod: any) => {
+  const handleNavigate = (mod: any, sub?: string) => {
     setModulo(mod);
+    if (mod === "autotermos") {
+      setStep(1);
+      const targetSub = sub || "DP & RH";
+      setSelectedSubgrupo(targetSub);
+      if (targetSub === "GERAL") {
+        const defaultContabil = DEFAULT_TEMPLATES.find(t => t.id === "tpl-contrato-contabil");
+        setActiveTemplateId("tpl-contrato-contabil");
+        setBatchTemplateIds(["tpl-contrato-contabil"]);
+        if (defaultContabil) {
+          setTemplateName(defaultContabil.name);
+          setTemplateCode(defaultContabil.content);
+        }
+      } else {
+        const defaultNda = DEFAULT_TEMPLATES.find(t => t.id === "tpl-nda");
+        setActiveTemplateId("tpl-nda");
+        setBatchTemplateIds(["tpl-nda"]);
+        if (defaultNda) {
+          setTemplateName(defaultNda.name);
+          setTemplateCode(defaultNda.content);
+        }
+      }
+    }
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
@@ -128,7 +150,11 @@ export default function App() {
     const handleNavEvent = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail) {
-        handleNavigate(customEvent.detail);
+        if (typeof customEvent.detail === "object" && customEvent.detail.module) {
+          handleNavigate(customEvent.detail.module, customEvent.detail.subgrupo);
+        } else {
+          handleNavigate(customEvent.detail);
+        }
       }
     };
     window.addEventListener("navigate-module", handleNavEvent);
@@ -152,6 +178,9 @@ export default function App() {
             if (selectedTpl) {
               setTemplateName(selectedTpl.name);
               setTemplateCode(selectedTpl.content);
+              if (selectedTpl.subgrupo) {
+                setSelectedSubgrupo(selectedTpl.subgrupo);
+              }
             }
           }
 
@@ -261,6 +290,7 @@ export default function App() {
   // Templates selected for batch generation
   const [batchTemplateIds, setBatchTemplateIds] = useState<string[]>([]);
   const [templateFilter, setTemplateFilter] = useState("");
+  const [selectedSubgrupo, setSelectedSubgrupo] = useState<string>("TODOS");
 
   const [templateName, setTemplateName] = useState("Novo Modelo");
   const [templateCode, setTemplateCode] = useState(INITIAL_TEMPLATE);
@@ -318,7 +348,6 @@ export default function App() {
     dias1: number;
     dias2: number | null;
   } | null>(null);
-
   const handleLancarExperienciaAviso = async () => {
     if (!experienciaAviso) return;
     try {
@@ -411,17 +440,31 @@ export default function App() {
       try {
         const parsed = JSON.parse(savedTemplates);
         if (Array.isArray(parsed)) {
-          const existingIds = new Set(parsed.map((t: SavedTemplate) => t.id));
-          const missingDefaults = DEFAULT_TEMPLATES.filter((dt) => !existingIds.has(dt.id));
-          // Atualiza o conteúdo de tpl-epi com o modelo atual de data.ts
-          const updatedParsed = parsed.map((t: SavedTemplate) => {
-            if (t.id === 'tpl-epi') {
-              const defaultEpi = DEFAULT_TEMPLATES.find(d => d.id === 'tpl-epi');
-              if (defaultEpi) return { ...t, content: defaultEpi.content, name: defaultEpi.name };
+          // Filtrar modelos e remover qualquer modelo de GERAL antigo ou corrompido
+          const nonGeral = parsed.filter((t: SavedTemplate) => 
+            t.subgrupo !== 'GERAL' && 
+            t.id !== 'tpl-contrato-servicos' && 
+            t.id !== 'tpl-carta-responsabilidade' && 
+            t.id !== 'tpl-contrato-contabil'
+          );
+          const geralDefaults = DEFAULT_TEMPLATES.filter(dt => dt.subgrupo === 'GERAL');
+          const updatedNonGeral = nonGeral.map((t: SavedTemplate) => {
+            const defaultMatch = DEFAULT_TEMPLATES.find(d => d.id === t.id);
+            if (defaultMatch) {
+              return {
+                ...t,
+                subgrupo: defaultMatch.subgrupo || 'DP & RH',
+                content: t.id === 'tpl-epi' ? defaultMatch.content : t.content,
+                name: defaultMatch.name
+              };
             }
-            return t;
+            return {
+              ...t,
+              subgrupo: t.subgrupo || 'DP & RH'
+            };
           });
-          const merged = [...updatedParsed, ...missingDefaults];
+          const missingNonGeralDefaults = DEFAULT_TEMPLATES.filter(dt => dt.subgrupo !== 'GERAL' && !updatedNonGeral.some(t => t.id === dt.id));
+          const merged = [...updatedNonGeral, ...missingNonGeralDefaults, ...geralDefaults];
           setTemplates(merged);
           localStorage.setItem("@app:templates", JSON.stringify(merged));
         } else {
@@ -451,6 +494,21 @@ export default function App() {
     }
   }, []);
 
+  // Quando estiver na aba GERAL (Contratos Contábeis), assegura que o modelo oficial está carregado no editor
+  useEffect(() => {
+    if (selectedSubgrupo === "GERAL") {
+      const contabilTpl = DEFAULT_TEMPLATES.find(t => t.id === "tpl-contrato-contabil");
+      if (contabilTpl && (activeTemplateId === "tpl-contrato-contabil" || activeTemplateId === "tpl-custom")) {
+        if (templateName === "Novo Modelo" || !templateCode || templateCode === INITIAL_TEMPLATE || templateName !== contabilTpl.name) {
+          setActiveTemplateId("tpl-contrato-contabil");
+          setBatchTemplateIds(["tpl-contrato-contabil"]);
+          setTemplateName(contabilTpl.name);
+          setTemplateCode(contabilTpl.content);
+        }
+      }
+    }
+  }, [selectedSubgrupo, activeTemplateId, templateName, templateCode]);
+
   // Compute variables dynamically based on batch selection and active editor content
   useEffect(() => {
     const currentCustomContent =
@@ -478,11 +536,21 @@ export default function App() {
 
     uniqueVars.forEach((v) => {
       const upper = v.toUpperCase();
-      if (
-        upper.includes("COLABORADOR") ||
+      if (selectedSubgrupo === "GERAL") {
+        globals.push(v);
+      } else if (
+        (upper.includes("COLABORADOR") ||
         upper.includes("EMPREGADO") ||
-        upper.includes("CPF") ||
-        upper.includes("RG")
+        upper.includes("FUNCIONÁRIO")) &&
+        !upper.includes("EMPREGADOR") &&
+        !upper.includes("QUANTIDADE") &&
+        !upper.includes("NUMERO DE") &&
+        !upper.includes("NÚMERO DE") &&
+        !upper.includes("TOTAL DE")
+      ) {
+        collabs.push(v);
+      } else if (
+        (upper === "CPF" || upper === "RG" || upper === "CPF DO COLABORADOR" || upper === "CPF DO EMPREGADO" || upper === "RG DO COLABORADOR")
       ) {
         collabs.push(v);
       } else {
@@ -517,6 +585,7 @@ export default function App() {
     templateCode,
     templates,
     customTemplate.content,
+    selectedSubgrupo,
   ]);
 
   const handleContentChange = (content: string) => {
@@ -524,37 +593,42 @@ export default function App() {
   };
 
   const handleTemplateSelect = (tplId: string) => {
-    if (tplId === activeTemplateId) return;
+    const targetTpl = DEFAULT_TEMPLATES.find((t) => t.id === tplId) || templates.find((t) => t.id === tplId);
 
-    // Save current active template
-    let updatedTemplates = [...templates];
+    if (tplId === activeTemplateId) {
+      if (targetTpl && (templateName === "Novo Modelo" || !templateCode || templateCode === INITIAL_TEMPLATE || (targetTpl.subgrupo === 'GERAL' && templateName !== targetTpl.name))) {
+        setTemplateName(targetTpl.name);
+        setTemplateCode(targetTpl.content);
+      }
+      return;
+    }
+
+    // Salvar template ativo anterior APENAS se for personalizado e não for sobrescrita acidental
     if (activeTemplateId === "tpl-custom") {
       setCustomTemplate({ name: templateName, content: templateCode });
     } else {
-      updatedTemplates = templates.map((t) =>
-        t.id === activeTemplateId
-          ? { ...t, content: templateCode, name: templateName }
-          : t,
-      );
-      setTemplates(updatedTemplates);
+      const defaultMatch = DEFAULT_TEMPLATES.find(d => d.id === activeTemplateId);
+      // NUNCA permita que modelos oficiais de GERAL sejam sobrescritos por "Novo Modelo"
+      if (!defaultMatch || defaultMatch.subgrupo !== "GERAL") {
+        setTemplates((prev) =>
+          prev.map((t) =>
+            t.id === activeTemplateId && templateName !== "Novo Modelo"
+              ? { ...t, content: templateCode, name: templateName }
+              : t,
+          ),
+        );
+      }
     }
 
     setActiveTemplateId(tplId);
 
-    // Load new template into editor
+    // Carregar o novo template no editor
     if (tplId === "tpl-custom") {
-      setTemplateName(
-        activeTemplateId === "tpl-custom" ? templateName : customTemplate.name,
-      );
-      setTemplateCode(
-        activeTemplateId === "tpl-custom" ? templateCode : customTemplate.content,
-      );
-    } else {
-      const tpl = updatedTemplates.find((t) => t.id === tplId);
-      if (tpl) {
-        setTemplateName(tpl.name);
-        setTemplateCode(tpl.content);
-      }
+      setTemplateName(customTemplate.name);
+      setTemplateCode(customTemplate.content);
+    } else if (targetTpl) {
+      setTemplateName(targetTpl.name);
+      setTemplateCode(targetTpl.content);
     }
   };
 
@@ -672,10 +746,19 @@ export default function App() {
       if (nameKey && collabData[nameKey] && collabData[nameKey].trim() !== "") {
         collabName = collabData[nameKey];
       } else {
-        const firstVal = Object.values(collabData).find(
-          (val: any) => typeof val === "string" && val.trim() !== "",
-        );
-        if (firstVal) collabName = firstVal;
+        const companyName =
+          globalFormData["RAZÃO SOCIAL DA CONTRATANTE"] ||
+          globalFormData["NOME DA EMPRESA"] ||
+          globalFormData["EMPRESA"] ||
+          globalFormData["CONTRATANTE"];
+        if (companyName && companyName.trim() !== "") {
+          collabName = companyName.trim();
+        } else {
+          const firstVal = Object.values(collabData).find(
+            (val: any) => typeof val === "string" && val.trim() !== "",
+          );
+          if (firstVal) collabName = firstVal;
+        }
       }
       globalVariables.forEach((v) => {
         const escapedKey = v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1398,6 +1481,184 @@ ${error instanceof Error ? error.stack : "N/A"}`,
     }
   };
 
+  const performCnpjExtraction = async (file: File) => {
+    setIsExtracting(true);
+    setExtractStatus(null);
+    setNotification((prev) => ({ ...prev, visible: false }));
+
+    try {
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      let base64 = "";
+      let mimeType = file.type || (isPdf ? "application/pdf" : "image/png");
+
+      if (isPdf) {
+        base64 = await getTrimmedPdfBase64(file, 2);
+      } else {
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const pureBase64 = result.includes(",") ? result.split(",")[1] : result;
+            resolve(pureBase64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const response = await fetch("/api/extract-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
+        },
+        body: JSON.stringify({
+          pdfBase64: base64,
+          mimeType,
+          type: "cnpj",
+        }),
+      });
+
+      const resData = await response.json();
+      if (!response.ok || resData.error) {
+        setNotification({
+          type: "error",
+          message: resData.error || "Erro na leitura do Cartão CNPJ.",
+          visible: true,
+        });
+        setExtractStatus({ message: "EXTRAÇÃO DO CNPJ FALHOU", type: "error" });
+        return;
+      }
+
+      const cnpjData = resData.data;
+      if (cnpjData) {
+        const updated: Record<string, string> = { ...globalFormData };
+        let matchCount = 0;
+
+        const now = new Date();
+        const meses = [
+          "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+          "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+        ];
+        const dataFormatadaExtenso = `${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
+
+        const razao = cnpjData.razaoSocial || cnpjData.nomeFantasia || "";
+        const cnpjNum = cnpjData.cnpj || "";
+        const enderecoComp = cnpjData.enderecoCompleto || [
+          cnpjData.logradouro,
+          cnpjData.numero ? `nº ${cnpjData.numero}` : "",
+          cnpjData.complemento,
+          cnpjData.bairro ? `Bairro ${cnpjData.bairro}` : "",
+          cnpjData.cidade && cnpjData.uf ? `${cnpjData.cidade}/${cnpjData.uf}` : cnpjData.cidade,
+          cnpjData.cep ? `CEP ${cnpjData.cep}` : ""
+        ].filter(Boolean).join(", ");
+        const cidadeUf = cnpjData.cidade && cnpjData.uf ? `${cnpjData.cidade}/${cnpjData.uf}` : cnpjData.cidade || "Rio Verde/GO";
+        const repLegal = cnpjData.representanteLegal || "";
+        const cpfRep = cnpjData.cpfRepresentante || "";
+
+        globalVariables.forEach((key) => {
+          const k = key.toUpperCase();
+          if (
+            k.includes("RAZÃO SOCIAL") ||
+            k.includes("RAZAO SOCIAL") ||
+            k.includes("NOME DA EMPRESA") ||
+            k === "EMPREGADOR" ||
+            k === "CONTRATANTE" ||
+            (k.includes("EMPRESA") && !k.includes("ENDEREÇO") && !k.includes("CNPJ"))
+          ) {
+            if (!k.includes("ESCRITÓRIO") && !k.includes("ESCRITORIO") && !k.includes("CONTRATADA")) {
+              if (razao) {
+                updated[key] = razao;
+                matchCount++;
+              }
+            }
+          } else if (k.includes("NOME FANTASIA")) {
+            if (cnpjData.nomeFantasia || razao) {
+              updated[key] = cnpjData.nomeFantasia || razao;
+              matchCount++;
+            }
+          } else if (k.includes("CNPJ")) {
+            if (!k.includes("ESCRITÓRIO") && !k.includes("ESCRITORIO") && !k.includes("CONTRATADA")) {
+              if (cnpjNum) {
+                updated[key] = cnpjNum;
+                matchCount++;
+              }
+            }
+          } else if (k.includes("ENDEREÇO") || k.includes("ENDERECO") || k.includes("LOGRADOURO")) {
+            if (!k.includes("ESCRITÓRIO") && !k.includes("ESCRITORIO") && !k.includes("CONTRATADA")) {
+              if (enderecoComp) {
+                updated[key] = enderecoComp;
+                matchCount++;
+              }
+            }
+          } else if (k.includes("CIDADE") || k === "CIDADE/UF") {
+            updated[key] = cidadeUf;
+            matchCount++;
+          } else if (k.includes("REPRESENTANTE")) {
+            if (repLegal) {
+              updated[key] = repLegal;
+              matchCount++;
+            }
+          } else if (k.includes("CPF DO REPRESENTANTE") || k.includes("CPF REPRESENTANTE")) {
+            if (cpfRep) {
+              updated[key] = cpfRep;
+              matchCount++;
+            }
+          } else if (k === "DATA" || k.includes("DATA DE ASSINATURA")) {
+            updated[key] = dataFormatadaExtenso;
+            matchCount++;
+          } else if (k.includes("ESCRITÓRIO") || k.includes("ESCRITORIO") || k.includes("CONTRATADA")) {
+            if (k.includes("NOME")) updated[key] = updated[key] || "SIMPLES CONTÁBIL ASSESSORIA LTDA";
+            if (k.includes("CNPJ")) updated[key] = updated[key] || "00.000.000/0001-00";
+            if (k.includes("ENDEREÇO") || k.includes("ENDERECO")) updated[key] = updated[key] || "Rio Verde - GO";
+          }
+        });
+
+        setGlobalFormData(updated);
+        setExtractStatus({
+          message: `EXTRAÇÃO DO CARTÃO CNPJ CONCLUÍDA VIA ${resData.modelUsed || "GEMINI"}`,
+          type: "success",
+        });
+        setNotification({
+          type: "success",
+          message: `Cartão CNPJ processado com sucesso! ${matchCount} campos preenchidos. Complete os dados restantes manualmente.`,
+          visible: true,
+        });
+      }
+    } catch (err: any) {
+      console.error("Erro na extração do Cartão CNPJ:", err);
+      setNotification({
+        type: "error",
+        message: "Falha ao extrair dados do Cartão CNPJ. Preencha manualmente.",
+        visible: true,
+      });
+      setExtractStatus({ message: "EXTRAÇÃO DO CNPJ FALHOU", type: "error" });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleCnpjUpload = async (
+    e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<any>,
+  ) => {
+    e.preventDefault();
+    let file: File | null = null;
+    if ("dataTransfer" in e) {
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        file = e.dataTransfer.files[0];
+      }
+    } else if ("target" in e && e.target.files && e.target.files.length > 0) {
+      file = e.target.files[0];
+    }
+    if (!file) return;
+
+    await performCnpjExtraction(file);
+
+    if (e.target && "value" in e.target) {
+      (e.target as HTMLInputElement).value = "";
+    }
+  };
+
   const handlePdfUpload = async (
     e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<any>,
   ) => {
@@ -1411,7 +1672,18 @@ ${error instanceof Error ? error.stack : "N/A"}`,
       file = e.target.files[0];
     }
 
-    if (!file || file.type !== "application/pdf") return;
+    if (!file) return;
+
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+    if (!isPdf) {
+      setNotification({
+        type: "error",
+        message: "O relatório admissional deve ser em formato PDF.",
+        visible: true,
+      });
+      return;
+    }
 
     try {
       const base64 = await getTrimmedPdfBase64(file as File, 5); // 5 pages max for custom templates
@@ -1835,7 +2107,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                     <button onClick={() => handleNavigate("checklists")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "checklists" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><CheckSquare className="w-4 h-4 shrink-0" /> <span>Programação e Processos</span></button>
                     <button onClick={() => handleNavigate("calendario")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "calendario" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><CalendarDays className="w-4 h-4 shrink-0" /> <span>Calendário</span></button>
                     <button onClick={() => handleNavigate("fechamento")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "fechamento" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileSpreadsheet className="w-4 h-4 shrink-0" /> <span>Fechamento de Folha</span></button>
-                    <button onClick={() => handleNavigate("autotermos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "autotermos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileText className="w-4 h-4 shrink-0" /> <span>Termos</span></button>
+                    <button onClick={() => handleNavigate("autotermos", "DP & RH")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "autotermos" && selectedSubgrupo === "DP & RH" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileText className="w-4 h-4 shrink-0" /> <span>Termos (DP & RH)</span></button>
                     <button onClick={() => handleNavigate("recibos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "recibos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><Receipt className="w-4 h-4 shrink-0" /> <span>Recibos</span></button>
                     <button onClick={() => handleNavigate("banco-horas")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "banco-horas" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><Clock className="w-4 h-4 shrink-0" /> <span>Banco de Horas</span></button>
                     <button onClick={() => handleNavigate("boletos")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "boletos" ? "bg-indigo-600/20 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileStack className="w-4 h-4 shrink-0" /> <span>Boletos</span></button>
@@ -1858,6 +2130,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                 {openMenus.includes('geral') && (
                   <div className="mt-1 space-y-1 ml-2 border-l border-slate-700/50 pl-2">
                     <button onClick={() => handleNavigate("empresas")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "empresas" ? "bg-emerald-600/20 text-emerald-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><Building2 className="w-4 h-4 shrink-0" /> <span>Cadastro de Empresas</span></button>
+                    <button onClick={() => handleNavigate("autotermos", "GERAL")} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${modulo === "autotermos" && selectedSubgrupo === "GERAL" ? "bg-emerald-600/20 text-emerald-400" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}><FileSignature className="w-4 h-4 shrink-0" /> <span>Contratos Contábeis</span></button>
                   </div>
                 )}
               </div>
@@ -1885,6 +2158,7 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                {/* Modo colapsado */}
                <button onClick={() => setSidebarOpen(true)} title="DP & RH" className="text-slate-500 hover:text-indigo-400 transition-colors"><Briefcase className="w-5 h-5"/></button>
                <button onClick={() => setSidebarOpen(true)} title="Cadastro de Empresas" className="text-slate-500 hover:text-emerald-400 transition-colors"><Building2 className="w-5 h-5"/></button>
+               <button onClick={() => setSidebarOpen(true)} title="Contratos Contábeis" className="text-slate-500 hover:text-emerald-400 transition-colors"><FileSignature className="w-5 h-5"/></button>
                <button onClick={() => setSidebarOpen(true)} title="Legalização / Alvarás" className="text-slate-500 hover:text-amber-400 transition-colors"><ShieldCheck className="w-5 h-5"/></button>
             </div>
           )}
@@ -2012,6 +2286,12 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                     <span>3. CONCLUÍDO</span>
                   </button>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-sans font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                    DP & RH • TERMOS DE COLABORADORES
+                  </span>
+                </div>
               </div>
             )}
             {/* === STEP 1: MODELO === */}
@@ -2035,11 +2315,11 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                       />
                     </div>
 
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                      <div className="flex items-center justify-between mb-3 mt-4">
-                        <h3 className="text-xs text-slate-500 font-semibold tracking-wider">
-                          SUGERIDOS
-                        </h3>
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                      <div className="flex items-center justify-between mb-1 mt-1">
+                        <span className="text-[11px] text-slate-500 font-semibold tracking-wider uppercase">
+                          BIBLIOTECA DE MODELOS
+                        </span>
                         <button
                           type="button"
                           onClick={handleResetDefaultTemplates}
@@ -2049,81 +2329,202 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                           Restaurar Padrões
                         </button>
                       </div>
-                      {templates
-                        .filter((tpl) =>
-                          !templateFilter ||
-                          tpl.name.toLowerCase().includes(templateFilter.toLowerCase())
-                        )
-                        .map((tpl, index) => (
+
+                      {/* TABS DE SUBGRUPOS */}
+                      <div className="flex rounded-lg bg-slate-950 p-1 border border-slate-800 gap-1 mb-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubgrupo("DP & RH");
+                            const firstDp = templates.find(t => !t.subgrupo || t.subgrupo === 'DP & RH');
+                            if (firstDp) handleTemplateSelect(firstDp.id);
+                          }}
+                          className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+                            selectedSubgrupo !== "GERAL"
+                              ? "bg-indigo-600 text-white shadow"
+                              : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          <Briefcase className="w-3.5 h-3.5" />
+                          <span>DP & RH</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubgrupo("GERAL");
+                            const firstGeral = DEFAULT_TEMPLATES.find(t => t.id === 'tpl-contrato-contabil');
+                            if (firstGeral) {
+                              setActiveTemplateId(firstGeral.id);
+                              setBatchTemplateIds([firstGeral.id]);
+                              setTemplateName(firstGeral.name);
+                              setTemplateCode(firstGeral.content);
+                            }
+                          }}
+                          className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+                            selectedSubgrupo === "GERAL"
+                              ? "bg-emerald-600 text-white shadow"
+                              : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          <FileSignature className="w-3.5 h-3.5" />
+                          <span>CONTRATOS</span>
+                        </button>
+                      </div>
+
+                      {/* SUBGRUPO: DP & RH */}
+                      {selectedSubgrupo !== "GERAL" && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2 mt-2 px-1">
+                            <h3 className="text-xs text-indigo-400 font-bold tracking-wider flex items-center gap-1.5">
+                              <Briefcase className="w-3.5 h-3.5" />
+                              <span>DP & RH (COLABORADORES)</span>
+                            </h3>
+                            <span className="text-[10px] text-slate-500 font-medium bg-slate-800 px-2 py-0.5 rounded-full">
+                              {templates.filter(tpl => !tpl.subgrupo || tpl.subgrupo === 'DP & RH').length} modelos
+                            </span>
+                          </div>
+
+                          {templates
+                            .filter(tpl => !tpl.subgrupo || tpl.subgrupo === 'DP & RH')
+                            .filter(tpl => !templateFilter || tpl.name.toLowerCase().includes(templateFilter.toLowerCase()))
+                            .map((tpl) => {
+                              const globalIndex = templates.findIndex(t => t.id === tpl.id);
+                              return (
+                                <div
+                                  key={tpl.id}
+                                  className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
+                                    activeTemplateId === tpl.id
+                                      ? "bg-slate-800 border-indigo-500 text-slate-200"
+                                      : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                                  }`}
+                                >
+                                  <div className="flex flex-col justify-center px-1 border-r border-slate-700/50">
+                                    <button onClick={() => moveTemplate(globalIndex, 'up')} className="p-1 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={globalIndex === 0}>
+                                      <ChevronUp className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => moveTemplate(globalIndex, 'down')} className="p-1 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={globalIndex === templates.length - 1}>
+                                      <ChevronDown className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center pl-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={batchTemplateIds.includes(tpl.id)}
+                                      onChange={() => toggleBatchTemplate(tpl.id)}
+                                      className="w-4 h-4 accent-[#D1A751] cursor-pointer"
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={() => handleTemplateSelect(tpl.id)}
+                                    className="flex-1 text-left p-3"
+                                  >
+                                    <p className="text-sm font-medium">
+                                      {tpl.name}
+                                    </p>
+                                    <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
+                                      PADRÃO DP & RH
+                                    </span>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+
+                      {/* SUBGRUPO: GERAL (CONTRATOS CONTÁBEIS) */}
+                      {selectedSubgrupo === "GERAL" && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2 mt-2 px-1">
+                            <h3 className="text-xs text-emerald-400 font-bold tracking-wider flex items-center gap-1.5">
+                              <FileSignature className="w-3.5 h-3.5" />
+                              <span>CONTRATOS DO ESCRITÓRIO (GERAL)</span>
+                            </h3>
+                            <span className="text-[10px] text-slate-500 font-medium bg-slate-800 px-2 py-0.5 rounded-full">
+                              {templates.filter(tpl => tpl.subgrupo === 'GERAL').length} modelos
+                            </span>
+                          </div>
+
+                          {templates
+                            .filter(tpl => tpl.subgrupo === 'GERAL')
+                            .filter(tpl => !templateFilter || tpl.name.toLowerCase().includes(templateFilter.toLowerCase()))
+                            .map((tpl) => {
+                              const globalIndex = templates.findIndex(t => t.id === tpl.id);
+                              return (
+                                <div
+                                  key={tpl.id}
+                                  className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
+                                    activeTemplateId === tpl.id
+                                      ? "bg-slate-800 border-emerald-500 text-slate-200"
+                                      : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                                  }`}
+                                >
+                                  <div className="flex flex-col justify-center px-1 border-r border-slate-700/50">
+                                    <button onClick={() => moveTemplate(globalIndex, 'up')} className="p-1 hover:text-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={globalIndex === 0}>
+                                      <ChevronUp className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => moveTemplate(globalIndex, 'down')} className="p-1 hover:text-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={globalIndex === templates.length - 1}>
+                                      <ChevronDown className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center pl-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={batchTemplateIds.includes(tpl.id)}
+                                      onChange={() => toggleBatchTemplate(tpl.id)}
+                                      className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={() => handleTemplateSelect(tpl.id)}
+                                    className="flex-1 text-left p-3"
+                                  >
+                                    <p className="text-sm font-medium">
+                                      {tpl.name}
+                                    </p>
+                                    <span className="text-[10px] text-emerald-400/80 tracking-widest mt-1 block">
+                                      ESCRITÓRIO & EMPRESAS
+                                    </span>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+
+                      {/* SEUS MODELOS */}
+                      <div>
+                        <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-2 mt-4 px-1">
+                          SEUS MODELOS
+                        </h3>
                         <div
-                          key={tpl.id}
                           className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
-                            activeTemplateId === tpl.id
+                            activeTemplateId === "tpl-custom"
                               ? "bg-slate-800 border-indigo-500 text-slate-200"
                               : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
                           }`}
                         >
-                          <div className="flex flex-col justify-center px-1 border-r border-slate-700/50">
-                            <button onClick={() => moveTemplate(index, 'up')} className="p-1 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={index === 0}>
-                              <ChevronUp className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => moveTemplate(index, 'down')} className="p-1 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed" disabled={index === templates.length - 1}>
-                              <ChevronDown className="w-4 h-4" />
-                            </button>
-                          </div>
                           <div className="flex items-center pl-3">
                             <input
                               type="checkbox"
-                              checked={batchTemplateIds.includes(tpl.id)}
-                              onChange={() => toggleBatchTemplate(tpl.id)}
+                              checked={batchTemplateIds.includes("tpl-custom")}
+                              onChange={() => toggleBatchTemplate("tpl-custom")}
                               className="w-4 h-4 accent-[#D1A751] cursor-pointer"
                             />
                           </div>
                           <button
-                            onClick={() => handleTemplateSelect(tpl.id)}
+                            onClick={() => handleTemplateSelect("tpl-custom")}
                             className="flex-1 text-left p-3"
                           >
-                            <p className="text-sm font-medium">
-                              {tpl.name}
+                            <p className="text-sm font-medium line-clamp-1">
+                              {activeTemplateId === "tpl-custom"
+                                ? templateName
+                                : customTemplate.name}
                             </p>
                             <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
-                              PADRÃO
+                              RASCUNHO PERSONALIZADO
                             </span>
                           </button>
                         </div>
-                      ))}
-
-                      <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-3 mt-8">
-                        SEUS MODELOS
-                      </h3>
-                      <div
-                        className={`flex items-stretch w-full mb-2 rounded-lg border transition-all ${
-                          activeTemplateId === "tpl-custom"
-                            ? "bg-slate-800 border-indigo-500 text-slate-200"
-                            : "bg-transparent border-slate-700/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
-                        }`}
-                      >
-                        <div className="flex items-center pl-3">
-                          <input
-                            type="checkbox"
-                            checked={batchTemplateIds.includes("tpl-custom")}
-                            onChange={() => toggleBatchTemplate("tpl-custom")}
-                            className="w-4 h-4 accent-[#D1A751] cursor-pointer"
-                          />
-                        </div>
-                        <button
-                          onClick={() => handleTemplateSelect("tpl-custom")}
-                          className="flex-1 text-left p-3"
-                        >
-                          <p className="text-sm font-medium line-clamp-1">
-                            {activeTemplateId === "tpl-custom"
-                              ? templateName
-                              : customTemplate.name}
-                          </p>
-                          <span className="text-[10px] text-slate-500 tracking-widest mt-1 block">
-                            RASCUNHO
-                          </span>
-                        </button>
                       </div>
                       
                       <h3 className="text-xs text-slate-500 font-semibold tracking-wider mb-3 mt-8">
@@ -2397,57 +2798,103 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                 <div className="w-full max-w-4xl flex flex-col">
                   <div className="text-center mb-10">
                     <h1 className="text-3xl font-serif text-indigo-400 tracking-wider mb-2">
-                      DADOS DO LOTE
+                      {selectedSubgrupo === "GERAL" ? "DADOS DO CONTRATO" : "DADOS DO LOTE"}
                     </h1>
                     <p className="text-slate-400 font-light">
-                      Preencha as informações da empresa e dos colaboradores.
+                      {selectedSubgrupo === "GERAL"
+                        ? "Envie o Cartão CNPJ para autopreencher os dados da empresa e finalize as cláusulas."
+                        : "Preencha as informações da empresa e dos colaboradores."}
                     </p>
                   </div>
 
                   <div className="bg-slate-900 border border-slate-700/50 rounded-2xl flex flex-col shadow-2xl shadow-black/40 max-h-[75vh]">
                     <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-10">
-                      {/* UPLOAD PDF AREA */}
-                      <label
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                        onDrop={handlePdfUpload}
-                        className={`relative w-full border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-8 transition-all duration-300 overflow-hidden ${
-                          isExtracting
-                            ? "border-[#845a27] bg-slate-950 opacity-80 cursor-wait"
-                            : "border-indigo-500 bg-slate-950 hover:bg-slate-900 hover:border-indigo-500 cursor-pointer"
-                        }`}
-                      >
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          onChange={handlePdfUpload}
-                          disabled={isExtracting}
-                          className="hidden"
-                        />
-                        {isExtracting ? (
-                          <>
-                            <Loader2 className="w-10 h-10 text-indigo-400 animate-spin mb-4" />
-                            <h3 className="text-slate-200 font-serif text-lg tracking-wider mb-2">
-                              Analisando relatório com IA...
-                            </h3>
-                            <p className="text-slate-500 text-sm">
-                              Isso pode levar alguns segundos.
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-10 h-10 text-indigo-400 mb-4" />
-                            <h3 className="text-indigo-400 font-serif text-lg tracking-wider mb-2">
-                              Carregar Relatório Admissional (PDF)
-                            </h3>
-                            <p className="text-slate-500 text-sm">
-                              Arraste ou clique para selecionar o PDF
-                            </p>
-                          </>
-                        )}
-                      </label>
+                      {/* UPLOAD AREA */}
+                      {selectedSubgrupo === "GERAL" ? (
+                        <label
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onDrop={handleCnpjUpload}
+                          className={`relative w-full border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-8 transition-all duration-300 overflow-hidden ${
+                            isExtracting
+                              ? "border-emerald-600 bg-slate-950 opacity-80 cursor-wait"
+                              : "border-emerald-500 bg-slate-950 hover:bg-slate-900 hover:border-emerald-400 cursor-pointer"
+                          }`}
+                        >
+                          <input
+                            type="file"
+                            accept=".pdf,image/*"
+                            onChange={handleCnpjUpload}
+                            disabled={isExtracting}
+                            className="hidden"
+                          />
+                          {isExtracting ? (
+                            <>
+                              <Loader2 className="w-10 h-10 animate-spin mb-4 text-emerald-400" />
+                              <h3 className="text-slate-200 font-serif text-lg tracking-wider mb-2">
+                                Analisando Cartão CNPJ com IA...
+                              </h3>
+                              <p className="text-slate-500 text-sm">
+                                Extraindo Razão Social, CNPJ, Endereço e Representante...
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-10 h-10 text-emerald-400 mb-4" />
+                              <h3 className="font-serif text-lg tracking-wider mb-2 text-emerald-400">
+                                Carregar Cartão CNPJ (PDF ou Imagem)
+                              </h3>
+                              <p className="text-slate-400 text-sm text-center max-w-md">
+                                Arraste ou clique para selecionar o Cartão CNPJ. A IA extrairá os dados automaticamente e você preenche o restante na mão.
+                              </p>
+                            </>
+                          )}
+                        </label>
+                      ) : (
+                        <label
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onDrop={handlePdfUpload}
+                          className={`relative w-full border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-8 transition-all duration-300 overflow-hidden ${
+                            isExtracting
+                              ? "border-[#845a27] bg-slate-950 opacity-80 cursor-wait"
+                              : "border-indigo-500 bg-slate-950 hover:bg-slate-900 hover:border-indigo-500 cursor-pointer"
+                          }`}
+                        >
+                          <input
+                            type="file"
+                            accept=".pdf"
+                            onChange={handlePdfUpload}
+                            disabled={isExtracting}
+                            className="hidden"
+                          />
+                          {isExtracting ? (
+                            <>
+                              <Loader2 className="w-10 h-10 animate-spin mb-4 text-indigo-400" />
+                              <h3 className="text-slate-200 font-serif text-lg tracking-wider mb-2">
+                                Analisando relatório com IA...
+                              </h3>
+                              <p className="text-slate-500 text-sm">
+                                Isso pode levar alguns segundos.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-10 h-10 text-indigo-400 mb-4" />
+                              <h3 className="font-serif text-lg tracking-wider mb-2 text-indigo-400">
+                                Carregar Relatório Admissional (PDF)
+                              </h3>
+                              <p className="text-slate-500 text-sm">
+                                Arraste ou clique para selecionar o PDF
+                              </p>
+                            </>
+                          )}
+                        </label>
+                      )}
                       {extractStatus && (
                         <div
                           className={`mt-3 text-center text-xs font-bold ${extractStatus.type === "success" ? "text-green-500" : "text-red-500"}`}
@@ -2466,15 +2913,65 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                           {/* SESSÃO 1: Dados Globais */}
                           {globalVariables.length > 0 && (
                             <div className="space-y-6">
-                              <div className="border-b border-slate-800 pb-2">
-                                <h2 className="text-indigo-400 text-lg font-serif tracking-widest">
-                                  DADOS GLOBAIS
-                                </h2>
-                                <p className="text-slate-500 text-xs">
-                                  Preenchidos apenas uma vez para todos os
-                                  documentos
-                                </p>
+                              <div className="border-b border-slate-800 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                  <h2 className="text-lg font-serif tracking-widest text-indigo-400">
+                                    {selectedSubgrupo === "GERAL" ? "DADOS DO CONTRATO & EMPRESA" : "DADOS GLOBAIS"}
+                                  </h2>
+                                  <p className="text-slate-500 text-xs">
+                                    {selectedSubgrupo === "GERAL" ? "Preencha as informações do contrato e dados cadastrais" : "Preenchidos apenas uma vez para todos os documentos"}
+                                  </p>
+                                </div>
+                                {selectedSubgrupo !== "GERAL" && empresas && empresas.length > 0 && (
+                                  <div className="flex items-center gap-2">
+                                    <label htmlFor="select_empresa_preencher" className="text-xs text-slate-400 whitespace-nowrap">
+                                      Puxar da Empresa:
+                                    </label>
+                                    <select
+                                      id="select_empresa_preencher"
+                                      onChange={(e) => {
+                                        const empId = e.target.value;
+                                        if (!empId) return;
+                                        const emp = empresas.find((item) => item.id === empId);
+                                        if (!emp) return;
+                                        const updated: Record<string, string> = { ...globalFormData };
+                                        const now = new Date();
+                                        const meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+                                        const dataFormatadaExtenso = `${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
+                                        const dataFormatadaCurta = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+
+                                        for (const key of globalVariables) {
+                                          const k = key.toUpperCase();
+                                          if (k.includes("RAZÃO SOCIAL") || k.includes("NOME DA EMPRESA") || k === "EMPREGADOR" || k.includes("NOME DO EMPREGADOR")) {
+                                            updated[key] = emp.nome || "";
+                                          } else if (k.includes("CNPJ")) {
+                                            updated[key] = emp.cnpj || "";
+                                          } else if (k.includes("ENDEREÇO") || k.includes("ENDERECO")) {
+                                            updated[key] = emp.enderecoCompleto || "";
+                                          } else if (k.includes("CIDADE")) {
+                                            updated[key] = emp.cidade || "Rio Verde";
+                                          } else if (k === "UF") {
+                                            updated[key] = "GO";
+                                          } else if (k.includes("DATA DE ASSINATURA") || k === "DATA") {
+                                            updated[key] = dataFormatadaExtenso;
+                                          }
+                                        }
+                                        setGlobalFormData(updated);
+                                      }}
+                                      defaultValue=""
+                                      className="bg-slate-950 border border-slate-700/60 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 max-w-[220px] truncate"
+                                    >
+                                      <option value="">Selecione para autopreencher...</option>
+                                      {empresas.map((emp) => (
+                                        <option key={emp.id} value={emp.id}>
+                                          {emp.nome}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
                               </div>
+
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {globalVariables.map((v) => (
                                   <div key={v} className="flex flex-col">
@@ -2612,9 +3109,9 @@ ${error instanceof Error ? error.stack : "N/A"}`,
                       </button>
                       <button
                         onClick={generateFinalDocument}
-                        className="flex-[2] bg-indigo-600 hover:bg-slate-200 text-white font-bold tracking-widest text-sm rounded-lg py-4 transition-colors flex items-center justify-center space-x-3 shadow-lg w-full md:w-auto"
+                        className={`flex-[2] ${selectedSubgrupo === "GERAL" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-indigo-600 hover:bg-slate-200"} text-white font-bold tracking-widest text-sm rounded-lg py-4 transition-colors flex items-center justify-center space-x-3 shadow-lg w-full md:w-auto`}
                       >
-                        <span>GERAR LOTE DE DOCUMENTOS</span>
+                        <span>{selectedSubgrupo === "GERAL" ? "GERAR CONTRATO" : "GERAR LOTE DE DOCUMENTOS"}</span>
                         <CheckCircle2 className="w-5 h-5" />
                       </button>
                     </div>

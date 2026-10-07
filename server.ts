@@ -106,7 +106,8 @@ const ChatSchema = z.object({
 });
 
 const ExtractPdfSchema = z.object({
-  pdfBase64: z.string().min(1, "PDF não enviado."),
+  pdfBase64: z.string().min(1, "Arquivo não enviado."),
+  mimeType: z.string().optional().default('application/pdf'),
   type: z.enum(['cnpj', 'recibo', 'admissional', 'trct', 'custom', 'aviso_previo']).default('admissional'),
   globalVars: z.array(z.string()).optional(),
   collabVars: z.array(z.string()).optional(),
@@ -851,7 +852,7 @@ Se a action for "UPDATE_KANBAN_TASK", payload deve ter:
 - status: string (novo status)
 
 Se a action for "GENERATE_TERMO", payload deve ter:
-- termoId: string (ID obrigatório do modelo. Use UM DOS SEGUINTES: "tpl-nda" (Acordo Confidencialidade), "tpl-banco-horas", "tpl-etica-digital" (Política de Internet/Celular), "tpl-imagem" (Uso de Imagem), "tpl-equipamentos" (Responsabilidade de Equipamentos/Materiais), "tpl-monitoramento" (Câmeras), "tpl-veiculo" (Uso de Veículo). Se não for nenhum desses, use "tpl-custom".)
+- termoId: string (ID obrigatório do modelo. Use UM DOS SEGUINTES: "tpl-contrato-contabil" (Contrato de Prestação de Serviços Contábeis), "tpl-nda" (Acordo Confidencialidade), "tpl-banco-horas", "tpl-etica-digital" (Política de Internet/Celular), "tpl-imagem" (Uso de Imagem), "tpl-equipamentos" (Responsabilidade de Equipamentos/Materiais), "tpl-monitoramento" (Câmeras), "tpl-veiculo" (Uso de Veículo), "tpl-epi" (EPI). Se não for nenhum desses, use "tpl-custom".)
 - extractedData: objeto com chaves (ex: "NOME DO COLABORADOR", "CPF DO COLABORADOR", "NOME DA EMPRESA", "CNPJ DA EMPRESA", "ENDEREÇO DA EMPRESA", "TELEFONE DA EMPRESA", "EMAIL DA EMPRESA", "VEÍCULO", "PLACA DO VEÍCULO") extraídas do PDF ou do contexto da conversa. As chaves devem estar em MAIÚSCULO sem colchetes ou chaves.
 
 Sempre tente associar as entidades pedidas aos IDs dos dados disponíveis.
@@ -1259,7 +1260,7 @@ O sistema "DP - Simples Contábil" possui os seguintes módulos e campos:
    - Parâmetros: Rescisão Antecipada (Sim/Não), Calcular e Descontar INSS (Sim/Não).
 
 3. TERMOS E ACORDOS COLETIVOS/INDIVIDUAIS (GENERATE_TERMO):
-   - Modelos: tpl-nda, tpl-banco-horas, tpl-etica-digital, tpl-imagem, tpl-equipamentos, tpl-monitoramento, tpl-veiculo, tpl-custom.
+   - Modelos: tpl-contrato-contabil (Contrato de Prestação de Serviços Contábeis), tpl-nda, tpl-banco-horas, tpl-etica-digital, tpl-imagem, tpl-equipamentos, tpl-monitoramento, tpl-veiculo, tpl-epi, tpl-custom.
    - Variáveis: Razão Social, CNPJ, Endereço, Cidade/UF, Nome do Colaborador, CPF, RG, Veículo/Placa, Itens/Equipamentos, Data.
 
 4. KANBAN DE DEMANDAS & LEGALIZAÇÃO (CREATE_KANBAN_TASK, UPDATE_KANBAN_TASK):
@@ -1466,7 +1467,7 @@ ${baseInstruction}`;
         return res.status(400).json({ error: parseResult.error.issues[0].message });
       }
 
-      const { pdfBase64, type, globalVars = [], collabVars = [], registeredCompanies = [] } = parseResult.data;
+      const { pdfBase64, mimeType = 'application/pdf', type, globalVars = [], collabVars = [], registeredCompanies = [] } = parseResult.data;
       
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
@@ -1485,15 +1486,26 @@ ${baseInstruction}`;
       let systemInstruction = "";
       if (type === 'cnpj') {
         systemInstruction = `Este é um Comprovante de Inscrição e de Situação Cadastral (Cartão CNPJ) emitido pela Receita Federal do Brasil.
-Extraia os seguintes campos e retorne APENAS um JSON válido, sem markdown, sem explicação:
+Extraia com precisão os dados da empresa e eventuais administradores ou representantes legais. Retorne APENAS um JSON válido, sem markdown, sem explicações adicionais, com esta estrutura:
 {
-  "razaoSocial": "nome empresarial completo",
+  "razaoSocial": "nome empresarial completo / razão social",
+  "nomeFantasia": "título do estabelecimento / nome fantasia se houver",
   "cnpj": "CNPJ formatado com pontos e traço, ex: XX.XXX.XXX/XXXX-XX",
-  "telefone": "telefone formatado",
-  "email": "email se existir",
-  "enderecoCompleto": "endereço completo contendo logradouro, número, complemento, bairro, município/UF e CEP"
+  "cidade": "município da empresa",
+  "uf": "sigla da UF (ex: GO, SP)",
+  "logradouro": "tipo e nome do logradouro",
+  "numero": "número do imóvel",
+  "complemento": "complemento se houver",
+  "bairro": "bairro ou distrito",
+  "cep": "CEP formatado",
+  "telefone": "telefone formatado com DDD",
+  "email": "correio eletrônico / e-mail",
+  "enderecoCompleto": "endereço completo contendo logradouro, número, complemento, bairro, município/UF e CEP",
+  "representanteLegal": "nome do titular, sócio-administrador ou responsável perante o CNPJ se constar no documento",
+  "cpfRepresentante": "CPF do representante ou responsável se constar no documento",
+  "naturezaJuridica": "código e descrição da natureza jurídica"
 }
-Se algum campo não existir, use string vazia. Retorne SOMENTE o JSON.`;
+Se algum campo não existir ou não for encontrado no documento, use string vazia "". Retorne SOMENTE o JSON.`;
       } else if (type === 'recibo') {
         systemInstruction = `Este é um Recibo de Pagamento de Salário (Holerite/Contracheque) de um funcionário.
 Extraia TODOS os dados e retorne APENAS um JSON válido, sem markdown, sem explicação, com esta estrutura exata:
@@ -1662,7 +1674,7 @@ Retorne SOMENTE o JSON, sem nenhum texto adicional.`;
                 parts: [
                   {
                     inlineData: {
-                      mimeType: 'application/pdf',
+                      mimeType: mimeType || 'application/pdf',
                       data: pdfBase64,
                     },
                   }
