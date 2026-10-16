@@ -11,6 +11,15 @@ export function sanitizeModulosResponsavel(
   modulos?: string[] | null,
   empresa?: Partial<Empresa> | null
 ): string[] {
+  // REGRA PADRONIZADA: Se a empresa possui situação diferente de 'ATIVA',
+  // ela é automaticamente desmarcada de todos os módulos (array vazio).
+  if (empresa && empresa.situacao) {
+    const sit = empresa.situacao.trim().toUpperCase();
+    if (sit !== 'ATIVA') {
+      return [];
+    }
+  }
+
   if (!modulos || !Array.isArray(modulos)) {
     return empresa && isCompanyInExcludedDprhList(empresa) ? [] : ['DP & RH'];
   }
@@ -43,22 +52,26 @@ export function sanitizeModulosResponsavel(
 }
 
 /**
- * Retorna se uma empresa possui a situação 'BAIXADA' ou 'TRANSFERIDA'.
+ * Retorna se uma empresa possui situação diferente de 'ATIVA' (como INATIVA, SUSPENSA, BAIXADA, TRANSFERIDA).
  * Empresas com essas situações devem ser omitidas de todos os módulos operacionais
  * (Fechamento de Folha, Checklists, Calendário, Alvarás, Termos, Chat AI),
  * ficando visíveis exclusivamente no Cadastro de Empresas.
  */
 export function isEmpresaBaixadaOuTransferida(empresa?: Partial<Empresa> | null): boolean {
   if (!empresa) return false;
-  const sit = (empresa.situacao || '').trim().toUpperCase();
-  return sit === 'BAIXADA' || sit === 'TRANSFERIDA';
+  const sit = (empresa.situacao || 'ATIVA').trim().toUpperCase();
+  return sit !== 'ATIVA';
 }
 
 /**
- * Retorna se a empresa está apta para visualização e operação nos módulos internos do sistema.
+ * Retorna se a empresa está ativa e apta para visualização e operação nos módulos internos do sistema.
+ * REGRA PADRONIZADA: Apenas empresas com situação 'ATIVA' aparecem nos módulos operacionais.
+ * Qualquer situação diferente de 'ATIVA' faz com que a empresa seja omitida de todos os módulos.
  */
 export function isEmpresaAtivaNosModulos(empresa?: Partial<Empresa> | null): boolean {
-  return !isEmpresaBaixadaOuTransferida(empresa);
+  if (!empresa) return false;
+  const sit = (empresa.situacao || 'ATIVA').trim().toUpperCase();
+  return sit === 'ATIVA';
 }
 
 /**

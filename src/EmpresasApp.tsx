@@ -90,6 +90,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
   // DPRH Exclusions State
   const [hasExcludedDprhCleaned, setHasExcludedDprhCleaned] = useState(false);
   const [hasCleanedFiscalArtifact, setHasCleanedFiscalArtifact] = useState(false);
+  const [hasCleanedNonActiveModules, setHasCleanedNonActiveModules] = useState(false);
 
   // Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -314,6 +315,37 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
     }
   }, [empresas, hasCleanedFiscalArtifact]);
 
+  // Auto-limpeza preventiva: qualquer empresa com situação diferente de ATIVA tem seus módulos desmarcados no Firestore
+  useEffect(() => {
+    if (empresas.length > 0 && !hasCleanedNonActiveModules) {
+      setHasCleanedNonActiveModules(true);
+      const toClean = empresas.filter(emp => {
+        const sit = (emp.situacao || 'ATIVA').trim().toUpperCase();
+        const hasMods = Array.isArray(emp.modulosResponsavel) && emp.modulosResponsavel.length > 0;
+        return sit !== 'ATIVA' && hasMods;
+      });
+
+      if (toClean.length > 0) {
+        const runNonActiveCleanup = async () => {
+          try {
+            const batch = writeBatch(db);
+            for (const emp of toClean) {
+              batch.update(doc(db, 'empresas', emp.id), {
+                modulosResponsavel: [],
+                updatedAt: Date.now()
+              });
+            }
+            await batch.commit();
+            console.log(`[Padronização de Situação] ${toClean.length} empresa(s) não ativas tiveram seus módulos desmarcados no Firestore.`);
+          } catch (err) {
+            console.warn('[Padronização de Situação] Erro ao desmarcar módulos de empresas não ativas:', err);
+          }
+        };
+        runNonActiveCleanup();
+      }
+    }
+  }, [empresas, hasCleanedNonActiveModules]);
+
   const handleCreateDriveFolder = async (emp: Empresa) => {
     if (creatingFolderEmpresaId) return;
     setCreatingFolderEmpresaId(emp.id);
@@ -455,7 +487,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
 
   const openEmpresaModal = (empresa?: Empresa) => {
     if (empresa) {
-      const isAtiva = (empresa.situacao || 'ATIVA') === 'ATIVA';
+      const isAtiva = (empresa.situacao || 'ATIVA').toUpperCase().trim() === 'ATIVA';
       setEditingEmpresa({
         ...empresa,
         codigo: empresa.codigo || '',
@@ -465,7 +497,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
         dataSaida: isAtiva ? '' : (empresa.dataSaida || ''),
         linkDrive: empresa.linkDrive || '',
         cidade: empresa.cidade || '',
-        modulosResponsavel: sanitizeModulosResponsavel(empresa.modulosResponsavel, empresa)
+        modulosResponsavel: isAtiva ? sanitizeModulosResponsavel(empresa.modulosResponsavel, empresa) : []
       });
     } else {
       setEditingEmpresa({ 
@@ -649,7 +681,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
     if (!editingEmpresa?.nome) return;
 
     const sindicato = sindicatos.find(s => s.id === editingEmpresa.sindicatoId);
-    const isAtiva = (editingEmpresa.situacao || 'ATIVA') === 'ATIVA';
+    const isAtiva = (editingEmpresa.situacao || 'ATIVA').toUpperCase().trim() === 'ATIVA';
 
     const action = async () => {
       const data = {
@@ -667,7 +699,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
         dataSaida: isAtiva ? '' : (editingEmpresa.dataSaida || ''),
         linkDrive: editingEmpresa.linkDrive || '',
         cidade: editingEmpresa.cidade || '',
-        modulosResponsavel: sanitizeModulosResponsavel(editingEmpresa.modulosResponsavel, editingEmpresa)
+        modulosResponsavel: isAtiva ? sanitizeModulosResponsavel(editingEmpresa.modulosResponsavel, editingEmpresa) : []
       };
 
       if (editingEmpresa.id) {
@@ -1502,10 +1534,14 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                     value={editingEmpresa.situacao || 'ATIVA'}
                     onChange={e => {
                       const newSituacao = e.target.value;
+                      const isNowAtiva = newSituacao.trim().toUpperCase() === 'ATIVA';
                       setEditingEmpresa({
                         ...editingEmpresa, 
                         situacao: newSituacao,
-                        ...(newSituacao === 'ATIVA' ? { dataSaida: '' } : {})
+                        dataSaida: isNowAtiva ? '' : (editingEmpresa.dataSaida || ''),
+                        modulosResponsavel: isNowAtiva 
+                          ? (editingEmpresa.modulosResponsavel && editingEmpresa.modulosResponsavel.length > 0 ? editingEmpresa.modulosResponsavel : ['DP & RH'])
+                          : []
                       });
                     }}
                     className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -1514,6 +1550,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                     <option value="INATIVA">INATIVA</option>
                     <option value="SUSPENSA">SUSPENSA</option>
                     <option value="TRANSFERIDA">TRANSFERIDA</option>
+                    <option value="BAIXADA">BAIXADA</option>
                   </select>
                 </div>
               </div>
@@ -1622,24 +1659,39 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
 
               {/* Seção de Módulos Responsáveis */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Módulos Responsáveis</label>
-                <div className="grid grid-cols-2 gap-2.5 bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Módulos Responsáveis</label>
+                  {(editingEmpresa.situacao || 'ATIVA').toUpperCase().trim() !== 'ATIVA' && (
+                    <span className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Desmarcado automaticamente ({editingEmpresa.situacao})
+                    </span>
+                  )}
+                </div>
+                <div className={`grid grid-cols-2 gap-2.5 bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl ${
+                  (editingEmpresa.situacao || 'ATIVA').toUpperCase().trim() !== 'ATIVA' ? 'opacity-60' : ''
+                }`}>
                   {['DP & RH', 'LEGALIZAÇÃO'].map(mod => {
-                    const currentModulos = sanitizeModulosResponsavel(editingEmpresa.modulosResponsavel, editingEmpresa);
-                    const isChecked = currentModulos.includes(mod);
+                    const isEmpresaAtiva = (editingEmpresa.situacao || 'ATIVA').toUpperCase().trim() === 'ATIVA';
+                    const currentModulos = isEmpresaAtiva ? sanitizeModulosResponsavel(editingEmpresa.modulosResponsavel, editingEmpresa) : [];
+                    const isChecked = isEmpresaAtiva && currentModulos.includes(mod);
                     return (
                       <label 
                         key={mod} 
-                        className={`flex items-center space-x-2.5 p-2 rounded-lg cursor-pointer transition-colors border select-none ${
-                          isChecked 
-                            ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-300' 
-                            : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:text-slate-200'
+                        className={`flex items-center space-x-2.5 p-2 rounded-lg transition-colors border select-none ${
+                          !isEmpresaAtiva 
+                            ? 'bg-slate-950/50 border-slate-900 text-slate-600 cursor-not-allowed'
+                            : isChecked 
+                              ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-300 cursor-pointer' 
+                              : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:text-slate-200 cursor-pointer'
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={isChecked}
+                          disabled={!isEmpresaAtiva}
                           onChange={() => {
+                            if (!isEmpresaAtiva) return;
                             const updated = isChecked
                               ? currentModulos.filter(m => m !== mod)
                               : [...currentModulos, mod];
@@ -1648,13 +1700,18 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                               modulosResponsavel: updated
                             });
                           }}
-                          className="w-4 h-4 rounded text-indigo-600 bg-slate-900 border-slate-700 focus:ring-indigo-500"
+                          className="w-4 h-4 rounded text-indigo-600 bg-slate-900 border-slate-700 focus:ring-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed"
                         />
                         <span className="text-xs font-semibold">{mod}</span>
                       </label>
                     );
                   })}
                 </div>
+                {(editingEmpresa.situacao || 'ATIVA').toUpperCase().trim() !== 'ATIVA' && (
+                  <p className="text-[11px] text-slate-500 mt-1.5">
+                    Empresas com situação diferente de <strong>ATIVA</strong> não participam de nenhum módulo operacional e têm todos os módulos desmarcados automaticamente.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

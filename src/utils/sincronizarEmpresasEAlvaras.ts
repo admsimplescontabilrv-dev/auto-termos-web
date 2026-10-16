@@ -364,18 +364,6 @@ export async function sincronizarEmpresasEAlvaras(
       const needsUpper = emp.nome !== upperName;
       const ehAlvoAlvara = isAlvaraAlvo(emp);
 
-      // Para empresas de alvará, garante que o módulo LEGALIZAÇÃO está presente
-      const currentMods = Array.isArray(emp.modulosResponsavel) ? [...emp.modulosResponsavel] : ['DP & RH'];
-      const hasLegalizacao = currentMods.some(m => norm(m) === 'legalizacao');
-      const needsLegalizacao = ehAlvoAlvara && !hasLegalizacao;
-
-      // Dados cadastrais atualizados caso esteja em LISTA_ALVARAS_NAO_PAGO
-      const naoPagoData = LISTA_ALVARAS_NAO_PAGO.find(item => {
-        const itemClean = cleanDoc(item.cnpj);
-        const itemNorm = norm(item.nome);
-        return (c && itemClean && c === itemClean) || itemNorm === n;
-      });
-
       // Situação cadastral e regime tributário atualizados conforme solicitação do usuário
       const cleanEmpName = (emp.nome || '').replace(/\(.*?\)/g, '').trim();
       const targetNorm = norm(cleanEmpName);
@@ -392,15 +380,33 @@ export async function sincronizarEmpresasEAlvaras(
       const needsSit = situacaoUpdate && currentSit !== situacaoUpdate.situacao;
       const needsReg = situacaoUpdate && situacaoUpdate.regime && (emp.regime || '').toUpperCase().trim() !== situacaoUpdate.regime;
 
-      if (needsUpper || needsLegalizacao || naoPagoData || needsSit || needsReg || isBaixada) {
+      const effectiveSit = isBaixada ? 'INATIVA' : (needsSit && situacaoUpdate ? situacaoUpdate.situacao : currentSit);
+      const isAtiva = effectiveSit === 'ATIVA';
+
+      // Para empresas de alvará, garante que o módulo LEGALIZAÇÃO está presente APENAS SE FOR ATIVA
+      const currentMods = Array.isArray(emp.modulosResponsavel) ? [...emp.modulosResponsavel] : (isAtiva ? ['DP & RH'] : []);
+      const hasLegalizacao = currentMods.some(m => norm(m) === 'legalizacao');
+      const needsLegalizacao = isAtiva && ehAlvoAlvara && !hasLegalizacao;
+      const needsClearMods = !isAtiva && currentMods.length > 0;
+
+      // Dados cadastrais atualizados caso esteja em LISTA_ALVARAS_NAO_PAGO
+      const naoPagoData = LISTA_ALVARAS_NAO_PAGO.find(item => {
+        const itemClean = cleanDoc(item.cnpj);
+        const itemNorm = norm(item.nome);
+        return (c && itemClean && c === itemClean) || itemNorm === n;
+      });
+
+      if (needsUpper || needsLegalizacao || needsClearMods || naoPagoData || needsSit || needsReg || isBaixada) {
         const updateData: any = { updatedAt: Date.now() };
         if (needsUpper) {
           updateData.nome = upperName;
           renomeadas++;
         }
-        if (needsLegalizacao) {
+        if (needsClearMods) {
+          updateData.modulosResponsavel = [];
+        } else if (needsLegalizacao) {
           currentMods.push('LEGALIZAÇÃO');
-          updateData.modulosResponsavel = sanitizeModulosResponsavel(currentMods, emp);
+          updateData.modulosResponsavel = sanitizeModulosResponsavel(currentMods, { ...emp, situacao: effectiveSit });
         }
         if (naoPagoData) {
           if (naoPagoData.regime && naoPagoData.regime !== '-') updateData.regime = naoPagoData.regime;
