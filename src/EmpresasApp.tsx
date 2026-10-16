@@ -11,6 +11,7 @@ import {
 import { isCompanyInExcludedDprhList, EXCLUDED_DPRH_COMPANIES } from './data/excludedDprhCompanies';
 import { parseDateToTimestamp, sanitizeModulosResponsavel } from './utils/empresaUtils';
 import { sincronizarSindicatosPadrao } from './utils/sindicatosPadrao';
+import { sincronizarEmpresasEAlvaras } from './utils/sincronizarEmpresasEAlvaras';
 
 interface EmpresasAppProps {
   entityToEdit?: { id: string, type: 'EMPRESA' | 'SINDICATO' } | null;
@@ -92,6 +93,16 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
 
   // Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Auto-sincronização preventiva em segundo plano (maiúsculas, alvarás e cadastros faltantes)
+  const [hasSincronizadoEmpresasEAlvaras, setHasSincronizadoEmpresasEAlvaras] = useState(false);
+
+  useEffect(() => {
+    if (empresas.length > 0 && !hasSincronizadoEmpresasEAlvaras) {
+      setHasSincronizadoEmpresasEAlvaras(true);
+      sincronizarEmpresasEAlvaras(empresas).catch(() => {});
+    }
+  }, [empresas, hasSincronizadoEmpresasEAlvaras]);
 
   // Auto-parametrização preventiva e sincronização dos 19 sindicatos padrão com base nas CCTs
   const [hasParametrizadoSindicatos, setHasParametrizadoSindicatos] = useState(false);
@@ -523,7 +534,8 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
       const companiesPayload = empresas.map(e => ({
         id: e.id,
         codigo: e.codigo || '',
-        nome: e.nome || ''
+        nome: e.nome || '',
+        cnpj: e.cnpj || ''
       }));
 
       const payload: any = {
@@ -728,15 +740,13 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
       ATIVA: 0,
       INATIVA: 0,
       SUSPENSA: 0,
-      BAIXADA: 0,
       TRANSFERIDA: 0,
     };
     empresas.forEach(e => {
       const sit = (e.situacao || 'ATIVA').toUpperCase().trim();
       if (sit === 'ATIVA') counts.ATIVA++;
-      else if (sit === 'INATIVA') counts.INATIVA++;
-      else if (sit === 'SUSPENSA') counts.SUSPENSA++;
-      else if (sit === 'BAIXADA') counts.BAIXADA++;
+      else if (sit === 'INATIVA' || sit === 'BAIXADA') counts.INATIVA++;
+      else if (sit === 'SUSPENSA' || sit === 'SUSPENSO') counts.SUSPENSA++;
       else if (sit === 'TRANSFERIDA') counts.TRANSFERIDA++;
       else counts.ATIVA++;
     });
@@ -985,7 +995,6 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 { key: 'ATIVA', label: 'Ativas', count: situacaoCounts.ATIVA, color: 'border-emerald-500/30' },
                 { key: 'INATIVA', label: 'Inativas', count: situacaoCounts.INATIVA, color: 'border-slate-600/30' },
                 { key: 'SUSPENSA', label: 'Suspensas', count: situacaoCounts.SUSPENSA, color: 'border-amber-500/30' },
-                { key: 'BAIXADA', label: 'Baixadas', count: situacaoCounts.BAIXADA, color: 'border-rose-500/30' },
                 { key: 'TRANSFERIDA', label: 'Transferidas', count: situacaoCounts.TRANSFERIDA, color: 'border-purple-500/30' },
               ].map(sit => {
                 const isSelected = selectedSituacaoFilter === sit.key;
@@ -1101,15 +1110,6 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                 </span>
               )}
             </div>
-
-            {hasActiveFilters && (
-              <button
-                onClick={resetAllFilters}
-                className="text-xs text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
-              >
-                Restaurar visualização padrão
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -1513,7 +1513,6 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                     <option value="ATIVA">ATIVA</option>
                     <option value="INATIVA">INATIVA</option>
                     <option value="SUSPENSA">SUSPENSA</option>
-                    <option value="BAIXADA">BAIXADA</option>
                     <option value="TRANSFERIDA">TRANSFERIDA</option>
                   </select>
                 </div>
@@ -1566,7 +1565,7 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
                   />
                   {(editingEmpresa.situacao || 'ATIVA') === 'ATIVA' && (
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Para registrar data de saída, altere a situação para <strong>INATIVA</strong>, <strong>SUSPENSA</strong>, <strong>BAIXADA</strong> ou <strong>TRANSFERIDA</strong>.
+                      Para registrar data de saída, altere a situação para <strong>INATIVA</strong>, <strong>SUSPENSA</strong> ou <strong>TRANSFERIDA</strong>.
                     </p>
                   )}
                 </div>
@@ -1929,48 +1928,6 @@ export default function EmpresasApp({ entityToEdit, clearEntityToEdit, initialTa
 
             {/* Conteúdo com Scroll */}
             <div className="p-6 overflow-y-auto space-y-5 custom-scrollbar flex-1">
-              
-              {/* Orientações e Configuração */}
-              <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-4 space-y-3">
-                <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4" />
-                  Instruções de Acesso e Compartilhamento
-                </h3>
-
-                <ol className="text-xs text-slate-300 space-y-2 list-decimal list-inside leading-relaxed">
-                  <li>
-                    Compartilhe sua pasta raiz <strong className="text-slate-100">CLIENTES - SISTEMA</strong> no Google Drive com o e-mail da Service Account (com permissão de <em>Leitor</em> ou <em>Editor</em>):
-                  </li>
-                  <div className="bg-slate-900 border border-slate-700/60 p-2.5 rounded-lg flex items-center justify-between gap-2 mt-1">
-                    <span className="font-mono text-xs text-emerald-300 break-all select-all">
-                      {driveStatus.clientEmail || 'Carregando e-mail da Service Account...'}
-                    </span>
-                    {driveStatus.clientEmail && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(driveStatus.clientEmail || '');
-                          setCopiedEmail(true);
-                          setTimeout(() => setCopiedEmail(false), 2500);
-                        }}
-                        className="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-600 transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
-                      >
-                        {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedEmail ? 'Copiado!' : 'Copiar'}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <li>
-                    O sistema buscará todas as subpastas no formato: <br />
-                    <code className="bg-slate-900 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[11px]">[CÓDIGO] - Nome da Empresa</code> (Ex: <code className="text-emerald-300">186 - Centro Automotivo Omega</code>).
-                  </li>
-                  <li>
-                    O código será cruzado com as empresas cadastradas no banco de dados e o link direto da pasta será salvo automaticamente no campo <strong>linkDrive</strong>.
-                  </li>
-                </ol>
-              </div>
-
               {/* Campo: ID ou Link da Pasta Raiz */}
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">

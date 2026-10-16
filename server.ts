@@ -130,7 +130,8 @@ const SyncDriveSchema = z.object({
   companies: z.array(z.object({
     id: z.string(),
     codigo: z.union([z.string(), z.number()]).optional().nullable(),
-    nome: z.string().optional().nullable()
+    nome: z.string().optional().nullable(),
+    cnpj: z.string().optional().nullable()
   })).optional().nullable()
 });
 
@@ -441,13 +442,14 @@ app.set('trust proxy', 1);
       }
 
       // 2. Carregar lista de empresas (prioriza lista enviada pelo cliente autenticado)
-      let companyList: Array<{ id: string; codigo: string; nome: string; ref?: any }> = [];
+      let companyList: Array<{ id: string; codigo: string; nome: string; cnpj: string; ref?: any }> = [];
 
       if (Array.isArray(companies) && companies.length > 0) {
         companyList = companies.map(c => ({
           id: c.id,
           codigo: c.codigo !== undefined && c.codigo !== null ? String(c.codigo).trim() : '',
-          nome: c.nome || ''
+          nome: c.nome || '',
+          cnpj: c.cnpj ? String(c.cnpj).replace(/\D/g, '') : ''
         }));
       } else {
         try {
@@ -459,6 +461,7 @@ app.set('trust proxy', 1);
               id: doc.id,
               codigo: data.codigo !== undefined && data.codigo !== null ? String(data.codigo).trim() : '',
               nome: data.nome || '',
+              cnpj: data.cnpj ? String(data.cnpj).replace(/\D/g, '') : '',
               ref: doc.ref
             };
           });
@@ -467,9 +470,17 @@ app.set('trust proxy', 1);
         }
       }
 
-      // Padrão de nome da pasta: [CODIGO] - Nome da Empresa (Ex: 186 - Centro Automotivo Omega)
-      // Regex que suporta "186 - Nome", "[186] - Nome", "186- Nome", "186 – Nome"
-      const folderCodeRegex = /^\[?(\d+)\]?\s*[-_–]/;
+      // Função de normalização para comparação de nomes
+      const normalizeStr = (s?: string | null) =>
+        (s || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]/g, '')
+          .trim();
+
+      // Padrão de nome da pasta: [CODIGO/CNPJ] - Nome da Empresa
+      const folderCodeRegex = /^\[?(\d+)\]?\s*[-_–]\s*(.*)$/;
 
       let matchedCount = 0;
       const updatedCompanies: Array<{ id: string; nome: string; codigo: string; linkDrive: string }> = [];
@@ -478,23 +489,39 @@ app.set('trust proxy', 1);
 
       for (const folder of allFolders) {
         const match = folder.name.trim().match(folderCodeRegex);
-        if (!match) {
-          skippedFolders.push({
-            name: folder.name,
-            reason: 'Nome não segue o padrão [CÓDIGO] - Nome da Empresa'
-          });
-          continue;
+        let rawCode = '';
+        let folderTitle = folder.name.trim();
+        let isDocNumber = false;
+        let codeNum = NaN;
+
+        if (match) {
+          rawCode = match[1];
+          folderTitle = (match[2] || '').trim();
+          codeNum = parseInt(rawCode, 10);
+          isDocNumber = rawCode.length >= 11;
         }
 
-        const rawCode = match[1];
-        const codeNum = parseInt(rawCode, 10);
+        const folderTitleNorm = normalizeStr(folderTitle);
         const webViewLink = folder.webViewLink || `https://drive.google.com/drive/folders/${folder.id}`;
 
-        // Localizar empresa correspondente
+        // Localizar empresa correspondente com múltiplos níveis de inteligência:
+        // 1. Se o prefixo for CNPJ/CPF (11 a 14 dígitos), cruza com o CNPJ limpo da empresa
+        // 2. Se for código numérico comum (ex: 186, 234), cruza com o código cadastrado
+        // 3. Fallback inteligente por nome (extraído após o hífen ou nome direto da pasta)
         const matchedEmp = companyList.find(c => {
+          if (isDocNumber && c.cnpj && c.cnpj === rawCode) {
+            return true;
+          }
           const empCodStr = c.codigo;
           const empCodNum = empCodStr ? parseInt(empCodStr, 10) : NaN;
-          return (empCodStr && empCodStr === rawCode) || (!isNaN(empCodNum) && !isNaN(codeNum) && empCodNum === codeNum);
+          if (!isDocNumber && rawCode && empCodStr && empCodStr !== '0' && ((empCodStr === rawCode) || (!isNaN(empCodNum) && !isNaN(codeNum) && empCodNum === codeNum))) {
+            return true;
+          }
+          const empNomeNorm = normalizeStr(c.nome);
+          if (folderTitleNorm && empNomeNorm && (empNomeNorm === folderTitleNorm || empNomeNorm.includes(folderTitleNorm) || folderTitleNorm.includes(empNomeNorm))) {
+            return true;
+          }
+          return false;
         });
 
         if (matchedEmp) {
@@ -502,7 +529,7 @@ app.set('trust proxy', 1);
           updatedCompanies.push({
             id: matchedEmp.id,
             nome: matchedEmp.nome || 'Empresa',
-            codigo: rawCode,
+            codigo: rawCode || matchedEmp.codigo || '',
             linkDrive: webViewLink
           });
 
@@ -514,15 +541,22 @@ app.set('trust proxy', 1);
                 updatedAt: Date.now()
               });
             } catch (updErr) {
-              console.warn(`Atualização Firestore Admin ignorada para ${matchedEmp.id} (o cliente aplicará via Firebase SDK):`, updErr);
+              console.warn(`Atualização Firestore Admin ignorada para ${matchedEmp.id}:`, updErr);
             }
           }
         } else {
-          unmatchedFolders.push({
-            name: folder.name,
-            codigo: rawCode,
-            link: webViewLink
-          });
+          if (!match) {
+            skippedFolders.push({
+              name: folder.name,
+              reason: 'Nome não segue o padrão [CÓDIGO/CNPJ] - Nome da Empresa e não encontrou correspondência de nome'
+            });
+          } else {
+            unmatchedFolders.push({
+              name: folder.name,
+              codigo: rawCode,
+              link: webViewLink
+            });
+          }
         }
       }
 

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFirestore } from './hooks/useFirestore';
 import { Empresa, Alvara, AlvaraSituacao } from './types';
 import { isEmpresaAtivaNosModulos } from './utils/empresaUtils';
+import { isAlvaraAlvo, getAlvaraSituacaoPredefinida } from './utils/sincronizarEmpresasEAlvaras';
 import { db } from './lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import {
@@ -37,10 +38,11 @@ export default function AlvaraApp() {
   const { data: alvaras, loading: loadingAlvaras } = useFirestore<Alvara>('alvaras');
   const { data: empresas, loading: loadingEmpresas } = useFirestore<Empresa>('empresas');
 
-  // 2. Filter companies: show ONLY those that contain "LEGALIZAÇÃO" in modulosResponsavel and are not BAIXADA/TRANSFERIDA
+  // 2. Filter companies: show ONLY those that contain "LEGALIZAÇÃO" in modulosResponsavel or are official alvará target companies
   const legalizacaoEmpresas = useMemo(() => {
     return empresas.filter((emp) => {
       if (!isEmpresaAtivaNosModulos(emp)) return false;
+      if (isAlvaraAlvo(emp)) return true;
       if (!emp.modulosResponsavel || !Array.isArray(emp.modulosResponsavel)) return false;
       return emp.modulosResponsavel.some((mod) => {
         const normalized = (mod || '')
@@ -64,13 +66,55 @@ export default function AlvaraApp() {
     return map;
   }, [alvaras]);
 
+  // Auto-persistência no Firestore para alvarás das empresas alvo (NÃO PAGO e CONCLUÍDO)
+  const [hasAutoSavedAlvaras, setHasAutoSavedAlvaras] = useState(false);
+  useEffect(() => {
+    if (empresas.length > 0 && !hasAutoSavedAlvaras) {
+      setHasAutoSavedAlvaras(true);
+      const alvosSemDoc = legalizacaoEmpresas.filter((emp) => {
+        const predef = getAlvaraSituacaoPredefinida(emp);
+        if (!predef) return false;
+        const key = `${emp.id}_${selectedYear}`;
+        const record = alvarasMap.get(key);
+        return !record || record.situacao !== predef;
+      });
+
+      if (alvosSemDoc.length > 0) {
+        alvosSemDoc.forEach((emp) => {
+          const predef = getAlvaraSituacaoPredefinida(emp);
+          if (!predef) return;
+          const docId = `${emp.id}_${selectedYear}`;
+          const obs = predef === 'NÃO PAGO' ? 'Taxa de alvará pendente de quitação.' : 'Alvará concluído conforme controle oficial.';
+          setDoc(
+            doc(db, 'alvaras', docId),
+            {
+              empresaId: emp.id,
+              empresaNome: (emp.nome || '').toUpperCase().trim(),
+              cnpj: emp.cnpj || '',
+              codigo: emp.codigo || '',
+              ano: selectedYear,
+              situacao: predef,
+              observacoes: obs,
+              updatedAt: Date.now()
+            },
+            { merge: true }
+          ).catch(() => {});
+        });
+      }
+    }
+  }, [empresas, legalizacaoEmpresas, alvarasMap, selectedYear, hasAutoSavedAlvaras]);
+
   // Combined rows for the selected year
   const rows = useMemo(() => {
     return legalizacaoEmpresas.map((emp) => {
       const key = `${emp.id}_${selectedYear}`;
       const record = alvarasMap.get(key);
-      const situacao: AlvaraSituacao | string = record?.situacao || 'PENDENTE';
-      const observacoes = localObs[emp.id] !== undefined ? localObs[emp.id] : (record?.observacoes || '');
+      const predef = getAlvaraSituacaoPredefinida(emp);
+      const situacao: AlvaraSituacao | string = record?.situacao || predef || 'PENDENTE';
+      const observacoes =
+        localObs[emp.id] !== undefined
+          ? localObs[emp.id]
+          : record?.observacoes || (predef === 'NÃO PAGO' ? 'Taxa de alvará pendente de quitação.' : predef === 'CONCLUÍDO' ? 'Alvará concluído conforme controle oficial.' : '');
 
       return {
         empresa: emp,
@@ -332,7 +376,7 @@ export default function AlvaraApp() {
 
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl border border-slate-700 font-semibold text-xs tracking-wider transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl border border-slate-700 font-semibold text-xs tracking-wider transition-colors shadow-sm cursor-pointer"
           >
             <Printer className="w-4 h-4 text-amber-400" />
             <span>IMPRIMIR</span>

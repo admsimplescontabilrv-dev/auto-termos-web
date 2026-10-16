@@ -1,7 +1,7 @@
 [
   {
     "codigo": "79",
-    "nome": "Aço DLR Ltda",
+    "nome": "AÇO DLR LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "55.860.930/0001-07",
@@ -22,7 +22,7 @@
   },
   {
     "codigo": "136",
-    "nome": "Adf Cred Ltda.",
+    "nome": "ADF CRED LTDA.",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "59.446.511/0001-84",
@@ -30,12 +30,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "Não Contribuinte",
     "inscMunicipal": "79849",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "28/08/26",
+    "procuracao": "11/02/2027",
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -43,9 +44,9 @@
   },
   {
     "codigo": "158",
-    "nome": "Afrh Ltda",
+    "nome": "AFRH LTDA",
     "regime": "PRESUMIDO",
-    "situacao": "SUSPENSA",
+    "situacao": "INATIVA",
     "cnpj": "63.724.911/0001-81",
     "entrada": "11/2025",
     "saida": "03/2026",
@@ -60,11 +61,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "PRESUMIDO"
   },
   {
     "codigo": "233",
-    "nome": "Ag Sol Trading GO",
+    "nome": "AG SOL TRADING GO",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "51.465.533/0004-22",
@@ -81,11 +84,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "228",
-    "nome": "Ag Sol Trading MS",
+    "nome": "AG SOL TRADING MS",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "51.465.533/0001-80",
@@ -102,11 +107,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "234",
-    "nome": "Ag Sol Trading PR",
+    "nome": "AG SOL TRADING PR",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "51.465.533/0005-03",
@@ -123,11 +130,13 @@
     "procResponsavel": "",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "235",
-    "nome": "Ag Sol Trading PR",
+    "nome": "AG SOL TRADING PR",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "51.465.533/0006-94",
@@ -144,11 +153,13 @@
     "procResponsavel": "",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "232",
-    "nome": "Ag Sol Trading SP",
+    "nome": "AG SOL TRADING SP",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "51.465.533/0003-41",
@@ -165,11 +176,13 @@
     "procResponsavel": "",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "217",
-    "nome": "Agi Consultoria E Assessoria De Negocios Ltda",
+    "nome": "AGI CONSULTORIA E ASSESSORIA DE NEGOCIOS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "39.941.142/0001-99",
@@ -177,7 +190,8 @@
     "saida": "",
     "departamentos": "",
     "modulosResponsavel": [
-      "OUTROS"
+      "OUTROS",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "108231720",
     "inscMunicipal": "66060",
@@ -190,7 +204,7 @@
   },
   {
     "codigo": "167",
-    "nome": "Agro Bezerra Comercio De Graos Ltda",
+    "nome": "AGRO BEZERRA COMERCIO DE GRAOS LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "64.008.349/0001-52",
@@ -207,11 +221,13 @@
     "procResponsavel": "AMBOS",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "86",
-    "nome": "Agropecuária Schwengber Ltda",
+    "nome": "AGROPECUÁRIA SCHWENGBER LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "56.185.753/0001-73",
@@ -232,7 +248,7 @@
   },
   {
     "codigo": "156",
-    "nome": "Agropontes Comercial Agricola Ltda",
+    "nome": "AGROPONTES COMERCIAL AGRICOLA LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "63.657.632/0001-42",
@@ -249,11 +265,13 @@
     "procResponsavel": "AMBOS",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "210",
-    "nome": "Agropontes Comercial Agricola Ltda-Filial",
+    "nome": "AGROPONTES COMERCIAL AGRICOLA LTDA-FILIAL",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "63.657.632/0002-23",
@@ -270,11 +288,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "",
-    "nome": "Agrotoni Cerealista LTDA",
+    "nome": "AGROTONI CEREALISTA LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "66.686.580/0001-20",
@@ -291,11 +311,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "1",
-    "nome": "Alberto Carlos Braz Junior-Rio tintas/Agropecuaria Serra Azul",
+    "nome": "ALBERTO CARLOS BRAZ JUNIOR-RIO TINTAS/AGROPECUARIA SERRA AZUL",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "07.244.290/0001-68",
@@ -303,12 +325,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "103872272",
     "inscMunicipal": "12894",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "10/03/31",
+    "procuracao": "28/02/2026",
     "procResponsavel": "SIMPLES",
     "cndFederal": "POSITIVA",
     "cndEstadual": "POSITIVA",
@@ -316,7 +339,7 @@
   },
   {
     "codigo": "111",
-    "nome": "Amperes",
+    "nome": "AMPERES",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "47.023.507/0001-24",
@@ -337,7 +360,7 @@
   },
   {
     "codigo": "162",
-    "nome": "Amperes Industria E Instalacoes Eletricas Ltda",
+    "nome": "AMPERES INDUSTRIA E INSTALACOES ELETRICAS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "63.942.647/0001-52",
@@ -379,7 +402,7 @@
   },
   {
     "codigo": "26",
-    "nome": "Anevi Construções Ltda",
+    "nome": "ANEVI CONSTRUÇÕES LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "47.535.734/0001-39",
@@ -387,7 +410,8 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "109575482",
     "inscMunicipal": "72759",
@@ -400,7 +424,7 @@
   },
   {
     "codigo": "",
-    "nome": "Angela da Silkva Paula de Oliveira",
+    "nome": "ANGELA DA SILKVA PAULA DE OLIVEIRA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "32.426.812/0001-90",
@@ -421,7 +445,7 @@
   },
   {
     "codigo": "7458",
-    "nome": "Aromas Grill Restaurante Ltda",
+    "nome": "AROMAS GRILL RESTAURANTE LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "19.072.331/0001-65",
@@ -442,7 +466,7 @@
   },
   {
     "codigo": "104",
-    "nome": "Barros e Soares",
+    "nome": "BARROS E SOARES",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "48.176.772/0001-05",
@@ -463,7 +487,7 @@
   },
   {
     "codigo": "92",
-    "nome": "Barros e Soares (filial jatai)",
+    "nome": "BARROS E SOARES (FILIAL JATAI)",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "48.176.772/0002-96",
@@ -484,7 +508,7 @@
   },
   {
     "codigo": "133",
-    "nome": "Baruk Transportes Ltda(JRH Holding)",
+    "nome": "BARUK TRANSPORTES LTDA(JRH HOLDING)",
     "regime": "REAL TRIMESTRAL",
     "situacao": "ATIVA",
     "cnpj": "57.549.536/0001-88",
@@ -505,7 +529,7 @@
   },
   {
     "codigo": "25",
-    "nome": "Beija Flor Assessoria",
+    "nome": "BEIJA FLOR ASSESSORIA",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "42.824.513/0001-67",
@@ -522,11 +546,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "",
     "cndEstadual": "",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "48",
-    "nome": "BF Galpões e Alambrados Ltda (municipio de goias)",
+    "nome": "BF GALPÕES E ALAMBRADOS LTDA (MUNICIPIO DE GOIAS)",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "32.448.329/0001-06",
@@ -543,11 +569,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "POSITIVA/NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "4126",
-    "nome": "Boa Semete Igreja",
+    "nome": "BOA SEMETE IGREJA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "31.317.929/0001-72",
@@ -568,7 +596,7 @@
   },
   {
     "codigo": "215",
-    "nome": "Brk Truck Center Ltda",
+    "nome": "BRK TRUCK CENTER LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "66.459.731/0001-08",
@@ -589,7 +617,7 @@
   },
   {
     "codigo": "82",
-    "nome": "Bruno Ferreira  Manco",
+    "nome": "BRUNO FERREIRA  MANCO",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "52.466.201/0001-82",
@@ -610,7 +638,7 @@
   },
   {
     "codigo": "46",
-    "nome": "Buffet Arte &amp; Sabor Ltda",
+    "nome": "BUFFET ARTE & SABOR LTDA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "43.319.500/0001-01",
@@ -631,7 +659,7 @@
   },
   {
     "codigo": "147",
-    "nome": "C&amp;R Transportes E Serviços Automotivos Ltda",
+    "nome": "C&R TRANSPORTES E SERVIÇOS AUTOMOTIVOS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "63.291.628/0001-03",
@@ -652,7 +680,7 @@
   },
   {
     "codigo": "183",
-    "nome": "Carol Ponciano Fitwer Ltdda",
+    "nome": "CAROL PONCIANO FITWER LTDDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "55.165.176/0001-95",
@@ -673,7 +701,7 @@
   },
   {
     "codigo": "",
-    "nome": "Central Peças LTDA",
+    "nome": "CENTRAL PEÇAS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "55.367.109/0001-53",
@@ -694,7 +722,7 @@
   },
   {
     "codigo": "186",
-    "nome": "Centro Automotivo Omega Ltda.",
+    "nome": "CENTRO AUTOMOTIVO OMEGA LTDA.",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "48.986.915/0001-44",
@@ -715,7 +743,7 @@
   },
   {
     "codigo": "108",
-    "nome": "Centro De Equoterapia",
+    "nome": "CENTRO DE EQUOTERAPIA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "59.533.645/0001-32",
@@ -736,7 +764,7 @@
   },
   {
     "codigo": "161",
-    "nome": "Centro De Estudos Universais Luz Da Nova Era",
+    "nome": "CENTRO DE ESTUDOS UNIVERSAIS LUZ DA NOVA ERA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "22.371.811/0001-31",
@@ -757,7 +785,7 @@
   },
   {
     "codigo": "199",
-    "nome": "Centro de Treinamento Ramon Ataides Ltda",
+    "nome": "CENTRO DE TREINAMENTO RAMON ATAIDES LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "48.182.755/0001-80",
@@ -778,7 +806,7 @@
   },
   {
     "codigo": "178",
-    "nome": "Cja Serviços Medicos Ltda (PARALIZOU)",
+    "nome": "CJA SERVIÇOS MEDICOS LTDA (PARALIZOU)",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "64.743.870/0001-33",
@@ -795,11 +823,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "231",
-    "nome": "Comercial Agrosol",
+    "nome": "COMERCIAL AGROSOL",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "23.633.375/0006-07",
@@ -816,11 +846,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "22",
-    "nome": "Comercial Esperança Ltda",
+    "nome": "COMERCIAL ESPERANÇA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "43.086.605/0001-50",
@@ -841,9 +873,9 @@
   },
   {
     "codigo": "57",
-    "nome": "Conquistar Negócios Imobiliários-Conquistar Embalagens",
+    "nome": "CONQUISTAR NEGÓCIOS IMOBILIÁRIOS-CONQUISTAR EMBALAGENS",
     "regime": "SIMPLES",
-    "situacao": "ATIVA",
+    "situacao": "SUSPENSA",
     "cnpj": "33.412.687/0001-21",
     "entrada": "03/2024",
     "saida": "",
@@ -858,11 +890,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "SUSPENSA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "149",
-    "nome": "Coopram - Cooperativa Dos Produtores Da Regiao Meridional Do Brasil",
+    "nome": "COOPRAM - COOPERATIVA DOS PRODUTORES DA REGIAO MERIDIONAL DO BRASIL",
     "regime": "PRESUMIDO",
     "situacao": "INATIVA",
     "cnpj": "25.089.016/0009-09",
@@ -879,11 +913,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "-"
+    "cndMunicipal": "-",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "PRESUMIDO"
   },
   {
     "codigo": "208",
-    "nome": "Cristale Boutique Da Pintura E Revestimentos Ltda",
+    "nome": "CRISTALE BOUTIQUE DA PINTURA E REVESTIMENTOS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "55.909.971/0001-40",
@@ -904,7 +940,7 @@
   },
   {
     "codigo": "206",
-    "nome": "Cristalê Comercio de Tintas",
+    "nome": "CRISTALÊ COMERCIO DE TINTAS",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "14.287.075/0001-00",
@@ -925,7 +961,7 @@
   },
   {
     "codigo": "65",
-    "nome": "D &amp; S Representação (VIVA BOX SELF STORAGE LTDA)",
+    "nome": "D & S REPRESENTAÇÃO (VIVA BOX SELF STORAGE LTDA)",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "54.629.405/0001-12",
@@ -946,7 +982,7 @@
   },
   {
     "codigo": "21",
-    "nome": "Dental Lab Ltda",
+    "nome": "DENTAL LAB LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "61.010.589/0001-01",
@@ -967,7 +1003,7 @@
   },
   {
     "codigo": "94",
-    "nome": "Dhd Solucoes Urbanas Ltda",
+    "nome": "DHD SOLUCOES URBANAS LTDA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "57.661.229/0001-94",
@@ -1030,7 +1066,7 @@
   },
   {
     "codigo": "204",
-    "nome": "DIVINO FRANCISCO DOS SANTOS JUNIOR 99604779168-Cabral",
+    "nome": "DIVINO FRANCISCO DOS SANTOS JUNIOR 99604779168-CABRAL",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "21.716.589/0001-07",
@@ -1038,7 +1074,8 @@
     "saida": "",
     "departamentos": "",
     "modulosResponsavel": [
-      "OUTROS"
+      "OUTROS",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "107051745",
     "inscMunicipal": "83053",
@@ -1051,7 +1088,7 @@
   },
   {
     "codigo": "160",
-    "nome": "Dj Silva Ltda",
+    "nome": "DJ SILVA LTDA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "63.660.985/0001-00",
@@ -1072,7 +1109,7 @@
   },
   {
     "codigo": "81",
-    "nome": "DM Distribuidora Ltda",
+    "nome": "DM DISTRIBUIDORA LTDA",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "55.914.248/0001-50",
@@ -1089,11 +1126,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "POSITIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "201",
-    "nome": "DM Hamonização",
+    "nome": "DM HAMONIZAÇÃO",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "64.921.751/0001-23",
@@ -1135,7 +1174,7 @@
   },
   {
     "codigo": "112",
-    "nome": "Doydo Catalisadores",
+    "nome": "DOYDO CATALISADORES",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "61.051.752/0001-76",
@@ -1156,7 +1195,7 @@
   },
   {
     "codigo": "187",
-    "nome": "Drograria Super Popular Ltda",
+    "nome": "DROGRARIA SUPER POPULAR LTDA",
     "regime": "SIMPLES",
     "situacao": "SUSPENSO",
     "cnpj": "65.356.328/0001-90",
@@ -1177,7 +1216,7 @@
   },
   {
     "codigo": "7905",
-    "nome": "DSL Máquinas E Implementos Ltda",
+    "nome": "DSL MÁQUINAS E IMPLEMENTOS LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "ATIVA",
     "cnpj": "34.212.789/0001-66",
@@ -1199,7 +1238,7 @@
   },
   {
     "codigo": "200",
-    "nome": "Dt Flow(Delta)",
+    "nome": "DT FLOW(DELTA)",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "64.911.913/0001-42",
@@ -1222,7 +1261,7 @@
     "codigo": "",
     "nome": "E F DIAS PRIME LTDA (EMPORIO PRIME)",
     "regime": "SIMPLES",
-    "situacao": "SUSPENSO",
+    "situacao": "SUSPENSA",
     "cnpj": "67.825.488/0001-67",
     "entrada": "07/2026",
     "saida": "",
@@ -1237,11 +1276,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "SUSPENSA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "",
-    "nome": "E&amp;B Assesoria LTDA",
+    "nome": "E&B ASSESORIA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "35.106.380/0001-28",
@@ -1262,7 +1303,7 @@
   },
   {
     "codigo": "130",
-    "nome": "Eder Souza Dutra",
+    "nome": "EDER SOUZA DUTRA",
     "regime": "MEI",
     "situacao": "ATIVA",
     "cnpj": "59.733.705/0001-60",
@@ -1270,10 +1311,11 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "202626857(SUSPENSO)",
-    "inscMunicipal": "NÃO POSSUI",
+    "inscMunicipal": "N TEM",
     "cidade": "RIO VERDE - GO",
     "procuracao": "",
     "procResponsavel": "SEM PROC",
@@ -1283,7 +1325,7 @@
   },
   {
     "codigo": "173",
-    "nome": "Edson Borges de Medeiros Junior-TerraTec Agro",
+    "nome": "EDSON BORGES DE MEDEIROS JUNIOR-TERRATEC AGRO",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "50.362.864/0001-21",
@@ -1291,12 +1333,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "Não Contribuinte",
-    "inscMunicipal": "75157",
+    "inscMunicipal": "EMITIDO",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "03/02/31",
+    "procuracao": "12/01/2027",
     "procResponsavel": "SIMPLES",
     "cndFederal": "POSITIVA/NEGATIVA",
     "cndEstadual": "NEGATIVA",
@@ -1304,7 +1347,7 @@
   },
   {
     "codigo": "97",
-    "nome": "Eduardo henrique - CEMAQ PECAS",
+    "nome": "EDUARDO HENRIQUE - CEMAQ PECAS",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "34.481.991/0001-93",
@@ -1325,7 +1368,7 @@
   },
   {
     "codigo": "117",
-    "nome": "Eli jr (INADIMPLENCIA,BAIXADA)",
+    "nome": "ELI JR (INADIMPLENCIA,BAIXADA)",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "60.225.594/0001-60",
@@ -1342,32 +1385,37 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "POSITIVA/NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA/NEGATIVA"
+    "cndMunicipal": "POSITIVA/NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "120",
-    "nome": "Empório Beer-Eduardo Ferreira Dias",
+    "nome": "EMPÓRIO BEER-EDUARDO FERREIRA DIAS",
     "regime": "SIMPLES",
-    "situacao": "SUSPENSO",
+    "situacao": "SUSPENSA",
     "cnpj": "53.370.403/0001-99",
     "entrada": "06/2025",
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "20.106.987-3",
     "inscMunicipal": "77381",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "15/05/31",
+    "procuracao": "22/01/2027",
     "procResponsavel": "AMBOS",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "SUSPENSA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "236",
-    "nome": "Empório da Carne Vaca Santa LTDA",
+    "nome": "EMPÓRIO DA CARNE VACA SANTA LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "ATIVA",
     "cnpj": "67.753.249/0001-49",
@@ -1388,7 +1436,7 @@
   },
   {
     "codigo": "126",
-    "nome": "Enoook Ltda",
+    "nome": "ENOOOK LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "61.633.423/0001-33",
@@ -1405,11 +1453,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "POSITIVA/NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "",
-    "nome": "EPL Clinica Médica - Elisa Lessa",
+    "nome": "EPL CLINICA MÉDICA - ELISA LESSA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "29.424.063/0001-57",
@@ -1430,7 +1480,7 @@
   },
   {
     "codigo": "166",
-    "nome": "Ethra Consultoria Em Tecnologia E Privacidade Ltda",
+    "nome": "ETHRA CONSULTORIA EM TECNOLOGIA E PRIVACIDADE LTDA",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "63.991.532/0001-58",
@@ -1447,13 +1497,15 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "134",
-    "nome": "Evolut Seg Portaria e Serviços LTDA",
+    "nome": "EVOLUT SEG PORTARIA E SERVIÇOS LTDA",
     "regime": "SIMPLES",
-    "situacao": "SUSPENSO",
+    "situacao": "SUSPENSA",
     "cnpj": "40.820.075/0001-33",
     "entrada": "02/2026",
     "saida": "",
@@ -1468,11 +1520,12 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "SUSPENSA"
   },
   {
     "codigo": "177",
-    "nome": "Ezulian Comercio e Transporte de Grãos",
+    "nome": "EZULIAN COMERCIO E TRANSPORTE DE GRÃOS",
     "regime": "REAL TRIMESTRAL",
     "situacao": "ATIVA",
     "cnpj": "23.530.089/0001-01",
@@ -1493,7 +1546,7 @@
   },
   {
     "codigo": "",
-    "nome": "F de D Rodrigues LTDA",
+    "nome": "F DE D RODRIGUES LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "67.643.606/0001-16",
@@ -1510,11 +1563,12 @@
     "procResponsavel": "",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "linkDrive": "https://drive.google.com/drive/folders/1100dFH08LkqbpWK82hsvX015mF67N6Nf"
   },
   {
     "codigo": "169",
-    "nome": "F de Oliveira Feitosa ( Vidracaria Casa Vidral)",
+    "nome": "F DE OLIVEIRA FEITOSA ( VIDRACARIA CASA VIDRAL)",
     "regime": "SIMPLES",
     "situacao": "SUSPENSO",
     "cnpj": "14.655.018/0001-36",
@@ -1522,12 +1576,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "106793349",
-    "inscMunicipal": "24598",
+    "inscMunicipal": "EMITIDO",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "23/06/31",
+    "procuracao": "24/07/2026",
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -1535,7 +1590,7 @@
   },
   {
     "codigo": "27",
-    "nome": "F. Erick Fernandes EIRELI",
+    "nome": "F. ERICK FERNANDES EIRELI",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "30.082.786/0001-02",
@@ -1543,12 +1598,13 @@
     "saida": "",
     "departamentos": "FISCAL/DP",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "10.745.356-8",
     "inscMunicipal": "53538",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "10/06/30",
+    "procuracao": "27/01/2027",
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -1556,7 +1612,7 @@
   },
   {
     "codigo": "124",
-    "nome": "Fábio Pelegrini",
+    "nome": "FÁBIO PELEGRINI",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "61.359.467/0001-17",
@@ -1577,7 +1633,7 @@
   },
   {
     "codigo": "106",
-    "nome": "Falcon Agro Sistemas (MUDOU DE CONTADOR)",
+    "nome": "FALCON AGRO SISTEMAS (MUDOU DE CONTADOR)",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "59.594.775/0001-85",
@@ -1594,13 +1650,15 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "56",
-    "nome": "Ferreira Nogueira Ltda-Doce Mel",
+    "nome": "FERREIRA NOGUEIRA LTDA-DOCE MEL",
     "regime": "REAL TRIMESTRAL",
-    "situacao": "ATIVA",
+    "situacao": "SUSPENSA",
     "cnpj": "10.989.624/0001-37",
     "entrada": "01/2021",
     "saida": "",
@@ -1615,11 +1673,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "POSITIVA/NEGATIVA",
     "cndEstadual": "POSITIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "SUSPENSA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "164",
-    "nome": "Ferreirinha Representacao Ltda",
+    "nome": "FERREIRINHA REPRESENTACAO LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "63.932.764/0001-35",
@@ -1640,7 +1700,7 @@
   },
   {
     "codigo": "50",
-    "nome": "Francisco De Deus Rodrigues-Borracharia Sao Francisco",
+    "nome": "FRANCISCO DE DEUS RODRIGUES-BORRACHARIA SAO FRANCISCO",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "21.914.091/0001-40",
@@ -1648,12 +1708,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "Não Contribuinte",
     "inscMunicipal": "33326",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "24/07/29",
+    "procuracao": "22/05/2026",
     "procResponsavel": "NAYARA",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -1661,7 +1722,7 @@
   },
   {
     "codigo": "53",
-    "nome": "G.A Mangueiras Ltda-Reyla",
+    "nome": "G.A MANGUEIRAS LTDA-REYLA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "53.807.791/0001-22",
@@ -1682,7 +1743,7 @@
   },
   {
     "codigo": "123",
-    "nome": "Gastronomia RV",
+    "nome": "GASTRONOMIA RV",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "38.461.537/0001-21",
@@ -1703,7 +1764,7 @@
   },
   {
     "codigo": "152",
-    "nome": "Gdc Tecnologia Ltda",
+    "nome": "GDC TECNOLOGIA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "50.641.230/0001-08",
@@ -1724,7 +1785,7 @@
   },
   {
     "codigo": "165",
-    "nome": "Gestao &amp; Performance Empresarial Ltda",
+    "nome": "GESTAO & PERFORMANCE EMPRESARIAL LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "63.948.753/0001-43",
@@ -1745,7 +1806,7 @@
   },
   {
     "codigo": "154",
-    "nome": "Gigatec Solucoes Em Administracao E Tecnologia Ltda",
+    "nome": "GIGATEC SOLUCOES EM ADMINISTRACAO E TECNOLOGIA LTDA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "14.911.313/0001-06",
@@ -1766,7 +1827,7 @@
   },
   {
     "codigo": "151",
-    "nome": "GO PASS Tecnologia(Lego Sistema)",
+    "nome": "GO PASS TECNOLOGIA(LEGO SISTEMA)",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "33.202.686/0001-52",
@@ -1787,7 +1848,7 @@
   },
   {
     "codigo": "0",
-    "nome": "Gr Soluções Industriais Ltda",
+    "nome": "GR SOLUÇÕES INDUSTRIAIS LTDA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "50.297.500/0001-05",
@@ -1808,7 +1869,7 @@
   },
   {
     "codigo": "211",
-    "nome": "Grain Logistica Ltda",
+    "nome": "GRAIN LOGISTICA LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "27.603.963/0001-36",
@@ -1825,11 +1886,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "143",
-    "nome": "Hmv Terraplanagem &amp; Construcoes Ltda.",
+    "nome": "HMV TERRAPLANAGEM & CONSTRUCOES LTDA.",
     "regime": "PRESUMIDO",
     "situacao": "INATIVA",
     "cnpj": "51.237.168/0001-56",
@@ -1846,11 +1909,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "POSITIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "PRESUMIDO"
   },
   {
     "codigo": "",
-    "nome": "Hunter Car Centro Automotivo LTDA",
+    "nome": "HUNTER CAR CENTRO AUTOMOTIVO LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "60.530.648/0001-00",
@@ -1871,7 +1936,7 @@
   },
   {
     "codigo": "180",
-    "nome": "Igreja Renovo",
+    "nome": "IGREJA RENOVO",
     "regime": "IMUNE/ISENTAS",
     "situacao": "ATIVA",
     "cnpj": "64.788.196/0001-03",
@@ -1892,7 +1957,7 @@
   },
   {
     "codigo": "170",
-    "nome": "Ihm Transporte",
+    "nome": "IHM TRANSPORTE",
     "regime": "REAL TRIMESTRAL",
     "situacao": "ATIVA",
     "cnpj": "64.351.903/0001-08",
@@ -1913,7 +1978,7 @@
   },
   {
     "codigo": "184",
-    "nome": "Inacio Miranda Neto Ltda.",
+    "nome": "INACIO MIRANDA NETO LTDA.",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "44.175.126/0001-72",
@@ -1934,7 +1999,7 @@
   },
   {
     "codigo": "146",
-    "nome": "Instituto De Ensino Cerrado Ltda",
+    "nome": "INSTITUTO DE ENSINO CERRADO LTDA",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "50.566.300/0001-00",
@@ -1951,11 +2016,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "",
-    "nome": "Instituto Humanous de Orientação e Performance Profissional LTDA",
+    "nome": "INSTITUTO HUMANOUS DE ORIENTAÇÃO E PERFORMANCE PROFISSIONAL LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "68.360.966/0001-73",
@@ -1976,7 +2043,7 @@
   },
   {
     "codigo": "179",
-    "nome": "Isabela Nunes Vieira Ltda",
+    "nome": "ISABELA NUNES VIEIRA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "52.495.422/0001-89",
@@ -1984,12 +2051,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "200846809",
-    "inscMunicipal": "76841",
+    "inscMunicipal": "EMITIDO",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "08/02/31",
+    "procuracao": "03/02/2027",
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -1997,7 +2065,7 @@
   },
   {
     "codigo": "159",
-    "nome": "Itaper Ensacadeiras LTDA-Itamar Pereira De Oliveira 38741261100",
+    "nome": "ITAPER ENSACADEIRAS LTDA-ITAMAR PEREIRA DE OLIVEIRA 38741261100",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "28.700.295/0001-28",
@@ -2018,7 +2086,7 @@
   },
   {
     "codigo": "141",
-    "nome": "JC Pinturas LTDA",
+    "nome": "JC PINTURAS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "28.225.819/0001-76",
@@ -2026,12 +2094,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "Não Contribuinte",
     "inscMunicipal": "52288",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "24/11/30",
+    "procuracao": "17/11/2026",
     "procResponsavel": "NAYARA",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -2039,7 +2108,7 @@
   },
   {
     "codigo": "29",
-    "nome": "João Batista Silva Pacheco Ltda (usuário particular)",
+    "nome": "JOÃO BATISTA SILVA PACHECO LTDA (USUÁRIO PARTICULAR)",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "34.143.288/0001-75",
@@ -2060,7 +2129,7 @@
   },
   {
     "codigo": "168",
-    "nome": "Jorge Henrique Almeida De Moraes Ltda",
+    "nome": "JORGE HENRIQUE ALMEIDA DE MORAES LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "42.895.105/0001-04",
@@ -2081,7 +2150,7 @@
   },
   {
     "codigo": "43",
-    "nome": "Jucec Emp ICM Ltda",
+    "nome": "JUCEC EMP ICM LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "51.675.164/0001-50",
@@ -2089,12 +2158,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "Não Contribuinte",
-    "inscMunicipal": "76837",
+    "inscMunicipal": "1504281",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "20/08/31",
+    "procuracao": "29/10/2026",
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -2102,7 +2172,7 @@
   },
   {
     "codigo": "7427",
-    "nome": "Karen Jaqueline (Nutrimais)",
+    "nome": "KAREN JAQUELINE (NUTRIMAIS)",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "33.148.492/0001-16",
@@ -2119,11 +2189,13 @@
     "procResponsavel": "AMBOS",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA/NEGATIVA"
+    "cndMunicipal": "POSITIVA/NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "216",
-    "nome": "Kaza Posta Ltda",
+    "nome": "KAZA POSTA LTDA",
     "regime": "REAL ANUAL",
     "situacao": "ATIVA",
     "cnpj": "39.345.473/0001-66",
@@ -2144,7 +2216,7 @@
   },
   {
     "codigo": "139",
-    "nome": "Ko&#39;ach Agroindustrial Ltda",
+    "nome": "KO&#39;ACH AGROINDUSTRIAL LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "62.772.327/0001-39",
@@ -2161,11 +2233,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "127",
-    "nome": "Ko&#39;ach Construtora E Incorporadora Ltda",
+    "nome": "KO&#39;ACH CONSTRUTORA E INCORPORADORA LTDA",
     "regime": "PRESUMIDO",
     "situacao": "INATIVA",
     "cnpj": "62.060.808/0001-11",
@@ -2182,11 +2256,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "POSITIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "PRESUMIDO"
   },
   {
     "codigo": "137",
-    "nome": "Lacerda e Proto",
+    "nome": "LACERDA E PROTO",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "48.422.592/0001-66",
@@ -2194,12 +2270,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "10.979.920-8",
     "inscMunicipal": "73591",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "14/01/31",
+    "procuracao": "12/03/2026",
     "procResponsavel": "AMBOS",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
@@ -2207,7 +2284,7 @@
   },
   {
     "codigo": "122",
-    "nome": "Lanchonte Ki Bagunça",
+    "nome": "LANCHONTE KI BAGUNÇA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "48.606.997/0001-54",
@@ -2228,7 +2305,7 @@
   },
   {
     "codigo": "135",
-    "nome": "Le&#39;ezor Investimentos Ltda",
+    "nome": "LE&#39;EZOR INVESTIMENTOS LTDA",
     "regime": "PRESUMIDO",
     "situacao": "INATIVA",
     "cnpj": "62.633.925/0001-27",
@@ -2245,11 +2322,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "PRESUMIDO"
   },
   {
     "codigo": "148",
-    "nome": "Le&#39;ezor Mercado de Capitais S.A",
+    "nome": "LE&#39;EZOR MERCADO DE CAPITAIS S.A",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "63.215.932/0001-71",
@@ -2266,11 +2345,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "128",
-    "nome": "Leão e Proto Ltda",
+    "nome": "LEÃO E PROTO LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "05.815.742/0001-99",
@@ -2291,7 +2372,7 @@
   },
   {
     "codigo": "153",
-    "nome": "Lg Consultoria Em Administracao E Tecnologia Ltda",
+    "nome": "LG CONSULTORIA EM ADMINISTRACAO E TECNOLOGIA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "08.862.565/0001-90",
@@ -2312,7 +2393,7 @@
   },
   {
     "codigo": "155",
-    "nome": "Liber Trading Ltda",
+    "nome": "LIBER TRADING LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "63.657.511/0001-09",
@@ -2329,11 +2410,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "203",
-    "nome": "Liber Trading Ltda- Filial",
+    "nome": "LIBER TRADING LTDA- FILIAL",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "63.657.511/0002-81",
@@ -2350,11 +2433,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "188",
-    "nome": "Lolo Biju Ltda",
+    "nome": "LOLO BIJU LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "27.599.597/0001-99",
@@ -2375,7 +2460,7 @@
   },
   {
     "codigo": "191",
-    "nome": "Lolo Biju Ltda Filial",
+    "nome": "LOLO BIJU LTDA FILIAL",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "27.599.597/0002-70",
@@ -2396,7 +2481,7 @@
   },
   {
     "codigo": "34",
-    "nome": "LR Global Moto Peças",
+    "nome": "LR GLOBAL MOTO PEÇAS",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "50.875.785/0001-14",
@@ -2417,7 +2502,7 @@
   },
   {
     "codigo": "78",
-    "nome": "Luan Silva Lima Refrigeração",
+    "nome": "LUAN SILVA LIMA REFRIGERAÇÃO",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "51.634.175/0001-91",
@@ -2438,7 +2523,7 @@
   },
   {
     "codigo": "",
-    "nome": "Luna Morais LTDA",
+    "nome": "LUNA MORAIS LTDA",
     "regime": "SIMPLES",
     "situacao": "SUSPENSO",
     "cnpj": "67.063.272/0001-01",
@@ -2459,7 +2544,7 @@
   },
   {
     "codigo": "174",
-    "nome": "Maquinas e Equipamentos Fort Maq Ltda",
+    "nome": "MAQUINAS E EQUIPAMENTOS FORT MAQ LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "ATIVA",
     "cnpj": "24.957.724/0001-96",
@@ -2480,7 +2565,7 @@
   },
   {
     "codigo": "",
-    "nome": "Marcos Humbetto Chagas",
+    "nome": "MARCOS HUMBETTO CHAGAS",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "59.058.244/0001-78",
@@ -2488,7 +2573,8 @@
     "saida": "",
     "departamentos": "",
     "modulosResponsavel": [
-      "OUTROS"
+      "OUTROS",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "",
     "inscMunicipal": "",
@@ -2501,7 +2587,7 @@
   },
   {
     "codigo": "105",
-    "nome": "Maria Edith",
+    "nome": "MARIA EDITH",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "25.156.528/0001-85",
@@ -2522,7 +2608,7 @@
   },
   {
     "codigo": "0",
-    "nome": "Mariana Fetz Arquitetura Ltda.",
+    "nome": "MARIANA FETZ ARQUITETURA LTDA.",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "40.044.330/0001-01",
@@ -2530,10 +2616,11 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "Não Contribuinte",
-    "inscMunicipal": "70482",
+    "inscMunicipal": "EMITIDO",
     "cidade": "RIO VERDE - GO",
     "procuracao": "08/02/31",
     "procResponsavel": "SIMPLES",
@@ -2543,7 +2630,7 @@
   },
   {
     "codigo": "145",
-    "nome": "Marliana Araujo De Sousa Arantes Ltda",
+    "nome": "MARLIANA ARAUJO DE SOUSA ARANTES LTDA",
     "regime": "REAL",
     "situacao": "INATIVA",
     "cnpj": "22.263.132/0001-49",
@@ -2560,11 +2647,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "POSITIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL"
   },
   {
     "codigo": "172",
-    "nome": "Martins Mariano Serviços Ltda-Delta",
+    "nome": "MARTINS MARIANO SERVIÇOS LTDA-DELTA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "64.365.529/0001-91",
@@ -2585,7 +2674,7 @@
   },
   {
     "codigo": "17018",
-    "nome": "Master Poke Empório e Temakeria",
+    "nome": "MASTER POKE EMPÓRIO E TEMAKERIA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "41.818.821/0001-17",
@@ -2606,9 +2695,9 @@
   },
   {
     "codigo": "189",
-    "nome": "Matheus Alves Peluco Ltda.-DELTA",
+    "nome": "MATHEUS ALVES PELUCO LTDA.-DELTA",
     "regime": "SIMPLES",
-    "situacao": "SUSPENSO",
+    "situacao": "SUSPENSA",
     "cnpj": "65.125.091/0001-37",
     "entrada": "02/2026",
     "saida": "",
@@ -2623,13 +2712,15 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "SUSPENSA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "144",
-    "nome": "METAL VIDA-(Hvm Const. E Terrapl. Ltda)",
+    "nome": "METAL VIDA-(HVM CONST. E TERRAPL. LTDA)",
     "regime": "SIMPLES",
-    "situacao": "SUSPENSO",
+    "situacao": "SUSPENSA",
     "cnpj": "13.075.066/0001-92",
     "entrada": "10/2025",
     "saida": "",
@@ -2644,11 +2735,13 @@
     "procResponsavel": "AMBOS",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "SUSPENSA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "",
-    "nome": "Metalurgica Lobão LTDA",
+    "nome": "METALURGICA LOBÃO LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "68.146.123/0001-79",
@@ -2669,7 +2762,7 @@
   },
   {
     "codigo": "37",
-    "nome": "Minas Mais Comércio Ltda",
+    "nome": "MINAS MAIS COMÉRCIO LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "32.456.474/0001-39",
@@ -2690,7 +2783,7 @@
   },
   {
     "codigo": "6771",
-    "nome": "Moradas Grill Ltda",
+    "nome": "MORADAS GRILL LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "31.883.813/0001-09",
@@ -2711,7 +2804,7 @@
   },
   {
     "codigo": "202",
-    "nome": "Morah Negócios e Serviços Ltda.",
+    "nome": "MORAH NEGÓCIOS E SERVIÇOS LTDA.",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "48.292.481/0001-82",
@@ -2719,7 +2812,8 @@
     "saida": "",
     "departamentos": "",
     "modulosResponsavel": [
-      "OUTROS"
+      "OUTROS",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "203318919",
     "inscMunicipal": "82686",
@@ -2732,7 +2826,7 @@
   },
   {
     "codigo": "129",
-    "nome": "Morais Top",
+    "nome": "MORAIS TOP",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "45.715.362/0001-05",
@@ -2740,12 +2834,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "Não Contribuinte",
     "inscMunicipal": "81090",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "12/01/30",
+    "procuracao": "18/09/2026",
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -2753,7 +2848,7 @@
   },
   {
     "codigo": "45",
-    "nome": "Mundial Planeta Cursos E Assessoria",
+    "nome": "MUNDIAL PLANETA CURSOS E ASSESSORIA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "00.099.178/0001-31",
@@ -2774,7 +2869,7 @@
   },
   {
     "codigo": "140",
-    "nome": "Nayane Alves Moreira Ltda",
+    "nome": "NAYANE ALVES MOREIRA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "56.822.878/0001-67",
@@ -2795,7 +2890,7 @@
   },
   {
     "codigo": "121",
-    "nome": "Oliveira E Cardoso Centro De Saude Ltda",
+    "nome": "OLIVEIRA E CARDOSO CENTRO DE SAUDE LTDA",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "51.842.850/0001-78",
@@ -2812,11 +2907,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "193",
-    "nome": "Omega Auto Peças LTDA",
+    "nome": "OMEGA AUTO PEÇAS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "48.349.605/0001-19",
@@ -2837,7 +2934,7 @@
   },
   {
     "codigo": "219",
-    "nome": "Open Box Burguer",
+    "nome": "OPEN BOX BURGUER",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "50.248.187/0001-15",
@@ -2858,7 +2955,7 @@
   },
   {
     "codigo": "157",
-    "nome": "Otavio Daniel Lopes Da Silva Ltda",
+    "nome": "OTAVIO DANIEL LOPES DA SILVA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "56.769.167/0001-76",
@@ -2879,7 +2976,7 @@
   },
   {
     "codigo": "",
-    "nome": "Palácio Das Unhas Comércio De Cosméticos",
+    "nome": "PALÁCIO DAS UNHAS COMÉRCIO DE COSMÉTICOS",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "60.022.360/0001-16",
@@ -2900,7 +2997,7 @@
   },
   {
     "codigo": "212",
-    "nome": "Pamplona Agro Industrial Ltda",
+    "nome": "PAMPLONA AGRO INDUSTRIAL LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "66.255.932/0001-93",
@@ -2917,11 +3014,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "",
-    "nome": "Patricia Rodrigues Sociedade Individual De Advocacia",
+    "nome": "PATRICIA RODRIGUES SOCIEDADE INDIVIDUAL DE ADVOCACIA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "44.824.101/0001-52",
@@ -2942,7 +3041,7 @@
   },
   {
     "codigo": "171",
-    "nome": "Pet Shop 4 Patas Ltda",
+    "nome": "PET SHOP 4 PATAS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "21.506.101/0001-09",
@@ -2963,7 +3062,7 @@
   },
   {
     "codigo": "176",
-    "nome": "Pet Shop e Veterinaria 4 Patas Ltda",
+    "nome": "PET SHOP E VETERINARIA 4 PATAS LTDA",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "26.571.998/0001-78",
@@ -2980,11 +3079,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "38",
-    "nome": "Pizza e Hamburguer",
+    "nome": "PIZZA E HAMBURGUER",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "31.282.959/0001-90",
@@ -2992,12 +3093,13 @@
     "saida": "",
     "departamentos": "FISCAL/DP",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "200333500",
     "inscMunicipal": "75065",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "26/06/31",
+    "procuracao": "09/07/2026",
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -3005,7 +3107,7 @@
   },
   {
     "codigo": "113",
-    "nome": "Progresso Máquinas",
+    "nome": "PROGRESSO MÁQUINAS",
     "regime": "REAL TRIMESTRAL",
     "situacao": "ATIVA",
     "cnpj": "61.029.256/0001-16",
@@ -3027,7 +3129,7 @@
   },
   {
     "codigo": "2116",
-    "nome": "Prosperitatem Comercio De Alimentos",
+    "nome": "PROSPERITATEM COMERCIO DE ALIMENTOS",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "16.988.267/0001-79",
@@ -3050,7 +3152,7 @@
     "codigo": "101",
     "nome": "RAFAEL MARTINS RODRIGUES LTDA",
     "regime": "PRESUMIDO",
-    "situacao": "ATIVA",
+    "situacao": "SUSPENSA",
     "cnpj": "29.483.389/0001-55",
     "entrada": "02/2025",
     "saida": "",
@@ -3065,11 +3167,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "POSITIVA/NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "SUSPENSA",
+    "regimeTributario": "PRESUMIDO"
   },
   {
     "codigo": "213",
-    "nome": "Rancheiro Agro Ltda",
+    "nome": "RANCHEIRO AGRO LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "66.260.486/0001-05",
@@ -3086,11 +3190,13 @@
     "procResponsavel": "SEM PROC",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "58",
-    "nome": "Redi tecnologia 04985554000146",
+    "nome": "REDI TECNOLOGIA 04985554000146",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "04.985.554/0001-46",
@@ -3111,7 +3217,7 @@
   },
   {
     "codigo": "",
-    "nome": "Refriar  ar Condicionado Ltda",
+    "nome": "REFRIAR  AR CONDICIONADO LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "ATIVA",
     "cnpj": "26.883.330/0001-66",
@@ -3132,7 +3238,7 @@
   },
   {
     "codigo": "218",
-    "nome": "Refriar Recursos Humanos Ltda",
+    "nome": "REFRIAR RECURSOS HUMANOS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "52.510.368/0001-01",
@@ -3153,7 +3259,7 @@
   },
   {
     "codigo": "",
-    "nome": "Reginaldo Cardoso de Freitas",
+    "nome": "REGINALDO CARDOSO DE FREITAS",
     "regime": "MEI",
     "situacao": "ATIVA",
     "cnpj": "47.510.131/0001-82",
@@ -3174,7 +3280,7 @@
   },
   {
     "codigo": "40",
-    "nome": "Restaurante Proza",
+    "nome": "RESTAURANTE PROZA",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "52.264.394/0001-99",
@@ -3191,11 +3297,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "142",
-    "nome": "RM Gestão e engenharia",
+    "nome": "RM GESTÃO E ENGENHARIA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "38.328.749/0001-35",
@@ -3203,12 +3311,13 @@
     "saida": "",
     "departamentos": "FISCAL",
     "modulosResponsavel": [
-      "DP & RH"
+      "DP & RH",
+      "LEGALIZAÇÃO"
     ],
     "inscEstadual": "Não Contribuinte",
     "inscMunicipal": "63222",
     "cidade": "RIO VERDE - GO",
-    "procuracao": "01/09/31",
+    "procuracao": "18/11/2026",
     "procResponsavel": "AMBOS",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
@@ -3216,7 +3325,7 @@
   },
   {
     "codigo": "110",
-    "nome": "Rodorapha",
+    "nome": "RODORAPHA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "28.165.443/0001-51",
@@ -3237,7 +3346,7 @@
   },
   {
     "codigo": "7154",
-    "nome": "S Batista Comida Caseira Arte Do Sabor",
+    "nome": "S BATISTA COMIDA CASEIRA ARTE DO SABOR",
     "regime": "PRESUMIDO",
     "situacao": "INATIVA",
     "cnpj": "13.557.575/0001-51",
@@ -3254,11 +3363,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "POSITIVA",
     "cndEstadual": "POSITIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "PRESUMIDO"
   },
   {
     "codigo": "209",
-    "nome": "Serena Clinic Ltda",
+    "nome": "SERENA CLINIC LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "65.725.148/0001-39",
@@ -3279,7 +3390,7 @@
   },
   {
     "codigo": "115",
-    "nome": "Sertão do Cerrado",
+    "nome": "SERTÃO DO CERRADO",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "60.936.105/0001-89",
@@ -3300,7 +3411,7 @@
   },
   {
     "codigo": "42",
-    "nome": "Silo Campo Transportes",
+    "nome": "SILO CAMPO TRANSPORTES",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "52.495.212/0001-90",
@@ -3321,7 +3432,7 @@
   },
   {
     "codigo": "64",
-    "nome": "Simples Assessoria Contábil",
+    "nome": "SIMPLES ASSESSORIA CONTÁBIL",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "27.205.802/0001-94",
@@ -3342,7 +3453,7 @@
   },
   {
     "codigo": "198",
-    "nome": "Studios Domingues Vieira Ltda.",
+    "nome": "STUDIOS DOMINGUES VIEIRA LTDA.",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "43.793.013/0001-78",
@@ -3363,7 +3474,7 @@
   },
   {
     "codigo": "304",
-    "nome": "Super Sport RV Industria",
+    "nome": "SUPER SPORT RV INDUSTRIA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "27.317.356/0001-00",
@@ -3384,7 +3495,7 @@
   },
   {
     "codigo": "125",
-    "nome": "T. B. J. Comercio Imp. E Exp. Ltda",
+    "nome": "T. B. J. COMERCIO IMP. E EXP. LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "41.706.399/0002-99",
@@ -3401,11 +3512,13 @@
     "procResponsavel": "AMBOS",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "NEGATIVA"
+    "cndMunicipal": "NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "131",
-    "nome": "T. B. J. Comercio Imp. E Exp. Ltda",
+    "nome": "T. B. J. COMERCIO IMP. E EXP. LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "41.706.399/0003-70",
@@ -3422,11 +3535,13 @@
     "procResponsavel": "AMBOS",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "-"
+    "cndMunicipal": "-",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "132",
-    "nome": "T. B. J. Comercio Imp. E Exp. Ltda",
+    "nome": "T. B. J. COMERCIO IMP. E EXP. LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "41.706.399/0001-08",
@@ -3443,11 +3558,13 @@
     "procResponsavel": "AMBOS",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "-"
+    "cndMunicipal": "-",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "6255",
-    "nome": "Tec Aço",
+    "nome": "TEC AÇO",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "00.136.958/0001-04",
@@ -3468,7 +3585,7 @@
   },
   {
     "codigo": "83",
-    "nome": "Tec Agro Soluções",
+    "nome": "TEC AGRO SOLUÇÕES",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "56.008.682/0001-33",
@@ -3489,7 +3606,7 @@
   },
   {
     "codigo": "",
-    "nome": "Terceiriza Comercio E Servicos Ltda",
+    "nome": "TERCEIRIZA COMERCIO E SERVICOS LTDA",
     "regime": "REAL TRIMESTRAL",
     "situacao": "INATIVA",
     "cnpj": "28.288.305/0001-60",
@@ -3506,11 +3623,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "POSITIVA",
-    "cndMunicipal": "POSITIVA"
+    "cndMunicipal": "POSITIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "REAL TRIMESTRAL"
   },
   {
     "codigo": "185",
-    "nome": "Terra Produtiva",
+    "nome": "TERRA PRODUTIVA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "44.338.787/0001-71",
@@ -3531,7 +3650,7 @@
   },
   {
     "codigo": "214",
-    "nome": "Terraplan Engenharia Ltda. (Tirar do nome)",
+    "nome": "TERRAPLAN ENGENHARIA LTDA. (TIRAR DO NOME)",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "59.043.732/0001-01",
@@ -3548,11 +3667,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "-"
+    "cndMunicipal": "-",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "163",
-    "nome": "Torneadora E Balancedora Do Biloka Ltda",
+    "nome": "TORNEADORA E BALANCEDORA DO BILOKA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "36.541.284/0001-70",
@@ -3573,7 +3694,7 @@
   },
   {
     "codigo": "98",
-    "nome": "Translobato",
+    "nome": "TRANSLOBATO",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "58.751.719/0001-44",
@@ -3594,7 +3715,7 @@
   },
   {
     "codigo": "175",
-    "nome": "Transportadora Cardoso e Albuquerque Ltda",
+    "nome": "TRANSPORTADORA CARDOSO E ALBUQUERQUE LTDA",
     "regime": "PRESUMIDO",
     "situacao": "INATIVA",
     "cnpj": "14.418.509/0001-63",
@@ -3611,11 +3732,13 @@
     "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "PRESUMIDO"
   },
   {
     "codigo": "17818",
-    "nome": "Transportadora Mare Ltda",
+    "nome": "TRANSPORTADORA MARE LTDA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "19.508.334/0002-80",
@@ -3636,7 +3759,7 @@
   },
   {
     "codigo": "224",
-    "nome": "Triunfo Cursos Empreendimentos E Assessoria Ltda(JAE)",
+    "nome": "TRIUNFO CURSOS EMPREENDIMENTOS E ASSESSORIA LTDA(JAE)",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "45.318.408/0001-44",
@@ -3657,7 +3780,7 @@
   },
   {
     "codigo": "197",
-    "nome": "TSB Estratégia Comercial Ltda",
+    "nome": "TSB ESTRATÉGIA COMERCIAL LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "65.501.301/0001-44",
@@ -3678,7 +3801,7 @@
   },
   {
     "codigo": "207",
-    "nome": "Vaz Comércio Global Ltda",
+    "nome": "VAZ COMÉRCIO GLOBAL LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "46.279.316/0001-65",
@@ -3699,7 +3822,7 @@
   },
   {
     "codigo": "0",
-    "nome": "Vilaine Alves de Jesus",
+    "nome": "VILAINE ALVES DE JESUS",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "50.815.180/0001-38",
@@ -3720,7 +3843,7 @@
   },
   {
     "codigo": "107",
-    "nome": "Vinícius Souza Macedo- (BAIXA)",
+    "nome": "VINÍCIUS SOUZA MACEDO- (BAIXA)",
     "regime": "SIMPLES",
     "situacao": "INATIVA",
     "cnpj": "59.167.614/0001-05",
@@ -3737,11 +3860,13 @@
     "procResponsavel": "NAYARA",
     "cndFederal": "NEGATIVA",
     "cndEstadual": "NEGATIVA",
-    "cndMunicipal": "POSITIVA/NEGATIVA"
+    "cndMunicipal": "POSITIVA/NEGATIVA",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
   },
   {
     "codigo": "89",
-    "nome": "WDF Arquitetura",
+    "nome": "WDF ARQUITETURA",
     "regime": "PRESUMIDO",
     "situacao": "ATIVA",
     "cnpj": "19.087.108/0001-91",
@@ -3762,7 +3887,7 @@
   },
   {
     "codigo": "205",
-    "nome": "Wender M. dos Santos",
+    "nome": "WENDER M. DOS SANTOS",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "42.330.726/0001-32",
@@ -3804,7 +3929,7 @@
   },
   {
     "codigo": "0",
-    "nome": "Yamara Tattoo Ltda.- Iago Raniere",
+    "nome": "YAMARA TATTOO LTDA.- IAGO RANIERE",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "34.949.143/0001-66",
@@ -3825,7 +3950,7 @@
   },
   {
     "codigo": "194",
-    "nome": "Zard Moda Feminina Ltda",
+    "nome": "ZARD MODA FEMININA LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "58.908.668/0001-11",
@@ -3846,7 +3971,7 @@
   },
   {
     "codigo": "96",
-    "nome": "Zeni Silva Confecção",
+    "nome": "ZENI SILVA CONFECÇÃO",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "59.148.423/0001-04",
@@ -3867,7 +3992,7 @@
   },
   {
     "codigo": "",
-    "nome": "AromaPro Brasil LTDA",
+    "nome": "AROMAPRO BRASIL LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "62.112.419/0001-92",
@@ -3884,11 +4009,12 @@
     "procResponsavel": "",
     "cndFederal": "",
     "cndEstadual": "",
-    "cndMunicipal": ""
+    "cndMunicipal": "",
+    "linkDrive": "https://drive.google.com/drive/folders/1_wtLtjOXOx9fGCN6qyvfC9hJYm3vu-_k"
   },
   {
     "codigo": "",
-    "nome": "M.B. Muniz LTDA",
+    "nome": "M.B. MUNIZ LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "58.866.967/0001-30",
@@ -3909,7 +4035,7 @@
   },
   {
     "codigo": "",
-    "nome": "Rações Nova Aliança Compra e Venda de Grãos LTDA",
+    "nome": "RAÇÕES NOVA ALIANÇA COMPRA E VENDA DE GRÃOS LTDA",
     "regime": "SIMPLES",
     "situacao": "ATIVA",
     "cnpj": "36.330.258/0001-01",
@@ -3930,9 +4056,9 @@
   },
   {
     "codigo": "",
-    "nome": "Doce Mel Embalagens e Limpeza LTDA",
+    "nome": "DOCE MEL EMBALAGENS E LIMPEZA LTDA",
     "regime": "SIMPLES",
-    "situacao": "ATIVA",
+    "situacao": "INATIVA",
     "cnpj": "64.073.841/0001-25",
     "entrada": "",
     "saida": "",
@@ -3945,6 +4071,140 @@
     "cidade": "",
     "procuracao": "",
     "procResponsavel": "",
+    "cndFederal": "",
+    "cndEstadual": "",
+    "cndMunicipal": "",
+    "situacaoCadastral": "INATIVA",
+    "regimeTributario": "SIMPLES"
+  },
+  {
+    "codigo": "0",
+    "nome": "OMEGA LOCAÇÃO LTDA",
+    "regime": "SIMPLES",
+    "situacao": "ATIVA",
+    "cnpj": "39.291.527/0001-58",
+    "entrada": "",
+    "saida": "",
+    "departamentos": "FISCAL/DP",
+    "modulosResponsavel": [
+      "DP & RH",
+      "LEGALIZAÇÃO"
+    ],
+    "inscEstadual": "",
+    "inscMunicipal": "",
+    "cidade": "RIO VERDE - GO",
+    "procuracao": "",
+    "procResponsavel": "SIMPLES",
+    "cndFederal": "",
+    "cndEstadual": "",
+    "cndMunicipal": ""
+  },
+  {
+    "codigo": "0",
+    "nome": "ALFA BALANCEAMENTO LTDA",
+    "regime": "SIMPLES",
+    "situacao": "ATIVA",
+    "cnpj": "42.800.892/0001-55",
+    "entrada": "",
+    "saida": "",
+    "departamentos": "FISCAL/DP",
+    "modulosResponsavel": [
+      "DP & RH",
+      "LEGALIZAÇÃO"
+    ],
+    "inscEstadual": "",
+    "inscMunicipal": "",
+    "cidade": "RIO VERDE - GO",
+    "procuracao": "",
+    "procResponsavel": "SIMPLES",
+    "cndFederal": "",
+    "cndEstadual": "",
+    "cndMunicipal": ""
+  },
+  {
+    "codigo": "0",
+    "nome": "LANCHONETE LEMOND",
+    "regime": "SIMPLES",
+    "situacao": "ATIVA",
+    "cnpj": "66.197.417/0001-02",
+    "entrada": "",
+    "saida": "",
+    "departamentos": "FISCAL/DP",
+    "modulosResponsavel": [
+      "DP & RH",
+      "LEGALIZAÇÃO"
+    ],
+    "inscEstadual": "",
+    "inscMunicipal": "",
+    "cidade": "RIO VERDE - GO",
+    "procuracao": "",
+    "procResponsavel": "SIMPLES",
+    "cndFederal": "",
+    "cndEstadual": "",
+    "cndMunicipal": ""
+  },
+  {
+    "codigo": "0",
+    "nome": "WF COMERCIALIZAÇÃO COMPRA E VENDA DE VEÍCULOS LTDA",
+    "regime": "SIMPLES",
+    "situacao": "ATIVA",
+    "cnpj": "19.801.908/0001-22",
+    "entrada": "",
+    "saida": "",
+    "departamentos": "FISCAL/DP",
+    "modulosResponsavel": [
+      "DP & RH",
+      "LEGALIZAÇÃO"
+    ],
+    "inscEstadual": "",
+    "inscMunicipal": "",
+    "cidade": "RIO VERDE - GO",
+    "procuracao": "",
+    "procResponsavel": "SIMPLES",
+    "cndFederal": "",
+    "cndEstadual": "",
+    "cndMunicipal": ""
+  },
+  {
+    "codigo": "0",
+    "nome": "DW CAR CENTRO DE ESTETICA AUTOMOTIVO LTDA",
+    "regime": "SIMPLES",
+    "situacao": "ATIVA",
+    "cnpj": "",
+    "entrada": "",
+    "saida": "",
+    "departamentos": "FISCAL/DP",
+    "modulosResponsavel": [
+      "DP & RH",
+      "LEGALIZAÇÃO"
+    ],
+    "inscEstadual": "",
+    "inscMunicipal": "",
+    "cidade": "RIO VERDE - GO",
+    "procuracao": "",
+    "procResponsavel": "SIMPLES",
+    "cndFederal": "",
+    "cndEstadual": "",
+    "cndMunicipal": ""
+  },
+  {
+    "codigo": "0",
+    "nome": "DWK CENTRO DE ESTETICA AUTOMOTIVO LTDA",
+    "regime": "SIMPLES",
+    "situacao": "ATIVA",
+    "cnpj": "68.620.745/0001-97",
+    "entrada": "",
+    "saida": "",
+    "departamentos": "FISCAL/DP",
+    "modulosResponsavel": [
+      "DP & RH",
+      "LEGALIZAÇÃO"
+    ],
+    "inscEstadual": "",
+    "inscMunicipal": "",
+    "cidade": "RIO VERDE - GO",
+    "procuracao": "",
+    "procResponsavel": "SIMPLES",
     "cndFederal": "",
     "cndEstadual": "",
     "cndMunicipal": ""
