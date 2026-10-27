@@ -518,6 +518,30 @@ export default function ChatApp() {
           setActionFeedback(prev => (prev || '') + '✅ Preparando recibo... Redirecionando!\n');
         }
 
+        else if (action === 'GENERATE_RELATORIO_13') {
+          let enrichedPayload = { ...payload };
+          if (contextData?.empresas && (payload.empresaNome || payload.empresaId)) {
+            const term = (payload.empresaNome || '').toLowerCase().trim();
+            const emp = contextData.empresas.find((e: any) => 
+              (payload.empresaId && e.id === payload.empresaId) ||
+              (e.nome && (e.nome.toLowerCase().includes(term) || term.includes(e.nome.toLowerCase()))) ||
+              (e.razaoSocial && (e.razaoSocial.toLowerCase().includes(term) || term.includes(e.razaoSocial.toLowerCase()))) ||
+              (e.nomeFantasia && (e.nomeFantasia.toLowerCase().includes(term) || term.includes(e.nomeFantasia.toLowerCase())))
+            );
+            if (emp) {
+              enrichedPayload.empresaNome = emp.nome || emp.razaoSocial || enrichedPayload.empresaNome;
+              enrichedPayload.cnpj = enrichedPayload.cnpj || emp.cnpj || '';
+            }
+          }
+          localStorage.setItem('@app:ai_generated_relatorio_13', JSON.stringify({
+            ...enrichedPayload,
+            pdfBase64: msg.pdfBase64,
+            pdfName: msg.pdfName
+          }));
+          window.dispatchEvent(new CustomEvent('navigate-module', { detail: 'recibos' }));
+          setActionFeedback(prev => (prev || '') + '✅ Preparando Relatório de 13º... Redirecionando!\n');
+        }
+
         else if (action === 'CLEAN_BOLETO') {
           if (msg.pdfBase64) {
              localStorage.setItem('@app:ai_generated_boleto', JSON.stringify({

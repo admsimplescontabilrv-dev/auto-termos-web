@@ -206,6 +206,7 @@ export type AlvaraSituacao =
   | 'PENDENTE'
   | 'EM ANDAMENTO'
   | 'NÃO PAGO'
+  | 'NÃO CONCLUÍDO'
   | 'PARALISADO'
   | 'EMITIDO'
   | 'CONCLUÍDO';

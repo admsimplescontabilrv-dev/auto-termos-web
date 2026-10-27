@@ -140,7 +140,11 @@ export default function AlvaraApp() {
 
       const matchStatus =
         statusFilter === 'TODOS' ||
+        (statusFilter === 'CONCLUÍDO' && (row.situacao === 'CONCLUÍDO' || row.situacao === 'EMITIDO')) ||
+        (statusFilter === 'NÃO CONCLUÍDO' &&
+          (row.situacao === 'NÃO CONCLUÍDO' || row.situacao === 'NAO CONCLUIDO' || row.situacao === 'PARALISADO')) ||
         (statusFilter === 'EMITIDO_CONCLUIDO' && (row.situacao === 'EMITIDO' || row.situacao === 'CONCLUÍDO')) ||
+        (statusFilter === 'PARALISADO' && (row.situacao === 'PARALISADO' || row.situacao === 'NÃO CONCLUÍDO')) ||
         row.situacao === statusFilter;
 
       return matchSearch && matchStatus;
@@ -152,14 +156,14 @@ export default function AlvaraApp() {
     let pendente = 0;
     let emAndamento = 0;
     let naoPago = 0;
-    let paralisado = 0;
-    let emitidoConcluido = 0;
+    let naoConcluido = 0;
+    let concluido = 0;
 
     rows.forEach((r) => {
-      if (r.situacao === 'EMITIDO' || r.situacao === 'CONCLUÍDO') emitidoConcluido++;
+      if (r.situacao === 'EMITIDO' || r.situacao === 'CONCLUÍDO') concluido++;
       else if (r.situacao === 'EM ANDAMENTO') emAndamento++;
       else if (r.situacao === 'NÃO PAGO') naoPago++;
-      else if (r.situacao === 'PARALISADO') paralisado++;
+      else if (r.situacao === 'NÃO CONCLUÍDO' || r.situacao === 'NAO CONCLUIDO' || r.situacao === 'PARALISADO') naoConcluido++;
       else pendente++;
     });
 
@@ -168,8 +172,8 @@ export default function AlvaraApp() {
       pendente,
       emAndamento,
       naoPago,
-      paralisado,
-      emitidoConcluido
+      naoConcluido,
+      concluido
     };
   }, [rows]);
 
@@ -219,6 +223,8 @@ export default function AlvaraApp() {
         return 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30';
       case 'NÃO PAGO':
         return 'bg-rose-500/20 text-rose-300 border-rose-500/50 hover:bg-rose-500/30';
+      case 'NÃO CONCLUÍDO':
+      case 'NAO CONCLUIDO':
       case 'PARALISADO':
         return 'bg-orange-500/20 text-orange-300 border-orange-500/50 hover:bg-orange-500/30';
       case 'PENDENTE':
@@ -247,7 +253,7 @@ export default function AlvaraApp() {
             .EMITIDO, .CONCLUÍDO { background-color: #d1fae5; color: #065f46; }
             .EM_ANDAMENTO { background-color: #fef3c7; color: #92400e; }
             .NÃO_PAGO { background-color: #fee2e2; color: #991b1b; }
-            .PARALISADO { background-color: #ffedd5; color: #9a3412; }
+            .NÃO_CONCLUÍDO, .NAO_CONCLUIDO, .PARALISADO { background-color: #ffedd5; color: #9a3412; }
             .PENDENTE { background-color: #f3f4f6; color: #374151; }
           </style>
         </head>
@@ -423,18 +429,18 @@ export default function AlvaraApp() {
         </div>
 
         <div className="bg-orange-950/20 border border-orange-500/30 rounded-xl p-4 flex flex-col justify-between shadow-lg">
-          <span className="text-[11px] font-bold text-orange-300 uppercase tracking-wider">Paralisado</span>
+          <span className="text-[11px] font-bold text-orange-300 uppercase tracking-wider">Não Concluído</span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-orange-400">{metrics.paralisado}</span>
+            <span className="text-2xl font-black text-orange-400">{metrics.naoConcluido}</span>
             <AlertCircle className="w-4 h-4 text-orange-400" />
           </div>
           <span className="text-[10px] text-orange-500/70 mt-1">Exigência ou travado</span>
         </div>
 
         <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-4 flex flex-col justify-between shadow-lg">
-          <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Emitido / Concluído</span>
+          <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Concluído</span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-emerald-400">{metrics.emitidoConcluido}</span>
+            <span className="text-2xl font-black text-emerald-400">{metrics.concluido}</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <span className="text-[10px] text-emerald-500/70 mt-1">Alvará regular</span>
@@ -474,8 +480,8 @@ export default function AlvaraApp() {
             { id: 'PENDENTE', label: 'Pendentes' },
             { id: 'EM ANDAMENTO', label: 'Em Andamento' },
             { id: 'NÃO PAGO', label: 'Não Pago' },
-            { id: 'PARALISADO', label: 'Paralisado' },
-            { id: 'EMITIDO_CONCLUIDO', label: 'Emitidos' }
+            { id: 'NÃO CONCLUÍDO', label: 'Não Concluído' },
+            { id: 'CONCLUÍDO', label: 'Concluído' }
           ].map((pill) => (
             <button
               key={pill.id}
@@ -607,7 +613,13 @@ export default function AlvaraApp() {
                       <td className="py-2.5 px-3 border-r border-slate-800/60">
                         <div className="relative">
                           <select
-                            value={row.situacao}
+                            value={
+                              row.situacao === 'EMITIDO'
+                                ? 'CONCLUÍDO'
+                                : row.situacao === 'PARALISADO'
+                                ? 'NÃO CONCLUÍDO'
+                                : row.situacao
+                            }
                             onChange={(e) => handleSaveAlvara(emp, 'situacao', e.target.value)}
                             className={`w-full text-xs font-bold rounded-lg px-3 py-2 border cursor-pointer focus:outline-none transition-all shadow-sm ${getSituacaoColorClass(
                               row.situacao
@@ -622,11 +634,8 @@ export default function AlvaraApp() {
                             <option value="NÃO PAGO" className="bg-slate-900 text-rose-300">
                               NÃO PAGO
                             </option>
-                            <option value="PARALISADO" className="bg-slate-900 text-orange-300">
-                              PARALISADO
-                            </option>
-                            <option value="EMITIDO" className="bg-slate-900 text-emerald-300">
-                              EMITIDO
+                            <option value="NÃO CONCLUÍDO" className="bg-slate-900 text-orange-300">
+                              NÃO CONCLUÍDO
                             </option>
                             <option value="CONCLUÍDO" className="bg-slate-900 text-emerald-300">
                               CONCLUÍDO

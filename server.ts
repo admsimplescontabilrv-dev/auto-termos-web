@@ -108,7 +108,7 @@ const ChatSchema = z.object({
 const ExtractPdfSchema = z.object({
   pdfBase64: z.string().min(1, "Arquivo não enviado."),
   mimeType: z.string().optional().default('application/pdf'),
-  type: z.enum(['cnpj', 'recibo', 'admissional', 'trct', 'custom', 'aviso_previo']).default('admissional'),
+  type: z.enum(['cnpj', 'recibo', 'admissional', 'trct', 'custom', 'aviso_previo', 'relatorio_13']).default('admissional'),
   globalVars: z.array(z.string()).optional(),
   collabVars: z.array(z.string()).optional(),
   registeredCompanies: z.array(z.object({
@@ -1237,6 +1237,25 @@ INTENT: GENERATE_RECIBO
     "referenteA": "Ex: Salário de Abril ou Adiantamento Salarial"
   }
 
+INTENT: GENERATE_RELATORIO_13
+  Quando usar: O usuário pede para gerar um Relatório de 13º Salário (1ª parcela, 2ª parcela, provisão de 13º, planilha de 13º).
+  Campos a preencher no Payload (se souber, ou se anexar arquivo/imagem):
+  {
+    "empresaNome": "Nome da empresa empregadora",
+    "cnpj": "CNPJ da empresa (busque na lista de EMPRESAS CADASTRADAS)",
+    "anoReferencia": "2026",
+    "funcionarios": [
+      {
+        "codigo": "01",
+        "nome": "Nome do empregado",
+        "dataAdmissao": "DD/MM/AAAA",
+        "avos": 12,
+        "salarioBase": 2500.00,
+        "medias": 0.00
+      }
+    ]
+  }
+
 INTENT: GENERATE_TRCT
   Quando usar: O usuário pede para gerar um Termo de Rescisão (TRCT).
   Campos a preencher no Payload (se souber, ou pergunte o que faltar):
@@ -1361,7 +1380,7 @@ Retorne SEMPRE e APENAS um JSON válido neste formato:
   "text": "Sua resposta amigável, clara e conversacional (Markdown permitido). Apresente as fontes consultadas e faça perguntas de confirmação se houver dados pendentes.",
   "intents": [
     {
-      "action": "CLEAN_BOLETO | GENERATE_TERMO | CREATE_KANBAN_TASK | UPDATE_KANBAN_TASK | CREATE_CALENDAR_EVENT | CREATE_CHECKLIST_RULE | GENERATE_RECIBO | GENERATE_TRCT | UPDATE_FECHAMENTO_FOLHA | UPDATE_ALVARA | CLEAN_DUPLICATE_COMPANIES | SYNC_DRIVE_FOLDERS",
+      "action": "CLEAN_BOLETO | GENERATE_TERMO | CREATE_KANBAN_TASK | UPDATE_KANBAN_TASK | CREATE_CALENDAR_EVENT | CREATE_CHECKLIST_RULE | GENERATE_RECIBO | GENERATE_RELATORIO_13 | GENERATE_TRCT | UPDATE_FECHAMENTO_FOLHA | UPDATE_ALVARA | CLEAN_DUPLICATE_COMPANIES | SYNC_DRIVE_FOLDERS",
       "payload": { ... }
     }
   ]
@@ -1632,6 +1651,35 @@ INSTRUÇÕES CRÍTICAS PARA O AVISO PRÉVIO:
 3. Se não encontrar a data de término explícita no documento, DEIXE EM BRANCO (""). NÃO TENTE CALCULAR.
 4. Extraia o nome da empresa e do funcionário exatamente como constam no documento.
 Se algum campo não existir, use string vazia. Retorne SOMENTE o JSON válido.`;
+      } else if (type === 'relatorio_13') {
+        systemInstruction = `Você está analisando uma imagem ou documento PDF de um Relatório de Folha / Provisão de 13º Salário.
+Extraia TODOS os empregados listados na tabela e retorne APENAS um JSON válido, sem markdown, sem explicação, com esta estrutura exata:
+{
+  "empresaNome": "Nome da empresa se constar no documento ou string vazia",
+  "cnpj": "CNPJ da empresa se constar no documento ou string vazia",
+  "anoReferencia": "Ano de referência do 13º (ex: 2026)",
+  "funcionarios": [
+    {
+      "codigo": "24",
+      "nome": "ANA CLARA MIRANDA REIS",
+      "dataAdmissao": "16/04/2026",
+      "avos": 9,
+      "salario13Proporcional": 1650.00,
+      "medias": 0.00,
+      "fgts": 132.00
+    }
+  ]
+}
+REGRAS CRÍTICAS DE EXTRAÇÃO DO RELATÓRIO DE 13º:
+1. Extraia TODAS as linhas de empregados da tabela (NÃO inclua a linha de 'Total Geral').
+2. "codigo": código numérico ou texto do empregado (ex: "24", "26").
+3. "nome": nome do empregado exatamente como consta na coluna "Nome do empregado" (em MAIÚSCULAS).
+4. "dataAdmissao": data de admissão obrigatoriamente no formato DD/MM/AAAA (ex: "16/04/2026").
+5. "avos": número inteiro de avos de 1 a 12 (ex: se na coluna Avos estiver "09/12", retorne 9; se "07/12", retorne 7; se "12/12", retorne 12).
+6. "salario13Proporcional": valor numérico da coluna "Salário 13º" (converta formato brasileiro 1.650,00 para número 1650.00).
+7. "medias": valor numérico da coluna "Média e vantagens" (converta formato brasileiro 833,33 para número 833.33; se 0,00 retorne 0).
+8. "fgts": valor numérico da coluna "FGTS" (geralmente sob "Encargos -> FGTS", ex: 132,00 -> 132.00). Se a coluna FGTS NÃO existir na imagem/PDF, retorne null. NÃO calcule o FGTS por conta própria, apenas extraia se estiver impresso na tabela.
+Retorne SOMENTE o JSON válido.`;
       } else if (type === 'custom') {
         const globals = (globalVars || []).join(', ');
         const collabs = (collabVars || []).join(', ');

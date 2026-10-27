@@ -1,6 +1,6 @@
 {
-  "summary":  "Plano de resolução para o problema de carregamento e tela em branco no preview do AI Studio. Inclui a desativação de cabeçalhos conflitantes de isolamento de origem (COOP) no Helmet em server.ts e a inclusão de timeout de segurança e tratamento de erro no ciclo de autenticação inicial do Firebase em auth.ts/App.tsx.",
-  "updatedAt":  "2026-10-07T16:44:33.426705925Z",
+  "summary":  "Plano de atualização do Relatório de 13º Salário para incluir as colunas de FGTS (extraído sem cálculo automático, ficando em branco quando não enviado) e INSS/IRRF (calculado pelas tabelas vigentes de INSS e IRRF, descontado automaticamente na 2ª Parcela, com nota de observação no PDF).",
+  "updatedAt":  "2026-10-22T19:22:59.426733717Z",
   "requestFeedback":  true,
   "userFacing":  true
 }
