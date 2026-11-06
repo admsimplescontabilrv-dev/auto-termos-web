@@ -1,12 +1,11 @@
 import { SavedTemplate } from './types';
 
 export const DEFAULT_TEMPLATES: SavedTemplate[] = [
+  // 1. ACORDO DE CONFIDENCIALIDADE, NÃO ALICIAMENTO E NÃO CONCORRÊNCIA (CORRIGIDO)
   {
     id: 'tpl-nda',
     name: 'Acordo de Confidencialidade, Não Aliciamento e Não Concorrência',
-    subgrupo: 'DP & RH',
-    content: `<br><br>
-<div style="text-align: center;"><h2><b>ACORDO DE CONFIDENCIALIDADE, NÃO ALICIAMENTO E NÃO CONCORRÊNCIA</b></h2></div>
+    content: `<div style="text-align: center;"><h2><b>ACORDO DE CONFIDENCIALIDADE, NÃO ALICIAMENTO E NÃO CONCORRÊNCIA</b></h2></div>
 <br>
 <p><b>EMPREGADOR:</b> <b>[NOME DA EMPRESA]</b>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº <b>[CNPJ DA EMPRESA]</b>.</p>
 <p><b>EMPREGADO(A):</b> <b>[NOME DO COLABORADOR]</b>, inscrito(a) no CPF sob o nº <b>[CPF DO COLABORADOR]</b>.</p>
@@ -25,12 +24,10 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <p><b>3. DA EXCLUSIVIDADE E NÃO CONCORRÊNCIA DURANTE O CONTRATO</b></p>
 <p>Enquanto o(a) <b>EMPREGADO(A)</b> estiver prestando serviços e mantiver vínculo com a <b>EMPRESA</b>, este(a) compromete-se a não prestar serviços de qualquer natureza, seja de forma autônoma, empregatícia ou consultiva, para outras empresas concorrentes do mesmo segmento.</p>
 <p><b>3.1.</b> Esta vedação aplica-se inclusive fora do horário de expediente do(a) <b>EMPREGADO(A)</b>, uma vez que a prestação de serviços a concorrentes configura ato de concorrência desleal, violação de boa-fé e quebra de fidúcia, conforme o Art. 482, alínea 'c', da Consolidação das Leis do Trabalho (CLT).</p>
-<br>
+[QUEBRA]
 <p><b>4. PROPRIEDADE INTELECTUAL</b></p>
 <p>Qualquer processo, criação, método ou melhoria desenvolvida pelo(a) <b>EMPREGADO(A)</b> durante sua jornada de trabalho e com recursos da <b>EMPRESA</b> pertencerá exclusivamente ao <b>EMPREGADOR</b>.</p>
-
-[QUEBRA]
-
+<br>
 <p><b>5. PENALIDADES</b></p>
 <p>A quebra de qualquer cláusula deste acordo constitui falta grave e sujeita o infrator à imediata rescisão do contrato de trabalho por justa causa (se a infração ocorrer durante o vínculo).</p>
 <p><b>5.1. Multa Contratual:</b> Sem prejuízo da rescisão por justa causa e da responsabilização civil por perdas e danos causados à <b>EMPRESA</b>, o descumprimento deste termo sujeitará o(a) <b>EMPREGADO(A)</b> ao pagamento de multa compensatória no valor equivalente a 1 (um) salário contratual mensal vigente do(a) colaborador(a), ou o equivalente ao seu último salário registrado, caso o vínculo já tenha sido desligado no momento da infração.</p>
@@ -52,8 +49,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   },
   {
     id: 'tpl-banco-horas',
-    name: 'Acordo Individual - Banco de Horas',
-    subgrupo: 'DP & RH',
+    name: 'Acordo Individual para Prorrogação e Compensação de Jornada de Trabalho',
     content: `<div style="text-align: center;"><h2><b>INSTRUMENTO PARTICULAR DE ACORDO INDIVIDUAL PARA PRORROGAÇÃO E COMPENSAÇÃO DE JORNADA DE TRABALHO</b></h2></div>
 <br>
 <p><b>EMPREGADOR:</b> <b>[NOME DA EMPRESA]</b>, inscrita no CNPJ/MF sob o nº <b>[CNPJ DA EMPRESA]</b>.</p>
@@ -111,10 +107,10 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 </div>`,
     lastUsed: Date.now()
   },
+  // 2. POLÍTICA DE FERRAMENTAS DIGITAIS E CONDUTA (CORRIGIDO)
   {
     id: 'tpl-etica-digital',
     name: 'Política de Ferramentas Digitais e Conduta',
-    subgrupo: 'DP & RH',
     content: `<div style="text-align: center;"><h2><b>POLÍTICA GERAL DE USO DE FERRAMENTAS DIGITAIS, APARELHOS CELULARES E CONDUTA</b></h2></div>
 <br>
 <p><b>EMPREGADOR:</b> <b>[NOME DA EMPRESA]</b>, inscrito no CNPJ sob o nº <b>[CNPJ DA EMPRESA]</b>.</p>
@@ -132,9 +128,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <p><b>2.3.</b> Caso o <b>EMPREGADO</b> tenha uma necessidade urgente de utilizar o celular, deverá comunicar imediatamente o seu superior direto.</p>
 <p><b>2.4.</b> Autorizado o uso pela urgência, o <b>EMPREGADO</b> deverá retirar-se do seu posto de trabalho (dirigindo-se a um local apropriado) e retornar imediatamente à sua função assim que finalizar a comunicação.</p>
 <p><b>2.5.</b> O uso de dispositivo pessoal (celular próprio) para comunicação de trabalho, quando ocorrer, deve se restringir aos assuntos laborais, zelando o empregado pelo sigilo das informações da empresa e dos clientes.</p>
-
 [QUEBRA]
-
 <p><b>3. PRIVACIDADE, GARANTIAS DO EMPREGADO E MONITORAMENTO</b></p>
 <p><b>3.1.</b> O <b>EMPREGADOR</b> poderá monitorar, realizar backup e auditar exclusivamente os sistemas, e-mails, linhas telefônicas e contas de WhatsApp de propriedade da empresa.</p>
 <p><b>3.2. Garantia de Não Confisco e Inviolabilidade:</b> Fica expressamente estabelecido que, em nenhuma ocasião, o <b>EMPREGADOR</b> poderá confiscar, reter, revistar ou acessar o conteúdo do aparelho celular pessoal do <b>EMPREGADO</b>. A empresa respeita integralmente o direito constitucional à intimidade e à privacidade, não realizando qualquer monitoramento de dados ou aplicativos de cunho pessoal instalados em dispositivos particulares.</p>
@@ -147,7 +141,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <br>
 <p><b>6. CONDUTA PROFISSIONAL E PENALIDADES</b></p>
 <p><b>6.1.</b> O cumprimento das regras descritas neste termo é obrigatório. O seu descumprimento, especialmente quanto ao uso excessivo do celular, delegação não autorizada de informações da empresa ou quebra de sigilo, é considerado ato de indisciplina e insubordinação.</p>
-<p><b>6.2.</b> Constituem infrações graves sujeitas a medidas disciplinares:</p>
+<p><b>6.2. Constituem infrações graves sujeitas a medidas disciplinares:</b></p>
 <ul style="list-style-type: lower-alpha; padding-left: 25px;">
   <li>Utilizar o celular pessoal de forma excessiva e injustificada durante o expediente;</li>
   <li>Compartilhar externamente informações confidenciais de clientes, fornecedores ou da própria empresa;</li>
@@ -156,6 +150,7 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <li>Expor a marca da empresa ou de clientes de maneira negativa ou desrespeitosa;</li>
   <li>Realizar qualquer ação nas plataformas digitais da empresa sem autorização.</li>
 </ul>
+[QUEBRA]
 <p><b>6.3. Aplicação das Penalidades:</b> As infrações a esta política sujeitarão o infrator às penalidades previstas na legislação trabalhista (Art. 482 da CLT), aplicadas de forma progressiva ou imediata, dependendo da gravidade do ato, sendo elas:</p>
 <p>I. Advertência verbal;</p>
 <p>II. Advertência escrita;</p>
@@ -172,6 +167,153 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
   <p>___________________________________</p>
   <p><b>[NOME DO COLABORADOR]</b></p>
   <p>EMPREGADO(A)</p>
+</div>`,
+    lastUsed: Date.now()
+  },
+  // 3. TERMO DE DECLARAÇÃO DE ATIVIDADES PROFISSIONAIS EXTERNAS (CORRIGIDO)
+  {
+    id: 'tpl-atividades-externas',
+    name: 'Declaração de Atividades Externas, Ciência de Riscos e Conflito de Interesses',
+    content: `<div style="text-align: center;"><h2><b>TERMO DE DECLARAÇÃO DE ATIVIDADES PROFISSIONAIS EXTERNAS, CIÊNCIA DE RISCOS E CONFLITO DE INTERESSES</b></h2></div>
+<br>
+<p><b>EMPREGADOR:</b> <b>[NOME DA EMPRESA]</b>, inscrita no CNPJ sob o nº <b>[CNPJ DA EMPRESA]</b>.</p>
+<p><b>EMPREGADO(A):</b> <b>[NOME DO COLABORADOR]</b>, inscrito(a) no CPF sob o nº <b>[CPF DO COLABORADOR]</b>.</p>
+<br>
+<p>As partes acima identificadas registram as seguintes declarações e orientações, observada a legislação trabalhista e previdenciária vigente.</p>
+<br>
+<p><b>1. DECLARAÇÃO DE ATIVIDADES EXTERNAS</b></p>
+<p>O(A) <b>EMPREGADO(A)</b> declara que realiza, por iniciativa própria e fora de sua jornada contratual, serviços extras para terceiros, sem determinação, encaminhamento ou participação da <b>EMPREGADORA</b>. O presente registro tem finalidade exclusivamente declaratória, não constituindo autorização, anuência ou aprovação da <b>EMPREGADORA</b> para a realização de serviços externos, tampouco alterando as obrigações decorrentes do contrato de trabalho.</p>
+<br>
+<p><b>2. AUTONOMIA EM RELAÇÃO À EMPREGADORA</b></p>
+<p>As atividades externas aqui declaradas não são determinadas, contratadas, supervisionadas ou remuneradas pela <b>EMPREGADORA</b>, nem realizadas em seu benefício, conforme a situação efetiva declarada pelo(a) <b>EMPREGADO(A)</b>. O presente termo não altera ou qualifica eventual relação de trabalho mantida com terceiros.</p>
+<br>
+<p><b>3. ACIDENTES E AFASTAMENTOS</b></p>
+<p>O(A) <b>EMPREGADO(A)</b> declara que as atividades profissionais realizadas por iniciativa própria em benefício de terceiros, fora de sua jornada de trabalho, são independentes das atividades exercidas perante a <b>EMPREGADORA</b>.</p>
+<p>O(A) <b>EMPREGADO(A)</b> reconhece que a <b>EMPREGADORA</b> não determina, supervisiona, dirige ou participa da execução desses serviços particulares, não sendo responsável, em regra, por acidentes decorrentes exclusivamente dessas atividades externas, quando inexistente qualquer relação causal com suas atividades empresariais.</p>
+[QUEBRA]
+<p>Eventuais acidentes ocorridos durante a prestação de serviços a terceiros deverão ter suas responsabilidades apuradas em relação às pessoas físicas ou jurídicas efetivamente envolvidas, conforme a legislação aplicável.</p>
+<p>O presente instrumento não implica renúncia a direitos trabalhistas ou previdenciários legalmente assegurados. O(A) <b>EMPREGADO(A)</b> comunicará, tão logo seja razoavelmente possível, acidentes ou afastamentos que comprometam sua capacidade de trabalhar, para o devido tratamento administrativo e legal.</p>
+<br>
+<p><b>4. CONFLITO DE INTERESSES E CONCORRÊNCIA</b></p>
+<p>O(A) <b>EMPREGADO(A)</b> compromete-se a não utilizar, retirar, emprestar ou disponibilizar a terceiros, sem autorização expressa, ferramentas, equipamentos, materiais, veículos, documentos, senhas, sistemas ou quaisquer recursos da <b>EMPREGADORA</b>; a não captar, aliciar ou desviar clientes, pedidos, contratos ou oportunidades comerciais da <b>EMPREGADORA</b> em benefício próprio ou de terceiros; e a não revelar ou utilizar informações sigilosas, preços, estratégias, cadastros ou dados comerciais em favor de terceiros, inclusive empresas concorrentes.</p>
+<p>O(A) <b>EMPREGADO(A)</b> compromete-se, ainda, a não praticar concorrência desleal nem negociação habitual, por conta própria ou alheia, sem permissão da <b>EMPREGADORA</b>, quando constitua ato de concorrência à empresa ou seja prejudicial ao serviço, nos termos do art. 482, alínea "c", da CLT.</p>
+<p>A violação comprovada dessas obrigações poderá ensejar medidas disciplinares proporcionais à gravidade da conduta, inclusive rescisão por justa causa, quando presentes os requisitos legais e conforme as circunstâncias do caso, especialmente as hipóteses previstas no art. 482, alíneas "a", "c", "g" e "h", da CLT. A mera prestação de serviços a terceiros, isoladamente, não configura justa causa automática.</p>
+<br>
+<p><b>5. JORNADA E OBRIGAÇÕES CONTRATUAIS</b></p>
+<p>As atividades externas não autorizam descumprimento da jornada, faltas injustificadas, violação das normas de segurança ou utilização de tempo de trabalho contratado para atendimento a terceiros. Eventuais limitações de saúde serão tratadas conforme documentação e legislação pertinentes.</p>
+<br>
+<p><b>6. DA NÃO RESPONSABILIZAÇÃO DA EMPREGADORA POR ATIVIDADES EXTERNAS</b></p>
+<p>O(A) <b>EMPREGADO(A)</b> declara e reconhece que os serviços extras prestados a terceiros, por sua livre iniciativa, fora da jornada contratual e sem determinação, participação, direção ou benefício da <b>EMPREGADORA</b>, constituem atividades independentes da relação de emprego mantida com esta.</p>
+[QUEBRA]
+<p>Nessas condições, a <b>EMPREGADORA</b> não assume responsabilidade pela organização, execução, fiscalização ou segurança dos serviços prestados a terceiros, nem por acidentes, lesões ou danos decorrentes exclusivamente dessas atividades externas, quando não houver ação, omissão ou nexo causal imputável à <b>EMPREGADORA</b>.</p>
+<p>O(A) <b>EMPREGADO(A)</b> reconhece que eventuais responsabilidades relativas a tais serviços deverão ser atribuídas a quem efetivamente lhes deu causa, nos termos da legislação aplicável. Esta declaração não constitui autorização para a realização de serviços externos, não implica renúncia a direitos legalmente assegurados e não afasta obrigações trabalhistas ou previdenciárias que a lei imponha à <b>EMPREGADORA</b> em razão do vínculo de emprego existente.</p>
+<br>
+<div style="text-align: center;">
+  <p><b>[CIDADE/UF]</b>, <b>[DATA]</b>.</p>
+  <br><br>
+  <p>___________________________________</p>
+  <p><b>[NOME DA EMPRESA]</b></p>
+  <p>EMPREGADOR</p>
+  <br><br>
+  <p>___________________________________</p>
+  <p><b>[NOME DO COLABORADOR]</b></p>
+  <p>EMPREGADO(A)</p>
+</div>`,
+    lastUsed: Date.now()
+  },
+  // 4. REGULAMENTO INTERNO DE TRABALHO, CONDUTA E CONVIVÊNCIA GERAL (NOVO)
+  {
+    id: 'tpl-regulamento-interno',
+    name: 'Regulamento Interno de Trabalho, Conduta e Convivência Geral',
+    content: `<div style="text-align: center;"><h2><b>REGULAMENTO INTERNO DE TRABALHO, CONDUTA E CONVIVÊNCIA GERAL</b></h2></div>
+<br>
+<p><b>EMPRESA:</b> <b>[NOME DA EMPRESA]</b>, pessoa jurídica de direito privado, inscrita no CNPJ/MF sob o nº <b>[CNPJ DA EMPRESA]</b>, com sede na Comarca de <b>[CIDADE/UF]</b>.</p>
+<p><b>COLABORADOR(A):</b> <b>[NOME DO COLABORADOR]</b>, inscrito(a) no CPF sob o nº <b>[CPF DO COLABORADOR]</b>, portador(a) do RG nº <b>[RG DO COLABORADOR]</b>, admitido(a) na função de <b>[CARGO DO COLABORADOR]</b>.</p>
+<br>
+<p>O presente Regulamento Interno consolida as diretrizes operacionais, normas de segurança, postura ética e padrões de convivência aplicáveis a todos os colaboradores da <b>EMPRESA</b>, integrando os Contratos Individuais de Trabalho para todos os efeitos de direito, na forma do Art. 444 da Consolidação das Leis do Trabalho (CLT), mediante as seguintes cláusulas:</p>
+<br>
+<p><b>CAPÍTULO I – DA INTEGRAÇÃO AO CONTRATO E ÂMBITO DE APLICAÇÃO</b></p>
+<p><b>1.1. Força Obrigatória:</b> As disposições deste Regulamento aplicam-se indistintamente a todos os colaboradores da empresa, independentemente do cargo, departamento ou ramo de atividade. A assinatura do termo de ciência ou a continuidade da prestação de serviços importa em expressa e irrestrita aceitação de todas as suas regras.</p>
+<p><b>1.2. Inescusabilidade:</b> Ninguém poderá alegar o desconhecimento das presentes normas para justificar faltas, descumprimentos ou eximir-se da aplicação de sanções disciplinares.</p>
+<br>
+<p><b>CAPÍTULO II – DA JORNADA DE TRABALHO E GESTÃO DE HORAS</b></p>
+<p><b>2.1. Cumprimento da Jornada:</b> O colaborador obriga-se a cumprir integralmente a carga horária e a escala de trabalho contratadas, com pontualidade e assiduidade, zelando pela continuidade e excelência das rotinas operacionais.</p>
+<p><b>2.2. Controle e Apuração de Horas:</b> O controle, acompanhamento e apuração das horas de trabalho serão realizados de acordo com o combinado e a rotina operacional adotada pela <b>EMPRESA</b>, em consonância com as normas vigentes e as particularidades de cada atividade.</p>
+<p><b>2.3. Compensação, Banco de Horas e Quitação:</b> O tratamento de eventuais horas extraordinárias ou horas a compensar observará os critérios definidos pela <b>EMPRESA</b> e a legislação aplicável, podendo as horas excedentes ou pendentes serem pagas ou descontadas diretamente na folha de pagamento mensal ou acumuladas em regime de compensação/banco de horas, conforme regras estabelecidas.</p>
+<p><b>2.4. Prorrogação de Jornada:</b> A realização de horas extraordinárias depende de prévia solicitação ou expressa anuência da chefia imediata, sendo vedada a permanência não autorizada em sobrejornada.</p>
+<br>
+<p><b>CAPÍTULO III – DAS AUSÊNCIAS, FALTAS E POLÍTICA DE ATESTADOS MÉDICOS</b></p>
+<p><b>3.1. Comunicação Prévia:</b> Quaisquer ausências previsíveis devem ser comunicadas ao superior imediato com antecedência mínima de 24 (vinte e quatro) horas.</p>
+<p><b>3.2. Prazo Improrrogável para Atestados:</b> Em caso de incapacidade para o trabalho por motivo de saúde, o atestado médico ou odontológico original deverá ser entregue ao setor de Recursos Humanos/Departamento Pessoal no prazo máximo de 48 (quarenta e oito) horas a contar do retorno às atividades, devendo conter carimbo, assinatura e número de registro profissional legíveis (CRM ou CRO).</p>
+<p><b>3.3. Faltas Legais e Abandono de Emprego:</b> As ausências justificadas observarão os limites taxativos do Art. 473 da CLT. A ausência injustificada e continuada ao serviço por período superior a 30 (trinta) dias consecutivos configurará abandono de emprego (Art. 482, 'i', da CLT).</p>
+<br>
+<p><b>CAPÍTULO IV – DA APRESENTAÇÃO PESSOAL, HIGIENE E VESTIMENTA</b></p>
+<p><b>4.1. Decoro e Higiene:</b> O colaborador deve comparecer ao trabalho com boa higiene pessoal e vestimenta compatível com o ambiente de trabalho e o decoro corporativo de sua função.</p>
+<p><b>4.2. Uso e Conservação de Uniforme:</b> Onde fornecido pela empresa, o uso do uniforme completo é pessoal e obrigatório durante toda a jornada. Cabe ao colaborador zelar pela higienização e conservação das peças (Art. 456-A da CLT). Fica proibida a alteração, corte ou descaracterização do uniforme sem autorização prévia.</p>
+<br>
+<p><b>CAPÍTULO V – DAS REGRAS DE CONVIVÊNCIA, URBANIDADE E RESPEITO MÚTUO</b></p>
+<p><b>5.1. Urbanidade e Cortesia:</b> Constitui dever elementar tratar com civilidade, urbanidade e respeito todos os superiores, colegas de trabalho, clientes, fornecedores e visitantes.</p>
+<p><b>5.2. Espírito de Equipe e Discrição:</b> Incentiva-se o trabalho colaborativo e o companheirismo sadio. São vedadas condutas que comprometam a harmonia do ambiente, tais como fofocas, boatos maliciosos, intrigas, discussões acaloradas ou brincadeiras inconvenientes de cunho ofensivo.</p>
+
+[QUEBRA]
+
+<p><b>CAPÍTULO VI – DA SAÚDE, SEGURANÇA DO TRABALHO E USO DE EPIS</b></p>
+<p><b>6.1. Cumprimento Obrigatório das NRs:</b> O colaborador obriga-se a cumprir rigorosamente as normas de segurança e medicina do trabalho, as ordens de serviço da empresa e as diretrizes de segurança aplicáveis (Art. 158 da CLT).</p>
+<p><b>6.2. Uso Compulsório de EPIs:</b> Quando a função exigir o uso de Equipamento de Proteção Individual (EPI), seu uso, guarda e manutenção são inegociáveis durante todo o desempenho das tarefas. A recusa injustificada em utilizar os EPIs fornecidos gratuitamente constitui falta grave e ato de indisciplina passível de demissão por justa causa (Art. 158, parágrafo único, da CLT c/c NR-06).</p>
+<p><b>6.3. Comunicação Imediata de Riscos e Sinistros:</b> Todo e qualquer incidente, acidente de trabalho (com ou sem lesão) ou condição insegura verificada no ambiente deve ser comunicado imediatamente ao gestor responsável para as providências cabíveis.</p>
+<p><b>6.4. Proibição de Improvisações:</b> É vedado operar máquinas, equipamentos ou veículos sem a devida capacitação e treinamento, bem como burlar travas de proteção ou realizar consertos sem autorização técnica.</p>
+<br>
+<p><b>CAPÍTULO VII – DA GUARDA, CONSERVAÇÃO E RESSARCIMENTO DE BENS E EQUIPAMENTOS</b></p>
+<p><b>7.1. Finalidade Profissional Exclusiva:</b> Ferramentas, computadores, maquinários, instrumentos, veículos e estoques colocados à disposição do colaborador destinam-se exclusivamente ao desempenho de suas funções contratuais, sendo vedada a utilização para fins particulares ou cessão a terceiros.</p>
+<p><b>7.2. Autorização Expressa para Desconto Salarial:</b> Em caso de dano material, extravio, quebra ou perda de equipamentos resultantes de dolo ou culpa (negligência, imprudência ou imperícia) do empregado, fica a <b>EMPRESA</b> expressamente autorizada a descontar o valor correspondente ao conserto ou reposição em folha de pagamento ou em suas verbas rescisórias, nos estritos termos do Art. 462, § 1º da CLT.</p>
+<br>
+<p><b>CAPÍTULO VIII – DO AMBIENTE DIGITAL, CELULARES PARTICULARES E DIREITO À DESCONEXÃO</b></p>
+<p><b>8.1. Meios Corporativos e Comunicação:</b> Sistemas, computadores e linhas institucionais da empresa destinam-se ao serviço, cabendo ao empregador a gestão e o acompanhamento de seu uso profissional.</p>
+<p><b>8.2. Celulares Pessoais e Produtividade:</b> O uso de telefone celular particular durante o expediente deve restringir-se a situações pontuais de urgência, evitando distrações que comprometam a produtividade e a segurança das atividades.</p>
+<p><b>8.3. Garantia Constitucional de Não Confisco:</b> A <b>EMPRESA</b> respeita a intimidade do colaborador, sendo expressamente vedado qualquer confisco, retenção ou revista do conteúdo de aparelhos celulares particulares.</p>
+<p><b>8.4. Direito à Desconexão:</b> O colaborador tem assegurado o direito ao descanso e à desconexão fora de sua jornada contratual, salvo em regimes expressos de sobreaviso ou prontidão formalmente pactuados.</p>
+<br>
+<p><b>CAPÍTULO IX – DO SIGILO PROFISSIONAL E PROTEÇÃO DE DADOS (LGPD)</b></p>
+<p><b>9.1. Confidencialidade Absoluta:</b> O colaborador obriga-se a manter rigoroso sigilo sobre dados comerciais, métodos operacionais e informações internas a que tiver acesso em razão de suas funções.</p>
+<p><b>9.2. Observância à LGPD:</b> O tratamento de dados pessoais de clientes, fornecedores e colegas observará os ditames da Lei Geral de Proteção de Dados (Lei nº 13.709/2018), sendo vedado qualquer compartilhamento indevido.</p>
+
+[QUEBRA]
+
+<p><b>CAPÍTULO X – DAS PROIBIÇÕES EXPRESSAS E COMBATE AO ASSÉDIO</b></p>
+<p>É expressamente proibido a qualquer colaborador no ambiente de trabalho ou no desempenho de suas funções:</p>
+<ul style="list-style-type: lower-alpha; padding-left: 25px;">
+  <li>Apresentar-se sob efeito de bebidas alcoólicas ou substâncias entorpecentes ilícitas nas dependências da empresa ou em veículos corporativos;</li>
+  <li>Fumar em ambientes fechados ou em desacordo com as áreas devidamente sinalizadas;</li>
+  <li>Comercializar mercadorias particulares, jogos de azar ou empréstimos pessoais durante o horário de trabalho;</li>
+  <li>Portar armas de qualquer espécie (fogo ou branca) nas dependências corporativas;</li>
+  <li>Praticar qualquer ato de concorrência desleal ou aliciamento que colida com as atividades da empregadora (Art. 482, 'c', da CLT);</li>
+  <li>Praticar, incentivar ou tolerar qualquer ato discriminatório por motivo de raça, gênero, religião, orientação sexual ou deficiência;</li>
+  <li>Praticar atos de assédio moral, assédio sexual ou intimidação de qualquer natureza, em estrito cumprimento à Lei nº 14.457/2022, sujeitando-se o infrator à apuração e demissão imediata por justa causa.</li>
+</ul>
+<br>
+<p><b>CAPÍTULO XI – DO REGIME DISCIPLINAR E GRADAÇÃO DE PENALIDADES</b></p>
+<p><b>11.1. Medidas Pedagógicas e Disciplinares:</b> A inobservância das normas deste Regulamento sujeitará o colaborador às seguintes penalidades, aplicadas conforme a gravidade da falta e a reincidência:</p>
+<p>I. Advertência verbal;</p>
+<p>II. Advertência formal por escrito;</p>
+<p>III. Suspensão disciplinar não remunerada de 1 (um) a 30 (trinta) dias (Art. 474 da CLT);</p>
+<p>IV. Rescisão do contrato de trabalho por Justa Causa (Art. 482 da CLT).</p>
+<p><b>11.2. Falta Grave Imediata:</b> Condutas de extrema gravidade (improbidade, agressão física, assédio comprovado ou violação grave de sigilo) autorizam a rescisão imediata por justa causa, sem necessidade de gradação prévia.</p>
+<br>
+<p><b>CAPÍTULO XII – DISPOSIÇÕES FINAIS, FORO E DECLARAÇÃO DE RECEBIMENTO</b></p>
+<p><b>12.1. Casos Omissos:</b> As omissões deste documento serão resolvidas pela direção da <b>EMPRESA</b> com base na CLT e nas Convenções Coletivas aplicáveis.</p>
+<p><b>12.2. Foro de Eleição:</b> Fica eleito o Foro da Comarca de <b>[CIDADE/UF]</b> para dirimir controvérsias decorrentes da aplicação deste Regulamento.</p>
+<p><b>12.3. Declaração do(a) Colaborador(a):</b> Declaro que recebi um exemplar deste Regulamento Interno, tendo lido e compreendido suas normas, comprometendo-me a cumpri-las com zelo, lealdade e responsabilidade.</p>
+<br>
+<div style="text-align: center;">
+  <p><b>[CIDADE/UF]</b>, <b>[DATA]</b>.</p>
+  <br><br>
+  <p>________________________________________________</p>
+  <p><b>[NOME DA EMPRESA]</b></p>
+  <p>EMPREGADOR</p>
+  <br><br>
+  <p>________________________________________________</p>
+  <p><b>[NOME DO COLABORADOR]</b></p>
+  <p>COLABORADOR(A) - DECLARAÇÃO DE CIÊNCIA E RECEBIMENTO</p>
 </div>`,
     lastUsed: Date.now()
   },
