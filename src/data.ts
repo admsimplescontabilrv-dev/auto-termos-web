@@ -241,7 +241,9 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <p><b>2.2. Controle e Apuração de Horas:</b> O controle, acompanhamento e apuração das horas de trabalho serão realizados de acordo com o combinado e a rotina operacional adotada pela <b>EMPRESA</b>, em consonância com as normas vigentes e as particularidades de cada atividade.</p>
 <p><b>2.3. Compensação, Banco de Horas e Quitação:</b> O tratamento de eventuais horas extraordinárias ou horas a compensar observará os critérios definidos pela <b>EMPRESA</b> e a legislação aplicável, podendo as horas excedentes ou pendentes serem pagas ou descontadas diretamente na folha de pagamento mensal ou acumuladas em regime de compensação/banco de horas, conforme regras estabelecidas.</p>
 <p><b>2.4. Prorrogação de Jornada:</b> A realização de horas extraordinárias depende de prévia solicitação ou expressa anuência da chefia imediata, sendo vedada a permanência não autorizada em sobrejornada.</p>
-<br>
+
+[QUEBRA]
+
 <p><b>CAPÍTULO III – DAS AUSÊNCIAS, FALTAS E POLÍTICA DE ATESTADOS MÉDICOS</b></p>
 <p><b>3.1. Comunicação Prévia:</b> Quaisquer ausências previsíveis devem ser comunicadas ao superior imediato com antecedência mínima de 24 (vinte e quatro) horas.</p>
 <p><b>3.2. Prazo Improrrogável para Atestados:</b> Em caso de incapacidade para o trabalho por motivo de saúde, o atestado médico ou odontológico original deverá ser entregue ao setor de Recursos Humanos/Departamento Pessoal no prazo máximo de 48 (quarenta e oito) horas a contar do retorno às atividades, devendo conter carimbo, assinatura e número de registro profissional legíveis (CRM ou CRO).</p>
@@ -254,11 +256,12 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <p><b>CAPÍTULO V – DAS REGRAS DE CONVIVÊNCIA, URBANIDADE E RESPEITO MÚTUO</b></p>
 <p><b>5.1. Urbanidade e Cortesia:</b> Constitui dever elementar tratar com civilidade, urbanidade e respeito todos os superiores, colegas de trabalho, clientes, fornecedores e visitantes.</p>
 <p><b>5.2. Espírito de Equipe e Discrição:</b> Incentiva-se o trabalho colaborativo e o companheirismo sadio. São vedadas condutas que comprometam a harmonia do ambiente, tais como fofocas, boatos maliciosos, intrigas, discussões acaloradas ou brincadeiras inconvenientes de cunho ofensivo.</p>
+<br>
+<p><b>CAPÍTULO VI – DA SAÚDE, SEGURANÇA DO TRABALHO E USO DE EPIS</b></p>
+<p><b>6.1. Cumprimento Obrigatório das NRs:</b> O colaborador obriga-se a cumprir rigorosamente as normas de segurança e medicina do trabalho, as ordens de serviço da empresa e as diretrizes de segurança aplicáveis (Art. 158 da CLT).</p>
 
 [QUEBRA]
 
-<p><b>CAPÍTULO VI – DA SAÚDE, SEGURANÇA DO TRABALHO E USO DE EPIS</b></p>
-<p><b>6.1. Cumprimento Obrigatório das NRs:</b> O colaborador obriga-se a cumprir rigorosamente as normas de segurança e medicina do trabalho, as ordens de serviço da empresa e as diretrizes de segurança aplicáveis (Art. 158 da CLT).</p>
 <p><b>6.2. Uso Compulsório de EPIs:</b> Quando a função exigir o uso de Equipamento de Proteção Individual (EPI), seu uso, guarda e manutenção são inegociáveis durante todo o desempenho das tarefas. A recusa injustificada em utilizar os EPIs fornecidos gratuitamente constitui falta grave e ato de indisciplina passível de demissão por justa causa (Art. 158, parágrafo único, da CLT c/c NR-06).</p>
 <p><b>6.3. Comunicação Imediata de Riscos e Sinistros:</b> Todo e qualquer incidente, acidente de trabalho (com ou sem lesão) ou condição insegura verificada no ambiente deve ser comunicado imediatamente ao gestor responsável para as providências cabíveis.</p>
 <p><b>6.4. Proibição de Improvisações:</b> É vedado operar máquinas, equipamentos ou veículos sem a devida capacitação e treinamento, bem como burlar travas de proteção ou realizar consertos sem autorização técnica.</p>
@@ -271,14 +274,15 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <p><b>8.1. Meios Corporativos e Comunicação:</b> Sistemas, computadores e linhas institucionais da empresa destinam-se ao serviço, cabendo ao empregador a gestão e o acompanhamento de seu uso profissional.</p>
 <p><b>8.2. Celulares Pessoais e Produtividade:</b> O uso de telefone celular particular durante o expediente deve restringir-se a situações pontuais de urgência, evitando distrações que comprometam a produtividade e a segurança das atividades.</p>
 <p><b>8.3. Garantia Constitucional de Não Confisco:</b> A <b>EMPRESA</b> respeita a intimidade do colaborador, sendo expressamente vedado qualquer confisco, retenção ou revista do conteúdo de aparelhos celulares particulares.</p>
+
+[QUEBRA]
+
 <p><b>8.4. Direito à Desconexão:</b> O colaborador tem assegurado o direito ao descanso e à desconexão fora de sua jornada contratual, salvo em regimes expressos de sobreaviso ou prontidão formalmente pactuados.</p>
 <br>
 <p><b>CAPÍTULO IX – DO SIGILO PROFISSIONAL E PROTEÇÃO DE DADOS (LGPD)</b></p>
 <p><b>9.1. Confidencialidade Absoluta:</b> O colaborador obriga-se a manter rigoroso sigilo sobre dados comerciais, métodos operacionais e informações internas a que tiver acesso em razão de suas funções.</p>
 <p><b>9.2. Observância à LGPD:</b> O tratamento de dados pessoais de clientes, fornecedores e colegas observará os ditames da Lei Geral de Proteção de Dados (Lei nº 13.709/2018), sendo vedado qualquer compartilhamento indevido.</p>
-
-[QUEBRA]
-
+<br>
 <p><b>CAPÍTULO X – DAS PROIBIÇÕES EXPRESSAS E COMBATE AO ASSÉDIO</b></p>
 <p>É expressamente proibido a qualquer colaborador no ambiente de trabalho ou no desempenho de suas funções:</p>
 <ul style="list-style-type: lower-alpha; padding-left: 25px;">
@@ -297,6 +301,9 @@ export const DEFAULT_TEMPLATES: SavedTemplate[] = [
 <p>II. Advertência formal por escrito;</p>
 <p>III. Suspensão disciplinar não remunerada de 1 (um) a 30 (trinta) dias (Art. 474 da CLT);</p>
 <p>IV. Rescisão do contrato de trabalho por Justa Causa (Art. 482 da CLT).</p>
+
+[QUEBRA]
+
 <p><b>11.2. Falta Grave Imediata:</b> Condutas de extrema gravidade (improbidade, agressão física, assédio comprovado ou violação grave de sigilo) autorizam a rescisão imediata por justa causa, sem necessidade de gradação prévia.</p>
 <br>
 <p><b>CAPÍTULO XII – DISPOSIÇÕES FINAIS, FORO E DECLARAÇÃO DE RECEBIMENTO</b></p>
